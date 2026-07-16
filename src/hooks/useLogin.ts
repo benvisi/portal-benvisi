@@ -123,7 +123,7 @@ export function useLogin() {
     setStage("selecting");
   }, []);
 
-  const verify = useCallback(
+ const verify = useCallback(
     async (apelido: string, pinValue: string) => {
       setStage("verifying");
       setErrorMessage(null);
@@ -132,22 +132,32 @@ export function useLogin() {
           p_apelido: apelido,
           p_pin: pinValue,
         });
+
+        // 1. Se o Supabase responder com erro (falha de rede ou de banco de dados)
         if (error) throw error;
-        if (isVerifyPinSuccess(data)) {
+
+        // 2. Se a validação retornar sucesso
+        if (data && isVerifyPinSuccess(data)) {
           await completeSession(data);
           HapticService.vibrate("success");
           await navigate({ to: ROUTES.DASHBOARD, replace: true });
           return;
         }
+
+        // 3. Se as credenciais estiverem incorretas (PIN errado)
         HapticService.vibrate("error");
         setErrorMessage(LOGIN_ERROR_MESSAGE);
         setHasError(true);
         setPin("");
         setStage("entering-pin");
       } catch (error) {
-        console.error("[useLogin] verify_pin failed", error);
+        // 4. Se houver uma falha real de infraestrutura/conexão
+        console.error("[useLogin] verify_pin infrastructure failure:", error);
         HapticService.vibrate("error");
-        setErrorMessage(LOGIN_ERROR_MESSAGE);
+        
+        // Mensagem amigável separada para problemas de conexão/servidor offline
+        setErrorMessage("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+        
         setHasError(true);
         setPin("");
         setStage("entering-pin");

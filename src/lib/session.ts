@@ -28,27 +28,22 @@ function isAuthSessionData(value: unknown): value is AuthSessionData {
 
 export const AuthSession = {
   get(): AuthSessionData | null {
-    if (!isBrowser()) return null;
-    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      return isAuthSessionData(parsed) ? parsed : null;
-    } catch {
-      return null;
-    }
+    const data = sessionStorage.getItem('benvisi_session');
+    return data ? JSON.parse(data) : null;
   },
+  
   save(data: AuthSessionData): void {
-    if (!isBrowser()) return;
-    window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+    sessionStorage.setItem('benvisi_session', JSON.stringify(data));
   },
+  
   clear(): void {
-    if (!isBrowser()) return;
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem('benvisi_session');
   },
+  
+  // The clean, future-proof API addition:
   isAuthenticated(): boolean {
-    return AuthSession.get() !== null;
-  },
+    return this.get() !== null;
+  }
 };
 
 export function formatManaus(input: string | Date): string {
