@@ -55,7 +55,7 @@ function LoginPage() {
           <PinPanel
             title={
               login.selectedEmployee
-                ? `Olá, ${login.selectedEmployee.apelido}`
+                ? `Olá, ${login.selectedEmployee.nome}`
                 : "Selecione seu perfil"
             }
             subtitle={
@@ -105,7 +105,7 @@ function LoginPage() {
               Voltar
             </button>
             <PinPanel
-              title={login.selectedEmployee ? `Olá, ${login.selectedEmployee.apelido}` : ""}
+              title={login.selectedEmployee ? `Olá, ${login.selectedEmployee.nome}` : ""}
               subtitle="Digite seu PIN de 4 dígitos"
               pinLength={login.pin.length}
               hasError={login.hasError}
