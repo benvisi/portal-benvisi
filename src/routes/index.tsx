@@ -129,7 +129,7 @@ function Header() {
       </span>
       <h1 className="text-2xl font-semibold text-foreground">Portal Benvisi</h1>
       <p className="text-sm text-muted-foreground">
-        Acesse com seu apelido e PIN para iniciar o turno.
+        Selecione seu nome e informe o PIN para iniciar o turno.
       </p>
     </header>
   );
