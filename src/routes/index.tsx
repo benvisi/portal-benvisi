@@ -55,7 +55,7 @@ function LoginPage() {
           <PinPanel
             title={
               login.selectedEmployee
-                ? `Olá, ${login.selectedEmployee.apelido}`
+                ? `Olá, ${login.selectedEmployee.nome}`
                 : "Selecione seu perfil"
             }
             subtitle={
@@ -105,7 +105,7 @@ function LoginPage() {
               Voltar
             </button>
             <PinPanel
-              title={login.selectedEmployee ? `Olá, ${login.selectedEmployee.apelido}` : ""}
+              title={login.selectedEmployee ? `Olá, ${login.selectedEmployee.nome}` : ""}
               subtitle="Digite seu PIN de 4 dígitos"
               pinLength={login.pin.length}
               hasError={login.hasError}
@@ -129,7 +129,7 @@ function Header() {
       </span>
       <h1 className="text-2xl font-semibold text-foreground">Portal Benvisi</h1>
       <p className="text-sm text-muted-foreground">
-        Acesse com seu apelido e PIN para iniciar o turno.
+        Selecione seu nome e informe o PIN para iniciar o turno.
       </p>
     </header>
   );

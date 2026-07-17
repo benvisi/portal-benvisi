@@ -11,7 +11,6 @@ import { ROUTES } from "@/config/routes";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isVerifyPinSuccess,
-  type Employee,
   type VerifyPinSuccess,
 } from "@/integrations/supabase/contracts";
 import { AuthSession } from "@/lib/session";
@@ -27,27 +26,11 @@ function normalize(value: string): string {
     .replace(/\p{Diacritic}/gu, "");
 }
 
-async function hydrateEmployee(id: string): Promise<Pick<Employee, "nome" | "cargo"> | null> {
-  const { data, error } = await supabase
-    .from("funcionarios")
-    .select("nome, cargo")
-    .eq("id", id)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data as Pick<Employee, "nome" | "cargo">;
-}
-
-async function completeSession(result: VerifyPinSuccess): Promise<void> {
-  let { nome, cargo } = result;
-  if (!nome || !cargo) {
-    const extra = await hydrateEmployee(result.funcionario_id);
-    nome = nome || extra?.nome || "";
-    cargo = cargo || extra?.cargo || "";
-  }
+function completeSession(result: VerifyPinSuccess): void {
   AuthSession.save({
     funcionario_id: result.funcionario_id,
-    nome,
-    cargo,
+    nome: result.nome,
+    cargo: result.cargo,
     timestamp_login: new Date().toISOString(),
   });
 }
@@ -69,12 +52,12 @@ export function useLogin() {
     const normalized = normalize(query.trim());
     if (!normalized) return employees;
     return employees.filter((employee) =>
-      normalize(employee.apelido).includes(normalized),
+      normalize(employee.nome).includes(normalized),
     );
   }, [employees, query]);
 
   const selectedEmployee = useMemo(
-    () => employees.find((employee) => employee.id === selectedId) ?? null,
+    () => employees.find((employee) => employee.funcionario_id === selectedId) ?? null,
     [employees, selectedId],
   );
 
@@ -123,43 +106,42 @@ export function useLogin() {
     setStage("selecting");
   }, []);
 
- const verify = useCallback(
-    async (apelido: string, pinValue: string) => {
+  const verify = useCallback(
+    async (funcionarioId: string, pinValue: string) => {
       setStage("verifying");
       setErrorMessage(null);
       try {
         const { data, error } = await supabase.rpc("verify_pin", {
-          p_apelido: apelido,
+          p_funcionario_id: funcionarioId,
           p_pin: pinValue,
         });
 
-        // 1. Se o Supabase responder com erro (falha de rede ou de banco de dados)
         if (error) throw error;
 
-        // 2. Se a validação retornar sucesso
         const result = Array.isArray(data) ? data[0] : data;
 
-        if (result && isVerifyPinSuccess(result)) {
-          await completeSession(result);
+        if (!result) {
+          throw new Error("verify_pin returned no row");
+        }
+
+        if (isVerifyPinSuccess(result)) {
+          completeSession(result);
           HapticService.vibrate("success");
           await navigate({ to: ROUTES.DASHBOARD, replace: true });
           return;
         }
 
-        // 3. Se as credenciais estiverem incorretas (PIN errado)
         HapticService.vibrate("error");
         setErrorMessage(LOGIN_ERROR_MESSAGE);
         setHasError(true);
         setPin("");
         setStage("entering-pin");
       } catch (error) {
-        // 4. Se houver uma falha real de infraestrutura/conexão
         console.error("[useLogin] verify_pin infrastructure failure:", error);
         HapticService.vibrate("error");
-        
-        // Mensagem amigável separada para problemas de conexão/servidor offline
-        setErrorMessage("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
-        
+        setErrorMessage(
+          "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
+        );
         setHasError(true);
         setPin("");
         setStage("entering-pin");
@@ -178,7 +160,7 @@ export function useLogin() {
       setPin(next);
       setErrorMessage(null);
       if (next.length === PIN_LENGTH) {
-        void verify(selectedEmployee.apelido, next);
+        void verify(selectedEmployee.funcionario_id, next);
       }
     },
     [pin, selectedEmployee, stage, verify],

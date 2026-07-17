@@ -18,4 +18,4 @@ export const LOCALE_PT_BR = "pt-BR";
 
 export const LOGIN_ERROR_MESSAGE = "PIN ou usuário incorreto. Tente novamente.";
 export const VERIFYING_MESSAGE = "Validando PIN...";
-export const SEARCH_PLACEHOLDER = "Buscar por apelido...";
+export const SEARCH_PLACEHOLDER = "Buscar por nome...";

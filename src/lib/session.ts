@@ -20,30 +20,44 @@ function isAuthSessionData(value: unknown): value is AuthSessionData {
   const candidate = value as Record<string, unknown>;
   return (
     typeof candidate.funcionario_id === "string" &&
+    candidate.funcionario_id.length > 0 &&
     typeof candidate.nome === "string" &&
+    candidate.nome.length > 0 &&
     typeof candidate.cargo === "string" &&
-    typeof candidate.timestamp_login === "string"
+    candidate.cargo.length > 0 &&
+    typeof candidate.timestamp_login === "string" &&
+    candidate.timestamp_login.length > 0
   );
 }
 
 export const AuthSession = {
   get(): AuthSessionData | null {
-    const data = sessionStorage.getItem('benvisi_session');
-    return data ? JSON.parse(data) : null;
+    if (!isBrowser()) return null;
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (isAuthSessionData(parsed)) return parsed;
+    } catch {
+      // fall through to clear
+    }
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
   },
-  
+
   save(data: AuthSessionData): void {
-    sessionStorage.setItem('benvisi_session', JSON.stringify(data));
+    if (!isBrowser()) return;
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
   },
-  
+
   clear(): void {
-    sessionStorage.removeItem('benvisi_session');
+    if (!isBrowser()) return;
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
   },
-  
-  // The clean, future-proof API addition:
+
   isAuthenticated(): boolean {
     return this.get() !== null;
-  }
+  },
 };
 
 export function formatManaus(input: string | Date): string {

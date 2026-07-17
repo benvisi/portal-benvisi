@@ -22,14 +22,14 @@ export function EmployeeList({
   return (
     <ul role="listbox" aria-label="Funcionários" className="flex flex-col gap-2">
       {employees.map((employee) => {
-        const isSelected = employee.id === selectedId;
+        const isSelected = employee.funcionario_id === selectedId;
         return (
-          <li key={employee.id}>
+          <li key={employee.funcionario_id}>
             <button
               type="button"
               role="option"
               aria-selected={isSelected}
-              onClick={() => onSelect(employee.id)}
+              onClick={() => onSelect(employee.funcionario_id)}
               className={
                 "min-touch flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left shadow-soft transition-all " +
                 (isSelected
@@ -37,17 +37,7 @@ export function EmployeeList({
                   : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-accent")
               }
             >
-              <span className="flex flex-col">
-                <span className="text-base font-semibold">{employee.apelido}</span>
-                <span
-                  className={
-                    "text-xs " +
-                    (isSelected ? "text-primary-foreground/80" : "text-muted-foreground")
-                  }
-                >
-                  {employee.cargo}
-                </span>
-              </span>
+              <span className="text-base font-semibold">{employee.nome}</span>
             </button>
           </li>
         );
