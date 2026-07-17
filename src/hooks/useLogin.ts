@@ -137,8 +137,10 @@ export function useLogin() {
         if (error) throw error;
 
         // 2. Se a validação retornar sucesso
-        if (data && isVerifyPinSuccess(data)) {
-          await completeSession(data);
+        const result = Array.isArray(data) ? data[0] : data;
+
+        if (result && isVerifyPinSuccess(result)) {
+          await completeSession(result);
           HapticService.vibrate("success");
           await navigate({ to: ROUTES.DASHBOARD, replace: true });
           return;
