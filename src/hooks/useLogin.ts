@@ -29,6 +29,7 @@ function completeSession(result: VerifyPinSuccess): void {
     nome: result.nome,
     cargo: result.cargo,
     timestamp_login: new Date().toISOString(),
+    session_token: result.session_token,
   });
 }
 

@@ -5,6 +5,7 @@ export interface AuthSessionData {
   nome: string;
   cargo: string;
   timestamp_login: string;
+  session_token: string;
 }
 
 function isBrowser(): boolean {
@@ -22,7 +23,9 @@ function isAuthSessionData(value: unknown): value is AuthSessionData {
     typeof candidate.cargo === "string" &&
     candidate.cargo.length > 0 &&
     typeof candidate.timestamp_login === "string" &&
-    candidate.timestamp_login.length > 0
+    candidate.timestamp_login.length > 0 &&
+    typeof candidate.session_token === "string" &&
+    candidate.session_token.length > 0
   );
 }
 
