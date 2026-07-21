@@ -1,0 +1,7 @@
+# Normalize all text files to LF line endings regardless of platform or
+# local core.autocrlf setting. Git auto-detects text vs binary; binary
+# files are left untouched.
+* text=auto eol=lf
+
+# Explicitly mark known binary assets so they are never treated as text.
+*.ico binary

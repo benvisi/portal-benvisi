@@ -14,9 +14,7 @@ export function EmployeeList({
   emptyMessage = "Nenhum funcionário encontrado.",
 }: EmployeeListProps) {
   if (employees.length === 0) {
-    return (
-      <p className="px-2 py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
-    );
+    return <p className="px-2 py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (

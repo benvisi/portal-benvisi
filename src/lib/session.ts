@@ -1,8 +1,4 @@
-import {
-  LOCALE_PT_BR,
-  MANAUS_TIMEZONE,
-  SESSION_STORAGE_KEY,
-} from "@/config/constants";
+import { LOCALE_PT_BR, MANAUS_TIMEZONE, SESSION_STORAGE_KEY } from "@/config/constants";
 
 export interface AuthSessionData {
   funcionario_id: string;

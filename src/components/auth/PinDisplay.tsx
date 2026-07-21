@@ -10,9 +10,7 @@ export function PinDisplay({ length, filled, hasError = false }: PinDisplayProps
       role="status"
       aria-live="polite"
       aria-label={`PIN com ${filled} de ${length} dígitos preenchidos`}
-      className={
-        "flex items-center justify-center gap-4 " + (hasError ? "animate-shake" : "")
-      }
+      className={"flex items-center justify-center gap-4 " + (hasError ? "animate-shake" : "")}
     >
       {Array.from({ length }).map((_, index) => {
         const isFilled = index < filled;

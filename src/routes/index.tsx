@@ -124,9 +124,7 @@ function LoginPage() {
 function Header() {
   return (
     <header className="flex flex-col gap-1">
-      <span className="text-xs font-semibold uppercase tracking-widest text-brand">
-        Benvisi
-      </span>
+      <span className="text-xs font-semibold uppercase tracking-widest text-brand">Benvisi</span>
       <h1 className="text-2xl font-semibold text-foreground">Portal Benvisi</h1>
       <p className="text-sm text-muted-foreground">
         Selecione seu nome e informe o PIN para iniciar o turno.

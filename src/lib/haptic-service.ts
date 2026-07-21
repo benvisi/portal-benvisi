@@ -1,8 +1,4 @@
-import {
-  HAPTIC_ERROR_PATTERN,
-  HAPTIC_SUCCESS_PATTERN,
-  HAPTIC_TAP_MS,
-} from "@/config/constants";
+import { HAPTIC_ERROR_PATTERN, HAPTIC_SUCCESS_PATTERN, HAPTIC_TAP_MS } from "@/config/constants";
 
 export type HapticPattern = "tap" | "success" | "error";
 

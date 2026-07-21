@@ -9,10 +9,7 @@ import {
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  isVerifyPinSuccess,
-  type VerifyPinSuccess,
-} from "@/integrations/supabase/contracts";
+import { isVerifyPinSuccess, type VerifyPinSuccess } from "@/integrations/supabase/contracts";
 import { AuthSession } from "@/lib/session";
 import { HapticService } from "@/lib/haptic-service";
 import { useEmployeeQuery } from "@/hooks/useEmployeeQuery";
@@ -46,14 +43,12 @@ export function useLogin() {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const employees = employeesQuery.data ?? [];
+  const employees = useMemo(() => employeesQuery.data ?? [], [employeesQuery.data]);
 
   const filtered = useMemo(() => {
     const normalized = normalize(query.trim());
     if (!normalized) return employees;
-    return employees.filter((employee) =>
-      normalize(employee.nome).includes(normalized),
-    );
+    return employees.filter((employee) => normalize(employee.nome).includes(normalized));
   }, [employees, query]);
 
   const selectedEmployee = useMemo(
