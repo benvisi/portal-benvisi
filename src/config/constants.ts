@@ -58,3 +58,36 @@ export const MODULE_IN_PROGRESS_DESCRIPTION =
 export const MODULE_IN_PROGRESS_ACK_LABEL = "Entendi";
 
 export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
+
+export const ATENDIMENTO_PAGE_TITLE = "Atendimento";
+export const VOLTAR_AO_PAINEL_LABEL = "Voltar ao painel";
+
+export const LISTA_DA_VEZ_TITLE = "Lista da Vez";
+export const LISTA_DA_VEZ_EMPTY_MESSAGE =
+  "Ninguém na fila ainda hoje. Inicie as atividades para entrar na Lista da Vez.";
+export const LISTA_DA_VEZ_VOCE_LABEL = "Você";
+
+export const ATENDIMENTO_START_BUTTON_LABEL = "Iniciar atendimento";
+export const ATENDIMENTO_COMPLETE_BUTTON_LABEL = "Concluir atendimento";
+export const ATENDIMENTO_CANCEL_PROVISORIO_BUTTON_LABEL = "Cancelar início";
+export const ATENDIMENTO_ATIVO_LABEL = "Atendimento em andamento";
+export const ATENDIMENTO_PROVISORIO_LABEL = "Atendimento provisório";
+export const ATENDIMENTO_PROVISORIO_DESCRIPTION =
+  "Toque em cancelar caso tenha iniciado por engano.";
+
+export const FORA_DE_ORDEM_CONFIRM_TITLE = "Você não é o próximo da Lista da Vez.";
+export const FORA_DE_ORDEM_CONFIRM_DESCRIPTION = "Deseja iniciar este atendimento mesmo assim?";
+export const FORA_DE_ORDEM_CONFIRM_ACCEPT_LABEL = "Iniciar atendimento";
+export const FORA_DE_ORDEM_CONFIRM_CANCEL_LABEL = "Cancelar";
+export const FORA_DE_ORDEM_BADGE_LABEL = "Fora da ordem";
+
+export const ATENDIMENTO_GENERIC_ERROR_MESSAGE =
+  "Não foi possível concluir a ação. Tente novamente.";
+export const ATIVIDADES_NAO_INICIADAS_MESSAGE =
+  "Você precisa iniciar as atividades do dia antes de começar um atendimento.";
+export const ATENDIMENTO_ATIVO_EXISTENTE_MESSAGE = "Você já tem um atendimento em andamento.";
+export const CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA_MESSAGE =
+  "Confirme o início fora da ordem da Lista da Vez.";
+export const NENHUM_ATENDIMENTO_ATIVO_MESSAGE = "Não há atendimento ativo para esta ação.";
+export const PRAZO_PROVISORIO_EXPIRADO_MESSAGE =
+  "O prazo para cancelar este atendimento já passou.";

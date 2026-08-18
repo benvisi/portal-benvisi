@@ -1,0 +1,42 @@
+import {
+  ATENDIMENTO_ATIVO_EXISTENTE_MESSAGE,
+  ATIVIDADES_NAO_INICIADAS_MESSAGE,
+  CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA_MESSAGE,
+  NENHUM_ATENDIMENTO_ATIVO_MESSAGE,
+  PRAZO_PROVISORIO_EXPIRADO_MESSAGE,
+} from "@/config/constants";
+
+const ATENDIMENTO_ERROR_SQLSTATE = "P0001";
+
+const KNOWN_ERROR_MESSAGES: Record<string, string> = {
+  ATIVIDADES_NAO_INICIADAS: ATIVIDADES_NAO_INICIADAS_MESSAGE,
+  ATENDIMENTO_ATIVO_EXISTENTE: ATENDIMENTO_ATIVO_EXISTENTE_MESSAGE,
+  CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA: CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA_MESSAGE,
+  NENHUM_ATENDIMENTO_ATIVO: NENHUM_ATENDIMENTO_ATIVO_MESSAGE,
+  PRAZO_PROVISORIO_EXPIRADO: PRAZO_PROVISORIO_EXPIRADO_MESSAGE,
+};
+
+/**
+ * Distinguishes the Atendimento RPCs' known business-rule error codes
+ * (raised via `raise exception using errcode = 'P0001', message = '...'`,
+ * same convention as isInvalidSessionError) from ordinary network errors or
+ * INVALID_SESSION, which callers must handle separately.
+ */
+function getAtendimentoErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object") return null;
+  const candidate = error as { message?: unknown; code?: unknown };
+  if (candidate.code !== ATENDIMENTO_ERROR_SQLSTATE || typeof candidate.message !== "string") {
+    return null;
+  }
+  return candidate.message;
+}
+
+export function isForaDeOrdemConfirmationRequired(error: unknown): boolean {
+  return getAtendimentoErrorCode(error) === "CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA";
+}
+
+export function getAtendimentoErrorMessage(error: unknown): string | null {
+  const code = getAtendimentoErrorCode(error);
+  if (code === null) return null;
+  return KNOWN_ERROR_MESSAGES[code] ?? null;
+}

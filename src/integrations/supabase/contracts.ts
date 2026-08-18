@@ -48,3 +48,43 @@ export function isVerifyPinSuccess(value: unknown): value is VerifyPinSuccess {
     candidate.session_token.length > 0
   );
 }
+
+export interface ListaVezEntry {
+  id_funcionario: string;
+  nome: string;
+  em_atendimento: boolean;
+  ordem: number | null;
+  iniciado_em: string | null;
+}
+
+export function isListaVezEntry(value: unknown): value is ListaVezEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_funcionario === "string" &&
+    candidate.id_funcionario.length > 0 &&
+    typeof candidate.nome === "string" &&
+    typeof candidate.em_atendimento === "boolean" &&
+    (candidate.ordem === null || typeof candidate.ordem === "number") &&
+    (candidate.iniciado_em === null || typeof candidate.iniciado_em === "string")
+  );
+}
+
+export interface AtendimentoAtivo {
+  id: string;
+  iniciado_em: string;
+  fora_de_ordem: boolean;
+  prazo_provisorio_em: string;
+}
+
+export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.iniciado_em === "string" &&
+    typeof candidate.fora_de_ordem === "boolean" &&
+    typeof candidate.prazo_provisorio_em === "string"
+  );
+}

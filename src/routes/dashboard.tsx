@@ -111,7 +111,7 @@ function DashboardPage() {
             title="Atendimento"
             description="Atendimento ao cliente e apoio às vendas."
             variant="brand"
-            onClick={() => setModuleDialogOpen(true)}
+            onClick={() => void navigate({ to: ROUTES.ATENDIMENTO })}
           />
           <ModuleCard
             icon={Package}
