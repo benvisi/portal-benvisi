@@ -626,6 +626,24 @@ A provisional Atendimento whose deadline has elapsed should be treated as offici
 
 The backend must independently enforce the 20-second cancellation deadline using server/database time.
 
+### 8.7.1 Accidental-Cancellation Action Treatment
+
+### APPROVED UX DIRECTION
+
+During the 20-second accidental-start window, **Concluir atendimento** should remain the primary action.
+
+**Cancelar início** should be visually secondary but clearly distinguishable from normal completion.
+
+A restrained destructive/red accent may be used for **Cancelar início**, for example:
+
+- red/destructive text;
+- red/destructive border;
+- secondary outlined treatment.
+
+The action should not use an unnecessarily dominant solid-red treatment if that competes with the primary completion action.
+
+Although the cancel action may appear visually smaller or less prominent, it must retain an appropriately sized mobile touch target.
+
 ## 8.8 Navigation During an Active Atendimento
 
 ### APPROVED
@@ -636,19 +654,85 @@ The employee may use **Voltar ao painel** without closing the session.
 
 Returning to Atendimento should resume the existing session.
 
-## 8.9 Persistent Active Atendimento Indicator
+# 8.9 Shared Active Atendimento Status and Elapsed Time
 
 ### APPROVED
 
-While an Atendimento is active, provide a persistent compact reminder.
+Lista da Vez should function not only as an ordering mechanism, but also as a lightweight shared view of who is currently serving customers.
 
-Example:
+When an employee is in an active Atendimento, every user who can see Lista da Vez should be able to see how long that Atendimento has been in progress.
 
-> ● Atendimento em andamento · 12 min
+This is especially useful for:
 
-It should be visible outside the Atendimento page, show elapsed time, be clickable/tappable, and return the employee to the active Atendimento.
+- managers;
+- administrators;
+- other sales employees;
+- general sales-floor awareness.
 
-Avoid glowing borders, OS-style timers, and visually aggressive warnings during normal operation.
+The purpose is operational visibility, not surveillance.
+
+## 8.9.1 Active Employee Row
+
+An employee who is currently in Atendimento should remain visible in Lista da Vez but should be visually distinct from employees who are currently available.
+
+The entire row should use a restrained active-state treatment, such as:
+
+- subtle background tint;
+- subtle border treatment;
+- another consistent semantic cue.
+
+The visual state should make it clear at a glance that the employee is currently serving a customer.
+
+The employee should not display a normal available queue-position number while actively serving.
+
+## 8.9.2 Elapsed Atendimento Time
+
+For each active employee, Lista da Vez should display the elapsed duration of their current Atendimento.
+
+Conceptual example:
+
+`Colaborador Teste 2        ⏱ 12 min`
+
+The elapsed time may replace the separate **Em atendimento** pill if the combination of the active-row visual treatment and timer makes the status sufficiently clear.
+
+For very recent Atendimentos, display:
+
+`< 1 min`
+
+rather than:
+
+`0 min`
+
+After the first minute, display elapsed whole minutes.
+
+Second-by-second precision is not required for the shared Lista da Vez view.
+
+## 8.9.3 Shared Visibility
+
+Elapsed Atendimento time should be visible to all authorized users viewing Lista da Vez, not only to the employee currently handling that Atendimento.
+
+The same server-authoritative Atendimento start time should be used for every viewer.
+
+## 8.9.4 Time Source and Client Updates
+
+The backend should expose the authoritative `iniciado_em` timestamp for an active Atendimento.
+
+Each client may calculate and update the visible elapsed duration locally using that timestamp.
+
+The application should not continuously query Supabase every second merely to increment the displayed timer.
+
+Normal queue/server-state synchronization should continue to determine whether an employee is active, available, or completed.
+
+## 8.9.5 Current Employee's Active Atendimento Card
+
+The current employee's active Atendimento card should focus primarily on actions.
+
+If elapsed duration is already clearly visible in Lista da Vez, the same elapsed-minutes display does not need to be duplicated prominently in the active Atendimento card.
+
+The active card should continue to identify that an Atendimento is in progress and provide the appropriate actions, including:
+
+- **Concluir atendimento**
+- **Cancelar início**, during the applicable 20-second accidental-start window.
 
 ## 8.10 Customer Recording
 
@@ -1468,6 +1552,18 @@ The first 20 seconds of an Atendimento exist to allow accidental starts to be ca
 A legitimate Atendimento may be concluded during that period without waiting for the grace window to expire.
 
 After the 20-second deadline, accidental cancellation is no longer available.
+
+---
+
+## ADR-018 — Lista da Vez Shows Active Atendimento Duration
+
+**Status:** APPROVED
+
+Lista da Vez will display the elapsed duration of each employee's active Atendimento to all authorized users viewing the queue.
+
+Elapsed duration is derived from the server-authoritative Atendimento start timestamp and may update locally on each client.
+
+The active-row visual treatment plus elapsed timer may replace a separate **Em atendimento** status pill.
 
 ---
 
