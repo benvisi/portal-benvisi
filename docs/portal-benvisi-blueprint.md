@@ -587,26 +587,44 @@ When the user presses **Iniciar atendimento**:
 
 Starting an Atendimento creates a 20-second provisional period.
 
-During this period, show a countdown and **Cancelar início**.
+The purpose of this period is to provide an **undo window for an accidental start**.
 
-If cancelled within the grace period:
+It is **not** a minimum Atendimento duration.
 
-- treat as accidental start;
+During the first 20 seconds, the employee may choose either:
+
+- **Cancelar início**
+- **Concluir atendimento**
+
+If the employee selects **Cancelar início** within the grace period:
+
+- the Atendimento is treated as an accidental start;
 - conversion metrics are unaffected;
 - queue state is restored exactly;
-- employee keeps prior queue position.
+- the employee returns to the same Lista da Vez position they occupied immediately before starting the provisional Atendimento.
 
-After the grace deadline passes:
+If the employee selects **Concluir atendimento** within the grace period:
 
-- Atendimento becomes official by definition;
-- accidental-start cancellation is unavailable;
-- employee must eventually close it properly.
+- the Atendimento is treated as a legitimate Atendimento;
+- the normal closing flow begins immediately;
+- the employee does not need to wait for the 20-second deadline to expire;
+- after successful completion, the employee returns to the back of the currently available Lista da Vez.
+
+After the 20-second deadline passes:
+
+- **Cancelar início** is no longer available;
+- the Atendimento is official by definition;
+- the employee must eventually complete the normal Atendimento closing flow.
 
 ### APPROVED ARCHITECTURE
 
 There should not be a required client-side "confirm after 20 seconds" RPC.
 
-The server timestamp is authoritative.
+The server-defined deadline is authoritative.
+
+A provisional Atendimento whose deadline has elapsed should be treated as official even if the frontend is refreshed, closed, loses connectivity, or never sends another call.
+
+The backend must independently enforce the 20-second cancellation deadline using server/database time.
 
 ## 8.8 Navigation During an Active Atendimento
 
@@ -1438,6 +1456,18 @@ This allows checklist content to evolve while preserving the exact version and r
 When multiple employees are simultaneously in Atendimento, each returns to the back of the available Lista da Vez when their Atendimento is completed.
 
 Therefore, completion order determines their relative position when returning to the queue, regardless of the order in which their Atendimentos began.
+
+---
+
+## ADR-017 — The 20-Second Window Is an Undo Window, Not a Minimum Duration
+
+**Status:** APPROVED
+
+The first 20 seconds of an Atendimento exist to allow accidental starts to be cancelled.
+
+A legitimate Atendimento may be concluded during that period without waiting for the grace window to expire.
+
+After the 20-second deadline, accidental cancellation is no longer available.
 
 ---
 
