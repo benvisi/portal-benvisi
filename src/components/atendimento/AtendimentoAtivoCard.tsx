@@ -10,12 +10,14 @@ import {
   ATENDIMENTO_PROVISORIO_DESCRIPTION,
   ATENDIMENTO_PROVISORIO_LABEL,
   FORA_DE_ORDEM_BADGE_LABEL,
+  INICIADO_POR_PREFIX,
 } from "@/config/constants";
 import { useCountdown } from "@/hooks/useCountdown";
 
 interface AtendimentoAtivoCardProps {
   foraDeOrdem: boolean;
   prazoProvisorioEm: string;
+  iniciadoPorNome: string | null;
   submitting: boolean;
   errorMessage: string | null;
   onCancelarProvisorio: () => void;
@@ -25,6 +27,7 @@ interface AtendimentoAtivoCardProps {
 export function AtendimentoAtivoCard({
   foraDeOrdem,
   prazoProvisorioEm,
+  iniciadoPorNome,
   submitting,
   errorMessage,
   onCancelarProvisorio,
@@ -56,10 +59,25 @@ export function AtendimentoAtivoCard({
         </div>
       </div>
 
-      {foraDeOrdem && (
-        <Badge variant="outline" className="w-fit border-brand-foreground/30 text-brand-foreground">
-          {FORA_DE_ORDEM_BADGE_LABEL}
-        </Badge>
+      {(foraDeOrdem || iniciadoPorNome) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {foraDeOrdem && (
+            <Badge
+              variant="outline"
+              className="w-fit border-brand-foreground/30 text-brand-foreground"
+            >
+              {FORA_DE_ORDEM_BADGE_LABEL}
+            </Badge>
+          )}
+          {iniciadoPorNome && (
+            <Badge
+              variant="outline"
+              className="w-fit border-brand-foreground/30 text-brand-foreground"
+            >
+              {INICIADO_POR_PREFIX} {iniciadoPorNome}
+            </Badge>
+          )}
+        </div>
       )}
 
       {errorMessage && (

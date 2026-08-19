@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus } from "lucide-react";
 
 import { AtendimentoAtivoCard } from "@/components/atendimento/AtendimentoAtivoCard";
 import { EmAtendimentoRow } from "@/components/atendimento/EmAtendimentoRow";
@@ -23,6 +23,8 @@ import {
   ATENDIMENTO_PAGE_TITLE,
   ATENDIMENTO_START_BUTTON_LABEL,
   ATIVIDADES_NAO_INICIADAS_MESSAGE,
+  DELEGATE_CONFIRM_ACCEPT_LABEL,
+  DELEGATE_CONFIRM_CANCEL_LABEL,
   FORA_DE_ORDEM_CONFIRM_ACCEPT_LABEL,
   FORA_DE_ORDEM_CONFIRM_CANCEL_LABEL,
   FORA_DE_ORDEM_CONFIRM_DESCRIPTION,
@@ -31,6 +33,11 @@ import {
   LISTA_DA_VEZ_TITLE,
   LISTA_DA_VEZ_VOCE_LABEL,
   VOLTAR_AO_PAINEL_LABEL,
+  getDelegateForaDeOrdemConfirmDescription,
+  getDelegateForaDeOrdemConfirmTitle,
+  getDelegateInOrderConfirmDescription,
+  getDelegateInOrderConfirmTitle,
+  getIniciarParaAriaLabel,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
@@ -64,6 +71,9 @@ function AtendimentoPage() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmVoltarPainelOpen, setConfirmVoltarPainelOpen] = useState(false);
+  const [delegateAlvo, setDelegateAlvo] = useState<{ id: string; nome: string } | null>(null);
+  const [delegateInOrderOpen, setDelegateInOrderOpen] = useState(false);
+  const [delegateForaDeOrdemOpen, setDelegateForaDeOrdemOpen] = useState(false);
 
   const emFinalizando = ativoQuery.data?.status === "finalizando";
 
@@ -124,6 +134,47 @@ function AtendimentoPage() {
     void navigate({ to: ROUTES.DASHBOARD });
   };
 
+  // Milestone 2A.1: starting an Atendimento for another employee. Unlike
+  // self-start, an in-order delegated start still requires an explicit
+  // (lightweight) confirmation naming the target — starting on someone
+  // else's behalf is consequential enough to warrant it even when it
+  // wouldn't be for yourself.
+  const handleIniciarParaClick = (alvo: { id: string; nome: string }) => {
+    const alvoEhPrimeiro = disponiveis[0]?.id_funcionario === alvo.id;
+    setDelegateAlvo(alvo);
+    if (alvoEhPrimeiro) {
+      setDelegateInOrderOpen(true);
+    } else {
+      setDelegateForaDeOrdemOpen(true);
+    }
+  };
+
+  const handleConfirmDelegateInOrder = async () => {
+    if (!delegateAlvo) return;
+    setDelegateInOrderOpen(false);
+    // The frontend's "is first" snapshot can be stale (someone else changed
+    // the queue between render and this confirm click) — exactly the same
+    // race self-start already handles by escalating to the out-of-turn
+    // dialog instead of failing silently.
+    const result = await actions.iniciar(false, delegateAlvo.id);
+    if (result === "requires_confirmation") {
+      setDelegateForaDeOrdemOpen(true);
+    } else {
+      setDelegateAlvo(null);
+    }
+  };
+
+  const handleConfirmDelegateForaDeOrdem = () => {
+    if (!delegateAlvo) return;
+    setDelegateForaDeOrdemOpen(false);
+    void actions.iniciar(true, delegateAlvo.id);
+    setDelegateAlvo(null);
+  };
+
+  const handleCancelarDelegado = (idAtendimento: string) => {
+    void actions.cancelar(idAtendimento);
+  };
+
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
@@ -155,9 +206,10 @@ function AtendimentoPage() {
           <AtendimentoAtivoCard
             foraDeOrdem={ativo.fora_de_ordem}
             prazoProvisorioEm={ativo.prazo_provisorio_em}
+            iniciadoPorNome={ativo.iniciado_por_nome}
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
-            onCancelarProvisorio={() => void actions.cancelar()}
+            onCancelarProvisorio={() => void actions.cancelar(ativo.id)}
             onIniciarFechamento={() => void actions.iniciarFechamento()}
           />
         ) : (
@@ -193,6 +245,20 @@ function AtendimentoPage() {
         <Card className="flex flex-col gap-4 p-6 shadow-card">
           <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
 
+          {/*
+            Delegate-start/delegate-cancel actions (Milestone 2A.1) originate
+            from this card, not from the ativo/finalizando/start card above,
+            which has its own errorMessage display for its own actions — an
+            error here would otherwise have nowhere to surface and fail
+            silently (e.g. the target became unavailable between the confirm
+            dialog and the RPC call).
+          */}
+          {actions.errorMessage && (
+            <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+              {actions.errorMessage}
+            </p>
+          )}
+
           {listaQuery.isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
@@ -201,22 +267,38 @@ function AtendimentoPage() {
             <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_EMPTY_MESSAGE}</p>
           ) : (
             <ol className="flex flex-col gap-2">
-              {disponiveis.map((entry) => (
-                <li
-                  key={entry.id_funcionario}
-                  className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                    {entry.ordem}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">{entry.nome}</span>
-                  {entry.id_funcionario === funcionarioId && (
-                    <Badge variant="outline" className="ml-auto">
-                      {LISTA_DA_VEZ_VOCE_LABEL}
-                    </Badge>
-                  )}
-                </li>
-              ))}
+              {disponiveis.map((entry) => {
+                const souEu = entry.id_funcionario === funcionarioId;
+                return (
+                  <li
+                    key={entry.id_funcionario}
+                    className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
+                      {entry.ordem}
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{entry.nome}</span>
+                    {souEu ? (
+                      <Badge variant="outline" className="ml-auto">
+                        {LISTA_DA_VEZ_VOCE_LABEL}
+                      </Badge>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="min-touch ml-auto h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
+                        }
+                        aria-label={getIniciarParaAriaLabel(entry.nome)}
+                      >
+                        <UserPlus className="h-4 w-4" aria-hidden />
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
               {ocupados.map((entry) => (
                 <EmAtendimentoRow
                   key={entry.id_funcionario}
@@ -224,6 +306,14 @@ function AtendimentoPage() {
                   status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
                   iniciadoEm={entry.iniciado_em}
                   souEu={entry.id_funcionario === funcionarioId}
+                  idAtendimento={entry.id_atendimento}
+                  prazoProvisorioEm={entry.prazo_provisorio_em}
+                  podeCancelarComoIniciador={
+                    entry.id_funcionario_iniciador === funcionarioId &&
+                    entry.id_funcionario_iniciador !== entry.id_funcionario
+                  }
+                  cancelando={actions.submitting}
+                  onCancelarInicio={handleCancelarDelegado}
                 />
               ))}
             </ol>
@@ -254,6 +344,44 @@ function AtendimentoPage() {
           void navigate({ to: ROUTES.DASHBOARD });
         }}
       />
+
+      <AlertDialog open={delegateInOrderOpen} onOpenChange={setDelegateInOrderOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {delegateAlvo ? getDelegateInOrderConfirmTitle(delegateAlvo.nome) : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {delegateAlvo ? getDelegateInOrderConfirmDescription(delegateAlvo.nome) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{DELEGATE_CONFIRM_CANCEL_LABEL}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleConfirmDelegateInOrder()}>
+              {DELEGATE_CONFIRM_ACCEPT_LABEL}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={delegateForaDeOrdemOpen} onOpenChange={setDelegateForaDeOrdemOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {delegateAlvo ? getDelegateForaDeOrdemConfirmTitle(delegateAlvo.nome) : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {delegateAlvo ? getDelegateForaDeOrdemConfirmDescription(delegateAlvo.nome) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{DELEGATE_CONFIRM_CANCEL_LABEL}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelegateForaDeOrdem}>
+              {DELEGATE_CONFIRM_ACCEPT_LABEL}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

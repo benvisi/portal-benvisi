@@ -70,6 +70,7 @@ export const LISTA_DA_VEZ_VOCE_LABEL = "Você";
 export const ATENDIMENTO_START_BUTTON_LABEL = "Iniciar atendimento";
 export const ATENDIMENTO_COMPLETE_BUTTON_LABEL = "Concluir atendimento";
 export const ATENDIMENTO_CANCEL_PROVISORIO_BUTTON_LABEL = "Cancelar início";
+export const ATENDIMENTO_UNDO_LABEL = "Desfazer";
 export const ATENDIMENTO_ATIVO_LABEL = "Atendimento em andamento";
 export const ATENDIMENTO_PROVISORIO_LABEL = "Atendimento provisório";
 export const ATENDIMENTO_PROVISORIO_DESCRIPTION =
@@ -123,3 +124,40 @@ export const MOTIVO_OBRIGATORIO_MESSAGE = "Selecione um motivo para cada cliente
 export const MOTIVO_INVALIDO_MESSAGE =
   "Motivo inválido ou inativo. Atualize a página e tente novamente.";
 export const DETALHE_OBRIGATORIO_MESSAGE = "Adicione detalhes para o motivo selecionado.";
+
+export const FUNCIONARIO_ALVO_INVALIDO_MESSAGE =
+  "Não foi possível identificar esse colaborador. Atualize a página e tente novamente.";
+export const FUNCIONARIO_ALVO_INDISPONIVEL_MESSAGE =
+  "Esse colaborador não está mais disponível na Lista da Vez.";
+export const SEM_PERMISSAO_CANCELAR_MESSAGE =
+  "Você não tem permissão para cancelar este atendimento.";
+
+export const INICIAR_PARA_LABEL = "Iniciar atendimento para";
+export const INICIADO_POR_PREFIX = "Iniciado por";
+
+export const DELEGATE_CONFIRM_ACCEPT_LABEL = "Iniciar atendimento";
+export const DELEGATE_CONFIRM_CANCEL_LABEL = "Cancelar";
+
+export function getDelegateInOrderConfirmTitle(nome: string): string {
+  return `Iniciar atendimento para ${nome}?`;
+}
+
+export function getDelegateInOrderConfirmDescription(nome: string): string {
+  return `O atendimento será iniciado em nome de ${nome}, não em seu nome.`;
+}
+
+export function getDelegateForaDeOrdemConfirmTitle(nome: string): string {
+  return `${nome} não está na vez.`;
+}
+
+export function getDelegateForaDeOrdemConfirmDescription(nome: string): string {
+  return `Deseja iniciar o atendimento para ${nome} mesmo assim?`;
+}
+
+export function getIniciarParaAriaLabel(nome: string): string {
+  return `${INICIAR_PARA_LABEL} ${nome}`;
+}
+
+export function getUndoButtonLabel(secondsLeft: number): string {
+  return `${ATENDIMENTO_UNDO_LABEL} · ${secondsLeft}s`;
+}

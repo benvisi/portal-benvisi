@@ -63,6 +63,9 @@ export interface ListaVezEntry {
   status: ListaVezStatus;
   ordem: number | null;
   iniciado_em: string | null;
+  id_atendimento: string | null;
+  id_funcionario_iniciador: string | null;
+  prazo_provisorio_em: string | null;
 }
 
 export function isListaVezEntry(value: unknown): value is ListaVezEntry {
@@ -75,7 +78,11 @@ export function isListaVezEntry(value: unknown): value is ListaVezEntry {
     typeof candidate.status === "string" &&
     LISTA_VEZ_STATUSES.includes(candidate.status as ListaVezStatus) &&
     (candidate.ordem === null || typeof candidate.ordem === "number") &&
-    (candidate.iniciado_em === null || typeof candidate.iniciado_em === "string")
+    (candidate.iniciado_em === null || typeof candidate.iniciado_em === "string") &&
+    (candidate.id_atendimento === null || typeof candidate.id_atendimento === "string") &&
+    (candidate.id_funcionario_iniciador === null ||
+      typeof candidate.id_funcionario_iniciador === "string") &&
+    (candidate.prazo_provisorio_em === null || typeof candidate.prazo_provisorio_em === "string")
   );
 }
 
@@ -89,6 +96,7 @@ export interface AtendimentoAtivo {
   iniciado_em: string;
   fora_de_ordem: boolean;
   prazo_provisorio_em: string;
+  iniciado_por_nome: string | null;
 }
 
 export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
@@ -101,7 +109,8 @@ export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
     ATENDIMENTO_STATUSES.includes(candidate.status as AtendimentoStatus) &&
     typeof candidate.iniciado_em === "string" &&
     typeof candidate.fora_de_ordem === "boolean" &&
-    typeof candidate.prazo_provisorio_em === "string"
+    typeof candidate.prazo_provisorio_em === "string" &&
+    (candidate.iniciado_por_nome === null || typeof candidate.iniciado_por_nome === "string")
   );
 }
 

@@ -25,6 +25,12 @@ async function fetchAtendimentoAtivo(sessionToken: string): Promise<AtendimentoA
  * Drives resume-after-navigation/refresh (ADR-009): the active Atendimento
  * lives entirely on the server, so re-mounting /atendimento just re-fetches
  * this instead of relying on any client-side state.
+ *
+ * Polls every 5s (matching useListaVez) so that a responsible employee
+ * already sitting on their own /atendimento page picks up a delegated start
+ * — performed by someone else, so nothing on this page triggers a local
+ * invalidation — within a few seconds, without a manual refresh (Milestone
+ * 2A.1 section 11) and without adding realtime subscription infrastructure.
  */
 export function useAtendimentoAtivo(funcionarioId: string | null, sessionToken: string | null) {
   const handleSessionError = useSessionErrorHandler();
@@ -33,6 +39,7 @@ export function useAtendimentoAtivo(funcionarioId: string | null, sessionToken: 
     queryKey: funcionarioId ? atendimentoAtivoQueryKey(funcionarioId) : ["atendimento-ativo", null],
     queryFn: () => fetchAtendimentoAtivo(sessionToken as string),
     enabled: funcionarioId !== null && sessionToken !== null,
+    refetchInterval: 5_000,
   });
 
   useEffect(() => {

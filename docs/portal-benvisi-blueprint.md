@@ -1562,18 +1562,21 @@ Includes:
 
 ### Milestone 2A.1 — Start Atendimento on Behalf of Another Employee
 
-**Status:** APPROVED / NEXT
-
-Implement after Milestone 2A is validated and committed, and before Milestone 2B.
+**Status:** IMPLEMENTED
 
 Scope:
 
-- allow an authenticated employee to initiate Atendimento for another employee who is available in Lista da Vez;
-- keep the Atendimento attributed to the target employee;
-- leave the authenticated actor's own queue state and position unchanged;
-- preserve normal out-of-turn rules for the target employee;
-- record responsible employee and authenticated actor separately;
-- do not use impersonation or session switching.
+- allow an authenticated employee (the authenticated actor, section 5.4 / ADR-019) to initiate Atendimento for another available employee in Lista da Vez, who remains the responsible employee of record;
+- keep the Atendimento attributed to the target (responsible) employee — normal out-of-turn rules for the target are preserved, and the initiating actor's own queue position/state is left unchanged (ADR-020);
+- record the responsible employee and the authenticated actor separately on every Atendimento (`id_funcionario`, `id_funcionario_iniciador`), so audit/history queries can always distinguish a self-start from a delegated one;
+- 20-second accidental-start grace period for self-starts; 60-second grace period for delegated starts, computed from the same server-authoritative `iniciado_em`/`prazo_provisorio_em` deadline in both cases;
+- during the delegated grace period, either the responsible employee (via their own active card's **Cancelar início**) or the initiating actor (via a **Desfazer · XXs** action shown on the target's Lista da Vez row, with a live server-authoritative countdown, no extra confirmation dialog, and no disabled/stale state after expiry) may cancel the provisional Atendimento; permission and the deadline are both re-validated entirely server-side regardless of what the client shows;
+- `id_funcionario_cancelou` records who actually cancelled a provisional Atendimento, alongside the existing responsible/initiator attribution, giving full auditability of who started, who was responsible for, and who cancelled each Atendimento;
+- do not use impersonation or session switching — the authenticated actor is always resolved server-side from the opaque session, never accepted from the client.
+
+**Implementation-neutral clarification discovered during this work:** once an employee can simultaneously be the responsible employee of their own Atendimento and the initiator of delegated Atendimentos for others, "the caller's own active Atendimento" is no longer a unique concept — the same employee can legitimately be linked to several simultaneously-active rows in different roles. `cancelar_atendimento_provisorio` therefore identifies its target by an explicit Atendimento id rather than implicit resolution from the session alone; permission (responsible employee, or initiator within the delegated grace window) is still validated entirely server-side against the fetched row.
+
+Validated in browser QA: basic and out-of-turn delegated starts, cross-device pickup via polling, the 60-second delegated grace period, initiator cancel and cancel-after-expiry UI behavior, responsible-employee cancel, ineligible-target visibility, an actor and a responsible employee each simultaneously having their own active Atendimento, an initiator cancelling a delegated target while also having their own active Atendimento, self-start and out-of-turn self-start regressions, the closing-flow regression, and an audit SQL spot-check confirming responsible employee, initiator, canceller, self-vs-delegated, out-of-turn status, and completed/cancelled state are all recorded correctly. The same-target simultaneous-start race was not practically browser-testable; the backend's advisory lock and unique-active-Atendimento constraint remain the enforcement mechanism.
 
 ### Milestone 2B — Checklist V1 + Admin Checklist Policy
 

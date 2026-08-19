@@ -19,10 +19,15 @@ export interface ClienteOutcomeInput {
   detalhe: string | null;
 }
 
-async function iniciarAtendimentoRpc(sessionToken: string, confirmarForaDeOrdem: boolean) {
+async function iniciarAtendimentoRpc(
+  sessionToken: string,
+  confirmarForaDeOrdem: boolean,
+  idFuncionarioAlvo: string | null,
+) {
   const { data, error } = await supabase.rpc("iniciar_atendimento", {
     p_session_token: sessionToken,
     p_confirmar_fora_de_ordem: confirmarForaDeOrdem,
+    p_id_funcionario_alvo: idFuncionarioAlvo,
   });
 
   if (error) throw error;
@@ -83,13 +88,16 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
   );
 
   const iniciar = useCallback(
-    async (confirmarForaDeOrdem: boolean): Promise<IniciarAtendimentoResult> => {
+    async (
+      confirmarForaDeOrdem: boolean,
+      idFuncionarioAlvo?: string,
+    ): Promise<IniciarAtendimentoResult> => {
       if (submitting || !sessionToken) return "error";
       setSubmitting(true);
       setErrorMessage(null);
 
       try {
-        await iniciarAtendimentoRpc(sessionToken, confirmarForaDeOrdem);
+        await iniciarAtendimentoRpc(sessionToken, confirmarForaDeOrdem, idFuncionarioAlvo ?? null);
         invalidate();
         return "ok";
       } catch (error) {
@@ -113,10 +121,10 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
   );
 
   const cancelar = useCallback(
-    () =>
+    (idAtendimento: string) =>
       runBooleanRpc(
         "cancelar_atendimento_provisorio",
-        { p_session_token: sessionToken },
+        { p_session_token: sessionToken, p_id_atendimento: idAtendimento },
         "cancelar_atendimento_provisorio",
       ),
     [runBooleanRpc, sessionToken],
