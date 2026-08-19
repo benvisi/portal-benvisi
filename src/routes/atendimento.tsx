@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { AtendimentoAtivoCard } from "@/components/atendimento/AtendimentoAtivoCard";
 import { EmAtendimentoRow } from "@/components/atendimento/EmAtendimentoRow";
+import { FechamentoAtendimento } from "@/components/atendimento/FechamentoAtendimento";
+import { UnsavedDataConfirmDialog } from "@/components/atendimento/UnsavedDataConfirmDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +35,8 @@ import {
 import { ROUTES } from "@/config/routes";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
+import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
+import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
 import { useListaVez } from "@/hooks/useListaVez";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useShiftStart } from "@/hooks/useShiftStart";
@@ -52,17 +56,37 @@ function AtendimentoPage() {
 
   const ativoQuery = useAtendimentoAtivo(funcionarioId, sessionToken);
   const listaQuery = useListaVez(funcionarioId, sessionToken);
+  const motivosQuery = useAtendimentoMotivos(sessionToken);
   const actions = useAtendimentoActions(funcionarioId, sessionToken);
   const shift = useShiftStart(funcionarioId, sessionToken);
+  const draft = useFechamentoDraft();
+  const { reset: resetDraft } = draft;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmVoltarPainelOpen, setConfirmVoltarPainelOpen] = useState(false);
+
+  const emFinalizando = ativoQuery.data?.status === "finalizando";
+
+  // The draft only makes sense while actually in the closing flow. Resetting
+  // it whenever we're not in finalizando (rather than only on a specific
+  // action) covers every path out — Voltar ao atendimento, a successful
+  // final submission, or an initial mount before closing was ever entered —
+  // so re-entering closing later always starts from a blank form instead of
+  // resurrecting data the employee already discarded or submitted.
+  // resetDraft is destructured out (not draft.reset used inline) so this
+  // effect depends on the one stable function, not the whole draft object,
+  // which is a fresh literal every render and would otherwise re-fire this
+  // effect — and therefore call setClientes — on every single render.
+  useEffect(() => {
+    if (!emFinalizando) resetDraft();
+  }, [emFinalizando, resetDraft]);
 
   if (!ready || !session) return null;
 
   const ativo = ativoQuery.data ?? null;
   const lista = listaQuery.data ?? [];
-  const disponiveis = lista.filter((entry) => !entry.em_atendimento);
-  const emAtendimento = lista.filter((entry) => entry.em_atendimento);
+  const disponiveis = lista.filter((entry) => entry.status === "disponivel");
+  const ocupados = lista.filter((entry) => entry.status !== "disponivel");
   const souPrimeiro = disponiveis.length > 0 && disponiveis[0].id_funcionario === funcionarioId;
 
   const handleStartClick = async () => {
@@ -92,6 +116,14 @@ function AtendimentoPage() {
     void actions.iniciar(true);
   };
 
+  const handleVoltarPainelClick = () => {
+    if (emFinalizando && draft.isDirty) {
+      setConfirmVoltarPainelOpen(true);
+      return;
+    }
+    void navigate({ to: ROUTES.DASHBOARD });
+  };
+
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
@@ -101,7 +133,7 @@ function AtendimentoPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.DASHBOARD })}
+            onClick={handleVoltarPainelClick}
             aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
@@ -109,14 +141,24 @@ function AtendimentoPage() {
           <h1 className="text-xl font-semibold text-foreground">{ATENDIMENTO_PAGE_TITLE}</h1>
         </header>
 
-        {ativo ? (
+        {ativo?.status === "finalizando" ? (
+          <FechamentoAtendimento
+            draft={draft}
+            motivos={motivosQuery.data ?? []}
+            motivosLoading={motivosQuery.isLoading}
+            submitting={actions.submitting}
+            errorMessage={actions.errorMessage}
+            onVoltar={() => void actions.voltarAoAtendimento()}
+            onConcluir={(clientes) => void actions.concluir(clientes)}
+          />
+        ) : ativo ? (
           <AtendimentoAtivoCard
             foraDeOrdem={ativo.fora_de_ordem}
             prazoProvisorioEm={ativo.prazo_provisorio_em}
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
             onCancelarProvisorio={() => void actions.cancelar()}
-            onConcluir={() => void actions.concluir()}
+            onIniciarFechamento={() => void actions.iniciarFechamento()}
           />
         ) : (
           <Card className="flex flex-col gap-4 p-6 shadow-card">
@@ -175,10 +217,11 @@ function AtendimentoPage() {
                   )}
                 </li>
               ))}
-              {emAtendimento.map((entry) => (
+              {ocupados.map((entry) => (
                 <EmAtendimentoRow
                   key={entry.id_funcionario}
                   nome={entry.nome}
+                  status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
                   iniciadoEm={entry.iniciado_em}
                   souEu={entry.id_funcionario === funcionarioId}
                 />
@@ -202,6 +245,15 @@ function AtendimentoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UnsavedDataConfirmDialog
+        open={confirmVoltarPainelOpen}
+        onOpenChange={setConfirmVoltarPainelOpen}
+        onConfirmDiscard={() => {
+          setConfirmVoltarPainelOpen(false);
+          void navigate({ to: ROUTES.DASHBOARD });
+        }}
+      />
     </main>
   );
 }

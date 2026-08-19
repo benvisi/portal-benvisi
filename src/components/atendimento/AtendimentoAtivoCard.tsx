@@ -19,7 +19,7 @@ interface AtendimentoAtivoCardProps {
   submitting: boolean;
   errorMessage: string | null;
   onCancelarProvisorio: () => void;
-  onConcluir: () => void;
+  onIniciarFechamento: () => void;
 }
 
 export function AtendimentoAtivoCard({
@@ -28,7 +28,7 @@ export function AtendimentoAtivoCard({
   submitting,
   errorMessage,
   onCancelarProvisorio,
-  onConcluir,
+  onIniciarFechamento,
 }: AtendimentoAtivoCardProps) {
   const { secondsLeft, isExpired } = useCountdown(prazoProvisorioEm);
   const isProvisional = !isExpired;
@@ -70,10 +70,13 @@ export function AtendimentoAtivoCard({
 
       {/*
         The 20-second window is an accidental-start cancellation window, not
-        a minimum Atendimento duration — a legitimate Atendimento may
-        conclude at any point, including during these first 20 seconds.
+        a minimum Atendimento duration — a legitimate Atendimento may enter
+        closing at any point, including during these first 20 seconds.
         Cancelar início is additionally available (and only available)
-        during that window; Concluir atendimento is always available.
+        during that window; Concluir atendimento is always available. It no
+        longer completes instantly (Milestone 2A) — it enters the closing
+        flow, where the employee records customer outcomes before final
+        submission.
       */}
       <div className="flex flex-col gap-3">
         <Button
@@ -82,7 +85,7 @@ export function AtendimentoAtivoCard({
           variant="secondary"
           className="min-touch w-full"
           disabled={submitting}
-          onClick={onConcluir}
+          onClick={onIniciarFechamento}
         >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

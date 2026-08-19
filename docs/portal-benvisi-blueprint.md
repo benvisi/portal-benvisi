@@ -2,7 +2,7 @@
 
 **Version:** 0.1  
 **Status:** Draft / Living Document  
-**Last updated:** 2026-08-17  
+**Last updated:** 2026-08-19  
 **Owner:** Benvisi Comércio de Confecções Ltda.  
 **Current deployment context:** Lacoste franchise operation — Manauara Shopping, Manaus, Amazonas, Brazil
 
@@ -300,6 +300,37 @@ Privileged RPCs should:
 
 RLS should remain enabled where applicable.
 
+## 5.4 Responsible Employee vs Authenticated Actor
+
+### APPROVED
+
+Portal Benvisi must distinguish between:
+
+- **Responsible employee / subject** — the employee whose operational record is being affected;
+- **Authenticated actor** — the logged-in employee who actually performed the system action.
+
+This distinction applies whenever an action may legitimately be performed on behalf of another employee.
+
+Rules:
+
+- the authenticated actor identity must never be accepted from the client as authoritative;
+- the authenticated actor must always be resolved server-side from the opaque authenticated session;
+- when the client supplies a target employee, that employee must be validated server-side against the rules of the requested action;
+- permissions and restrictions must be evaluated against the authenticated actor;
+- the operational record continues to belong to the responsible employee;
+- where relevant for auditability, security, or future analysis, the system must preserve who actually performed the action;
+- delegated workflows must not require impersonation, login switching, or session switching.
+
+Example:
+
+```text
+Responsible employee: Ana
+Authenticated actor: Bruno
+Action: iniciar Atendimento
+```
+
+This is a reusable Portal Benvisi architecture principle and is not limited to Atendimento.
+
 ---
 
 # 6. Users, Roles and Permissions
@@ -581,6 +612,63 @@ When the user presses **Iniciar atendimento**:
 6. if out of turn, frontend confirmation is required;
 7. a provisional Atendimento begins.
 
+### 8.6.1 Starting an Atendimento on Behalf of Another Employee
+
+### APPROVED
+
+An authenticated employee may initiate an Atendimento on behalf of another employee who is currently available in Lista da Vez.
+
+Purpose: support a common sales-floor situation in which the responsible salesperson has already begun assisting a customer but forgot, or did not have time, to start the Atendimento timer in Portal Benvisi.
+
+Rules:
+
+- the target employee must already have completed **Iniciar atividades** for the current Manaus business day;
+- the target employee must currently be available in Lista da Vez;
+- the Atendimento belongs to the **target employee**, not to the authenticated employee who performed the system action;
+- the initiating employee's own queue position and state remain unchanged;
+- normal Lista da Vez rules continue to apply to the target employee;
+- if the target employee is not currently first among available employees, the normal out-of-turn warning and confirmation must still apply;
+- no impersonation, login switching, or session switching is permitted;
+- the backend must preserve both the responsible employee and the authenticated actor who initiated the Atendimento.
+
+Example:
+
+```text
+Responsible salesperson: Ana
+Atendimento initiated by: Bruno
+```
+
+In most Atendimentos, the responsible employee and authenticated actor will be the same person.
+
+### 8.6.2 Auditability of Atendimento Lifecycle Actions
+
+### APPROVED
+
+Atendimento records and/or related audit records must preserve authorship of significant lifecycle actions whenever the authenticated actor may differ from the employee responsible for the Atendimento.
+
+The architecture must support, at minimum:
+
+- the employee responsible for the Atendimento;
+- the employee who initiated the Atendimento;
+- whether the Atendimento was started out of turn, when applicable;
+- in future privileged workflows, the authorized employee who performed an administrative intervention;
+- in future privileged workflows, the authorized employee who finalized an Atendimento on behalf of the responsible employee.
+
+This Blueprint does not prescribe the exact physical persistence model.
+
+Implementation may use:
+
+- dedicated columns on the Atendimento record;
+- an event/audit table;
+- or another appropriate relational model.
+
+The chosen model must preserve:
+
+- historical integrity;
+- traceability;
+- future queryability;
+- clear separation between the employee receiving operational attribution for the Atendimento and the actor who performed the system action.
+
 ## 8.7 20-Second Accidental-Start Grace Period
 
 ### APPROVED
@@ -733,6 +821,26 @@ The active card should continue to identify that an Atendimento is in progress a
 
 - **Concluir atendimento**
 - **Cancelar início**, during the applicable 20-second accidental-start window.
+
+## 8.9.6 Finalizando Time and Atendimento Duration
+
+### APPROVED — supersedes any earlier description of Finalizando time as always excluded
+
+Time spent in `Finalizando` is excluded from customer-facing Atendimento duration **only when that closing attempt successfully completes the Atendimento**.
+
+If the employee enters `Finalizando` and then chooses **Voltar ao atendimento**, the Atendimento never actually ended — that time counts as ordinary Atendimento time, exactly as if the employee had never opened the closing form.
+
+Example:
+
+- 10:00 — Atendimento starts.
+- 10:02 — employee taps **Concluir atendimento**.
+- 10:05 — employee taps **Voltar ao atendimento**.
+- Displayed duration on return: approximately **5 minutes** (not 2, not `< 1 min`).
+- 10:08 — employee taps **Concluir atendimento** again.
+- 10:10 — closing submission succeeds.
+- Final customer-facing duration: approximately **8 minutes** — the 10:08–10:10 successful closing period is excluded; the earlier 10:02–10:05 abandoned attempt is not.
+
+The original `iniciado_em` and the 20-second accidental-start deadline are never affected by any Finalizando cycle, successful or abandoned.
 
 ## 8.10 Customer Recording
 
@@ -929,16 +1037,43 @@ Emoji may be used when appropriate, but messages should remain concise and profe
 
 # 8.16 Administrator Intervention
 
-### FUTURE
+### APPROVED DIRECTION — FUTURE
 
-The following were intentionally removed from the MVP:
+Ordinary employees should not be able to finalize another salesperson's Atendimento.
 
-- request admin help;
-- admin correction workflow;
-- exceptional admin closure;
-- admin bypass of pending Atendimento.
+A future manager/admin assistance capability may allow authorized users to act on another employee's Atendimento.
 
-These may be revisited when real operational exceptions justify the added complexity.
+This must be treated as an exception/assistance workflow rather than the normal closing workflow.
+
+## 8.16.1 Move Another Employee's Atendimento to Finalizando
+
+A future authorized manager/admin action may:
+
+- end the active customer-service phase;
+- stop the active customer-facing timer;
+- move the Atendimento to `finalizando`;
+- keep the Atendimento attributed to the responsible salesperson;
+- allow the responsible salesperson to complete the closing information later.
+
+## 8.16.2 Finalize on Behalf of the Responsible Employee
+
+A future authorized manager/admin action may:
+
+- complete the required closing information;
+- finalize the Atendimento;
+- keep the Atendimento attributed to the responsible salesperson;
+- preserve the authenticated actor who actually performed the administrative finalization.
+
+Example:
+
+```text
+Responsible salesperson: Ana
+Finalized by: Maria (manager)
+```
+
+This capability should not be implemented until the complete Atendimento closing flow, including checklist behavior, is stabilized.
+
+Other admin correction, exceptional closure, and pending-Atendimento intervention workflows remain future scope unless specifically approved.
 
 ---
 
@@ -1389,21 +1524,108 @@ Implementation agents should also run relevant build, typecheck, lint, and autom
 
 **Epic 2 — Atendimento**
 
-Current focus:
+### Milestone 1 — Lista da Vez + Atendimento Foundation
 
-- Atendimento persistence;
-- Lista da Vez;
-- one active Atendimento per salesperson;
-- Iniciar atividades prerequisite;
-- out-of-turn confirmation;
-- 20-second accidental-start grace period;
-- active Atendimento retrieval/resume;
-- persistent active indicator;
-- multi-customer close;
-- non-conversion motives/details;
-- versioned reset checklist;
-- atomic finalization;
-- previous-day pending closure.
+**Status:** IMPLEMENTED
+
+Includes:
+
+- persistent Lista da Vez;
+- queue entry based on **Iniciar atividades** order;
+- one active Atendimento per employee;
+- simultaneous Atendimentos for different employees;
+- out-of-turn start with confirmation;
+- 20-second accidental-start undo window;
+- exact restoration of prior queue position after accidental cancellation;
+- return to the back of the available queue after legitimate completion;
+- shared active Atendimento timers;
+- active Atendimento resume after navigation;
+- concurrency-safe queue behavior.
+
+### Milestone 2A — Real Closing Flow + Customer Outcomes + Motives
+
+**Status:** IMPLEMENTED
+
+Includes:
+
+- `finalizando` state;
+- **Voltar ao atendimento**;
+- one or more customers per Atendimento;
+- `Convertido` / `Não convertido` outcome for each customer;
+- data-driven motive catalog with short employee-facing labels;
+- direct motive-selection buttons (no dropdown);
+- required motive detail when applicable;
+- transactional customer-outcome finalization;
+- duplicate-submission protection;
+- Finalizando time excluded from Atendimento duration only when that closing attempt succeeds (see section 8.9.6 / ADR-021);
+- reporting-friendly persistence.
+
+### Milestone 2A.1 — Start Atendimento on Behalf of Another Employee
+
+**Status:** APPROVED / NEXT
+
+Implement after Milestone 2A is validated and committed, and before Milestone 2B.
+
+Scope:
+
+- allow an authenticated employee to initiate Atendimento for another employee who is available in Lista da Vez;
+- keep the Atendimento attributed to the target employee;
+- leave the authenticated actor's own queue state and position unchanged;
+- preserve normal out-of-turn rules for the target employee;
+- record responsible employee and authenticated actor separately;
+- do not use impersonation or session switching.
+
+### Milestone 2B — Checklist V1 + Admin Checklist Policy
+
+**Status:** APPROVED
+
+Scope:
+
+- versioned Checklist V1;
+- three primary operational confirmations;
+- historically interpretable checklist responses;
+- admin-controlled checklist policy:
+  - `required`;
+  - `defer_allowed`;
+- minimal admin control for that policy;
+- checklist completion within the Atendimento closing flow.
+
+### Milestone 2C — Deferred Checklist Backlog
+
+**Status:** APPROVED
+
+Scope:
+
+- **Farei depois** action;
+- one durable historical deferral record per deferred Atendimento;
+- aggregated employee-facing pending count;
+- non-blocking reminder/nudge;
+- standalone checklist completion;
+- one successful checklist execution clears all currently outstanding deferred obligations for that employee;
+- completing the checklist during a later Atendimento also clears all previous outstanding obligations;
+- preserve individual historical deferrals for future reporting.
+
+### Future — Manager/Admin Atendimento Exception Handling
+
+**Status:** APPROVED DIRECTION
+
+Implement only after the full closing/checklist flow is stabilized.
+
+Future scope may include:
+
+- manager/admin moving another employee's Atendimento to `finalizando`;
+- manager/admin finalizing an Atendimento on behalf of another employee;
+- preserving separate attribution between responsible salesperson and authenticated administrative actor;
+- treating these actions as exception/assistance workflows rather than normal sales-floor behavior.
+
+### Later Approved Atendimento Work
+
+Still approved but not part of the immediate 2A → 2A.1 → 2B → 2C sequence:
+
+- previous-day `pendente_fechamento` behavior;
+- positive reinforcement after successful closure.
+
+Other future Atendimento capabilities remain documented in their respective sections.
 
 ## 16.3 Planned Operational Modules
 
@@ -1567,6 +1789,51 @@ The active-row visual treatment plus elapsed timer may replace a separate **Em a
 
 ---
 
+## ADR-019 — Responsible Employee and Authenticated Actor Are Distinct Concepts
+
+**Status:** APPROVED
+
+When Portal Benvisi permits an authenticated employee to perform an operation on behalf of another employee, the system must distinguish:
+
+- the employee whose operational record is affected;
+- the authenticated actor who executed the system action.
+
+The authenticated actor must always be resolved server-side from the opaque session.
+
+Any target employee supplied by the client must be validated server-side against the business rules for that operation.
+
+This distinction should be preserved whenever relevant for security, auditability, reporting, or future investigation.
+
+---
+
+## ADR-020 — Employees May Start Atendimento on Behalf of Another Available Employee
+
+**Status:** APPROVED
+
+An authenticated employee may initiate an Atendimento for another employee who is already eligible and available in Lista da Vez.
+
+The Atendimento remains attributed to the target employee.
+
+The authenticated actor's own queue position/state does not change.
+
+Normal out-of-turn rules apply to the target employee, and the system must preserve who actually initiated the Atendimento.
+
+---
+
+## ADR-021 — Finalizando Time Is Excluded Only When Closing Succeeds
+
+**Status:** APPROVED
+
+Time spent in `Finalizando` is excluded from customer-facing Atendimento duration only when that specific closing attempt successfully completes the Atendimento.
+
+An abandoned closing attempt (**Voltar ao atendimento**) means the Atendimento never ended, so that time counts as ordinary Atendimento time rather than being excluded.
+
+This supersedes the originally-implemented Milestone 2A model, which excluded all time spent in `Finalizando` regardless of outcome.
+
+`iniciado_em` and the 20-second accidental-start deadline remain unaffected by any Finalizando cycle under either model.
+
+---
+
 # 18. Open Decisions
 
 There are currently no unresolved product-level decisions that block implementation of Epic 2 — Atendimento.
@@ -1613,6 +1880,14 @@ The first 20 seconds after starting an Atendimento, during which an accidental s
 ## Atendimento Pendente de Fechamento
 
 An Atendimento that remained unfinished across the Manaus business-day boundary and must be completed before the employee can start another.
+
+## Responsible Employee
+
+The employee whose operational record or Atendimento is being affected and to whom the operational activity is attributed.
+
+## Authenticated Actor
+
+The logged-in employee who actually performs a system action. The authenticated actor may, in approved delegated workflows, differ from the responsible employee.
 
 ## Consulta de Estoque
 

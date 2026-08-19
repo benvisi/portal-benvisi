@@ -91,3 +91,35 @@ export const CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA_MESSAGE =
 export const NENHUM_ATENDIMENTO_ATIVO_MESSAGE = "Não há atendimento ativo para esta ação.";
 export const PRAZO_PROVISORIO_EXPIRADO_MESSAGE =
   "O prazo para cancelar este atendimento já passou.";
+
+export const FECHAMENTO_STATUS_LABEL = "Finalizando";
+export const FECHAMENTO_TITLE = "Finalizar atendimento";
+export const FECHAMENTO_SUBTITLE = "Registre os clientes atendidos antes de concluir.";
+export const FECHAMENTO_SUBMIT_LABEL = "Concluir atendimento";
+export const VOLTAR_AO_ATENDIMENTO_LABEL = "Voltar ao atendimento";
+
+export const CLIENTE_CARD_TITLE = "Cliente";
+export const ADICIONAR_CLIENTE_LABEL = "Adicionar cliente";
+export const REMOVER_CLIENTE_LABEL = "Remover cliente";
+
+export const OUTCOME_CONVERTIDO_LABEL = "Convertido";
+export const OUTCOME_NAO_CONVERTIDO_LABEL = "Não convertido";
+
+export const MOTIVO_LABEL = "Motivo";
+export const MOTIVOS_LOADING_MESSAGE = "Carregando motivos...";
+export const DETALHE_LABEL = "Detalhes";
+export const DETALHE_PLACEHOLDER = "Adicione mais detalhes...";
+
+export const FECHAMENTO_UNSAVED_CONFIRM_TITLE = "Descartar dados não salvos?";
+export const FECHAMENTO_UNSAVED_CONFIRM_DESCRIPTION =
+  "Você preencheu informações de cliente que ainda não foram salvas. Deseja realmente sair sem concluir?";
+export const FECHAMENTO_UNSAVED_CONFIRM_ACCEPT_LABEL = "Sair sem salvar";
+export const FECHAMENTO_UNSAVED_CONFIRM_CANCEL_LABEL = "Continuar preenchendo";
+
+export const NENHUM_CLIENTE_INFORMADO_MESSAGE =
+  "Registre pelo menos um cliente antes de concluir o atendimento.";
+export const ATENDIMENTO_NAO_ESTA_FINALIZANDO_MESSAGE = "Este atendimento não está em finalização.";
+export const MOTIVO_OBRIGATORIO_MESSAGE = "Selecione um motivo para cada cliente.";
+export const MOTIVO_INVALIDO_MESSAGE =
+  "Motivo inválido ou inativo. Atualize a página e tente novamente.";
+export const DETALHE_OBRIGATORIO_MESSAGE = "Adicione detalhes para o motivo selecionado.";
