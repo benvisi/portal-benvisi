@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, UserPlus } from "lucide-react";
+import { ArrowLeft, Loader2, UserMinus, UserPlus } from "lucide-react";
 
 import { AtendimentoAtivoCard } from "@/components/atendimento/AtendimentoAtivoCard";
 import { EmAtendimentoRow } from "@/components/atendimento/EmAtendimentoRow";
@@ -20,24 +20,33 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  ADMINISTRATOR_CARGO,
   ATENDIMENTO_PAGE_TITLE,
   ATENDIMENTO_START_BUTTON_LABEL,
   ATIVIDADES_NAO_INICIADAS_MESSAGE,
   DELEGATE_CONFIRM_ACCEPT_LABEL,
   DELEGATE_CONFIRM_CANCEL_LABEL,
+  ENTRAR_LISTA_DA_VEZ_LABEL,
   FORA_DE_ORDEM_CONFIRM_ACCEPT_LABEL,
   FORA_DE_ORDEM_CONFIRM_CANCEL_LABEL,
   FORA_DE_ORDEM_CONFIRM_DESCRIPTION,
   FORA_DE_ORDEM_CONFIRM_TITLE,
   LISTA_DA_VEZ_EMPTY_MESSAGE,
+  LISTA_DA_VEZ_FORA_DESCRIPTION,
+  LISTA_DA_VEZ_FORA_TITLE,
   LISTA_DA_VEZ_TITLE,
   LISTA_DA_VEZ_VOCE_LABEL,
+  MANAGER_CARGO,
+  REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL,
+  SAIR_LISTA_DA_VEZ_LABEL,
   VOLTAR_AO_PAINEL_LABEL,
   getDelegateForaDeOrdemConfirmDescription,
   getDelegateForaDeOrdemConfirmTitle,
   getDelegateInOrderConfirmDescription,
   getDelegateInOrderConfirmTitle,
   getIniciarParaAriaLabel,
+  getRemoverAriaLabel,
+  getRemoverConfirmTitle,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
@@ -45,6 +54,7 @@ import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
 import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
 import { useListaVez } from "@/hooks/useListaVez";
+import { useListaVezActions } from "@/hooks/useListaVezActions";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useShiftStart } from "@/hooks/useShiftStart";
 
@@ -65,6 +75,7 @@ function AtendimentoPage() {
   const listaQuery = useListaVez(funcionarioId, sessionToken);
   const motivosQuery = useAtendimentoMotivos(sessionToken);
   const actions = useAtendimentoActions(funcionarioId, sessionToken);
+  const listaActions = useListaVezActions(funcionarioId, sessionToken);
   const shift = useShiftStart(funcionarioId, sessionToken);
   const draft = useFechamentoDraft();
   const { reset: resetDraft } = draft;
@@ -74,6 +85,8 @@ function AtendimentoPage() {
   const [delegateAlvo, setDelegateAlvo] = useState<{ id: string; nome: string } | null>(null);
   const [delegateInOrderOpen, setDelegateInOrderOpen] = useState(false);
   const [delegateForaDeOrdemOpen, setDelegateForaDeOrdemOpen] = useState(false);
+  const [removerAlvo, setRemoverAlvo] = useState<{ id: string; nome: string } | null>(null);
+  const [removerOpen, setRemoverOpen] = useState(false);
 
   const emFinalizando = ativoQuery.data?.status === "finalizando";
 
@@ -98,6 +111,13 @@ function AtendimentoPage() {
   const disponiveis = lista.filter((entry) => entry.status === "disponivel");
   const ocupados = lista.filter((entry) => entry.status !== "disponivel");
   const souPrimeiro = disponiveis.length > 0 && disponiveis[0].id_funcionario === funcionarioId;
+  // Milestone 2A.2: presence in disponiveis (rather than a dedicated flag)
+  // is enough to know whether the employee currently participates in Lista
+  // da Vez — get_lista_vez_estado already excludes anyone who left/was
+  // removed entirely, so absence here (once Iniciar Atividades is done and
+  // the query has actually loaded) means "outside".
+  const souNaFila = disponiveis.some((entry) => entry.id_funcionario === funcionarioId);
+  const isManagerOrAdmin = session.cargo === ADMINISTRATOR_CARGO || session.cargo === MANAGER_CARGO;
 
   const handleStartClick = async () => {
     // Iniciar Atividades eligibility is checked first, before any Lista da
@@ -175,6 +195,32 @@ function AtendimentoPage() {
     void actions.cancelar(idAtendimento);
   };
 
+  // Milestone 2A.2: voluntary leave/rejoin never need a confirmation dialog
+  // — leaving only ever affects the caller's own state and is trivially
+  // reversible with one more tap, so an extra "are you sure?" step would
+  // just be friction (section 3.3 / section 14 "avoid unnecessary
+  // confirmation"). Removing another employee does get one, below, since it
+  // affects someone else.
+  const handleSairClick = () => {
+    void listaActions.sair();
+  };
+
+  const handleEntrarClick = () => {
+    void listaActions.entrar();
+  };
+
+  const handleRemoverClick = (alvo: { id: string; nome: string }) => {
+    setRemoverAlvo(alvo);
+    setRemoverOpen(true);
+  };
+
+  const handleConfirmRemover = () => {
+    if (!removerAlvo) return;
+    setRemoverOpen(false);
+    void listaActions.remover(removerAlvo.id);
+    setRemoverAlvo(null);
+  };
+
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
@@ -212,6 +258,38 @@ function AtendimentoPage() {
             onCancelarProvisorio={() => void actions.cancelar(ativo.id)}
             onIniciarFechamento={() => void actions.iniciarFechamento()}
           />
+        ) : !shift.isLoading && shift.startedToday && !listaQuery.isLoading && !souNaFila ? (
+          // Milestone 2A.2: activities were already started today, but the
+          // employee currently isn't a Lista da Vez participant (voluntary
+          // leave or manager/admin removal). Iniciar atendimento is hidden
+          // rather than shown-disabled here — the backend would reject a
+          // self-start while outside the queue anyway (the same
+          // disponivel = true guard 2A.1 added to iniciar_atendimento), so a
+          // disabled decoy button next to Entrar would just be confusing.
+          <Card className="flex flex-col gap-4 border-warning/40 bg-warning/10 p-6 shadow-card">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-warning">{LISTA_DA_VEZ_FORA_TITLE}</p>
+              <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_FORA_DESCRIPTION}</p>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              className="min-touch w-full bg-warning text-warning-foreground hover:bg-warning/90"
+              disabled={listaActions.submitting}
+              onClick={handleEntrarClick}
+            >
+              {listaActions.submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                ENTRAR_LISTA_DA_VEZ_LABEL
+              )}
+            </Button>
+            {listaActions.errorMessage && (
+              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                {listaActions.errorMessage}
+              </p>
+            )}
+          </Card>
         ) : (
           <Card className="flex flex-col gap-4 p-6 shadow-card">
             <Button
@@ -234,9 +312,34 @@ function AtendimentoPage() {
                 {ATIVIDADES_NAO_INICIADAS_MESSAGE}
               </p>
             )}
+            {!shift.isLoading && shift.startedToday && !listaQuery.isLoading && souNaFila && (
+              // Visually secondary — must not compete with Iniciar
+              // atendimento above it (section 14). Not a destructive/red
+              // treatment: unlike Cancelar início/Desfazer, leaving Lista da
+              // Vez isn't undoing an accidental action, it's a normal,
+              // reversible availability change.
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-touch w-full text-muted-foreground hover:text-foreground"
+                disabled={listaActions.submitting}
+                onClick={handleSairClick}
+              >
+                {listaActions.submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  SAIR_LISTA_DA_VEZ_LABEL
+                )}
+              </Button>
+            )}
             {actions.errorMessage && (
               <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
                 {actions.errorMessage}
+              </p>
+            )}
+            {listaActions.errorMessage && (
+              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                {listaActions.errorMessage}
               </p>
             )}
           </Card>
@@ -256,6 +359,11 @@ function AtendimentoPage() {
           {actions.errorMessage && (
             <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
               {actions.errorMessage}
+            </p>
+          )}
+          {listaActions.errorMessage && (
+            <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+              {listaActions.errorMessage}
             </p>
           )}
 
@@ -283,18 +391,46 @@ function AtendimentoPage() {
                         {LISTA_DA_VEZ_VOCE_LABEL}
                       </Badge>
                     ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="min-touch ml-auto h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                        onClick={() =>
-                          handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
-                        }
-                        aria-label={getIniciarParaAriaLabel(entry.nome)}
-                      >
-                        <UserPlus className="h-4 w-4" aria-hidden />
-                      </Button>
+                      <div className="ml-auto flex items-center gap-1">
+                        {isManagerOrAdmin && (
+                          // Manager/admin exception action (Milestone 2A.2,
+                          // section 15) — UserMinus is deliberately a
+                          // different silhouette from Iniciar atendimento's
+                          // UserPlus below (they looked too similar at
+                          // mobile icon sizes with a shared UserX/UserPlus
+                          // pairing), and destructive-red by default (not
+                          // just on hover) so this reads as the cautionary
+                          // action at a glance. Never shown on the
+                          // employee's own row (that's what Sair da Lista
+                          // da Vez, above, is for) or on Em
+                          // atendimento/Finalizando rows (those render via
+                          // EmAtendimentoRow instead, not this branch).
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="min-touch h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() =>
+                              handleRemoverClick({ id: entry.id_funcionario, nome: entry.nome })
+                            }
+                            aria-label={getRemoverAriaLabel(entry.nome)}
+                          >
+                            <UserMinus className="h-4 w-4" aria-hidden />
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-touch h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() =>
+                            handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
+                          }
+                          aria-label={getIniciarParaAriaLabel(entry.nome)}
+                        >
+                          <UserPlus className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </div>
                     )}
                   </li>
                 );
@@ -378,6 +514,25 @@ function AtendimentoPage() {
             <AlertDialogCancel>{DELEGATE_CONFIRM_CANCEL_LABEL}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelegateForaDeOrdem}>
               {DELEGATE_CONFIRM_ACCEPT_LABEL}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={removerOpen} onOpenChange={setRemoverOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {removerAlvo ? getRemoverConfirmTitle(removerAlvo.nome) : ""}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{DELEGATE_CONFIRM_CANCEL_LABEL}</AlertDialogCancel>
+            <AlertDialogAction
+              className="border border-destructive/40 bg-transparent text-destructive shadow-none hover:bg-destructive/10"
+              onClick={handleConfirmRemover}
+            >
+              {REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

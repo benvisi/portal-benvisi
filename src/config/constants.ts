@@ -42,6 +42,7 @@ export const TERMS_STATUS_ERROR_MESSAGE =
   "Não foi possível verificar o termo de uso. Tente novamente.";
 
 export const ADMINISTRATOR_CARGO = "Administrador";
+export const MANAGER_CARGO = "Gerente";
 
 export const DASHBOARD_WELCOME_MESSAGE = "Bem-vindo ao Portal Benvisi.";
 
@@ -131,6 +132,29 @@ export const FUNCIONARIO_ALVO_INDISPONIVEL_MESSAGE =
   "Esse colaborador não está mais disponível na Lista da Vez.";
 export const SEM_PERMISSAO_CANCELAR_MESSAGE =
   "Você não tem permissão para cancelar este atendimento.";
+
+export const SAIR_LISTA_DA_VEZ_LABEL = "Sair da Lista da Vez";
+export const ENTRAR_LISTA_DA_VEZ_LABEL = "Entrar na Lista da Vez";
+export const LISTA_DA_VEZ_FORA_TITLE = "Você está fora da Lista da Vez.";
+export const LISTA_DA_VEZ_FORA_DESCRIPTION = "Entre novamente para voltar à fila.";
+export const REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL = "Remover";
+
+export const JA_FORA_DA_LISTA_MESSAGE = "Você já está fora da Lista da Vez.";
+export const JA_NA_LISTA_MESSAGE = "Você já está na Lista da Vez.";
+export const EM_ATENDIMENTO_NAO_PODE_SAIR_MESSAGE =
+  "Conclua seu atendimento antes de sair da Lista da Vez.";
+export const FUNCIONARIO_EM_ATENDIMENTO_MESSAGE =
+  "Este funcionário está em atendimento e não pode ser removido da Lista da Vez.";
+export const SEM_PERMISSAO_REMOVER_MESSAGE =
+  "Você não tem permissão para remover este colaborador da Lista da Vez.";
+
+export function getRemoverConfirmTitle(nome: string): string {
+  return `Remover ${nome} da Lista da Vez?`;
+}
+
+export function getRemoverAriaLabel(nome: string): string {
+  return `Remover ${nome} da Lista da Vez`;
+}
 
 export const INICIAR_PARA_LABEL = "Iniciar atendimento para";
 export const INICIADO_POR_PREFIX = "Iniciado por";

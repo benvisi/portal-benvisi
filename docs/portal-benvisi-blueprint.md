@@ -1578,6 +1578,28 @@ Scope:
 
 Validated in browser QA: basic and out-of-turn delegated starts, cross-device pickup via polling, the 60-second delegated grace period, initiator cancel and cancel-after-expiry UI behavior, responsible-employee cancel, ineligible-target visibility, an actor and a responsible employee each simultaneously having their own active Atendimento, an initiator cancelling a delegated target while also having their own active Atendimento, self-start and out-of-turn self-start regressions, the closing-flow regression, and an audit SQL spot-check confirming responsible employee, initiator, canceller, self-vs-delegated, out-of-turn status, and completed/cancelled state are all recorded correctly. The same-target simultaneous-start race was not practically browser-testable; the backend's advisory lock and unique-active-Atendimento constraint remain the enforcement mechanism.
 
+### Milestone 2A.2 — Lista da Vez Membership Management
+
+**Status:** IMPLEMENTED
+
+Scope:
+
+- an employee who has already completed **Iniciar Atividades** may voluntarily leave Lista da Vez (**Sair da Lista da Vez**) and later rejoin (**Entrar na Lista da Vez**), any number of times during the same Manaus business day — one action covers every real-world reason (bathroom, meal, stock-room work, leaving the sales floor, end of day); no reason is captured or asked for;
+- Iniciar Atividades / `turno_presenca` and Lista da Vez membership remain distinct concepts (section 7.4): leaving/rejoining never touches `turno_presenca`, and rejoining never requires a fresh Iniciar Atividades call for the same business day;
+- an employee may only leave while currently **available** — not while `Em atendimento` or `Finalizando`; an unresolved Atendimento must be resolved through the normal closing flow first, enforced server-side;
+- leaving removes the employee from the currently available queue with no visible position number; remaining employees keep their exact relative order and posicao — nothing is renumbered;
+- rejoining always places the employee at the **back** of the currently available queue — never their previous position;
+- a manager or admin (cargo `Administrador` or `Gerente`, resolved server-side from the opaque session, never client-supplied) may remove another currently-available employee from Lista da Vez (**Remover da Lista da Vez**) — e.g. someone who forgot to leave before going home. The same availability restriction applies: an employee who is `Em atendimento` or `Finalizando` cannot be removed by this action. Removal never alters the removing manager/admin's own queue state, and never touches the target's Iniciar Atividades;
+- no reason is required or captured for either voluntary leave or manager/admin removal in this milestone;
+- an employee outside Lista da Vez is not eligible as a self-start or delegated-start target (Milestone 2A.1) — enforced by the same server-side availability check 2A.1 already added to `iniciar_atendimento`, requiring no changes to that function;
+- durable auditability (section 12/13): every leave, rejoin, and removal is recorded in an append-only event log (`lista_vez_eventos`) preserving the responsible/target employee, the authenticated actor who performed the action (equal to the target for a voluntary leave/rejoin, the manager/admin for a removal), the event type, and the timestamp — sufficient to reconstruct the full history and cycle count of a business day's queue membership changes later, without relying on a mutable current-state flag alone. No reporting UI is built on this in this milestone.
+
+**Explicitly out of scope for this milestone:** pause/break reason capture, separate lunch/bathroom/end-of-day statuses, legal timekeeping, an employee-facing **Encerrar turno**, manager/admin forcing another employee *into* Lista da Vez, and any manager/admin action on another employee's *active* Atendimento (ending it, moving it to `Finalizando`, or closing it) — those remain future scope under "Manager/Admin Atendimento Exception Handling" below.
+
+**Final UX polish:** the manager/admin removal control uses a `UserMinus` icon in a destructive-red treatment — deliberately distinct from the delegated-start `UserPlus` icon it sits beside on the same row, since the two looked too similar at mobile icon sizes. The "outside Lista da Vez" state uses an amber/warning-toned card and CTA (**Você está fora da Lista da Vez.** / **Entre novamente para voltar à fila.**) rather than the normal blue ready-to-serve treatment, so an employee returning from a break — or one removed by a manager/admin — cannot mistake it for being back in line at a glance.
+
+Validated in browser QA: voluntary leave, rejoin at the back of the queue, repeated leave/rejoin cycles, leave blocked while `Em atendimento`/`Finalizando`, manager/admin removal, non-manager permission/UI behavior, busy employees protected from removal, an employee outside Lista da Vez correctly ineligible as a delegated-start target, the full existing Atendimento regression sweep, and the final icon/color UX polish (distinct removal icon, removal confirmation, amber outside-the-queue state clearly distinct from the normal available state, rejoin still returns to the back). The stale-tab/direct-RPC rejection path and mobile-width layout were not manually exercised in browser QA; server-side validation, queue locking, and the responsive layout classes used elsewhere in this page remain the safeguard, and this is non-blocking for milestone completion.
+
 ### Milestone 2B — Checklist V1 + Admin Checklist Policy
 
 **Status:** APPROVED
@@ -1620,6 +1642,20 @@ Future scope may include:
 - manager/admin finalizing an Atendimento on behalf of another employee;
 - preserving separate attribution between responsible salesperson and authenticated administrative actor;
 - treating these actions as exception/assistance workflows rather than normal sales-floor behavior.
+
+### Future — Session Management / Concurrent Login Controls
+
+**Status:** FUTURE
+
+Potential future capabilities:
+
+- view active sessions per employee;
+- revoke other sessions;
+- admin "log out all devices";
+- detect unusual simultaneous sessions;
+- optionally limit concurrent sessions by role.
+
+Do not implement these session controls now. The current decision is explicitly **not** to enforce one-browser/one-device-only login in MVP.
 
 ### Later Approved Atendimento Work
 
