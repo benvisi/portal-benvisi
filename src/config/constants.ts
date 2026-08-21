@@ -100,6 +100,10 @@ export const FECHAMENTO_SUBTITLE = "Registre os clientes atendidos antes de conc
 export const FECHAMENTO_SUBMIT_LABEL = "Concluir atendimento";
 export const VOLTAR_AO_ATENDIMENTO_LABEL = "Voltar ao atendimento";
 
+export const CHECKLIST_TITLE = "Checklist de reposição";
+export const CHECKLIST_SUBTITLE = "Confirme os três itens antes de concluir o atendimento.";
+export const CHECKLIST_LOADING_MESSAGE = "Carregando checklist...";
+
 export const CLIENTE_CARD_TITLE = "Cliente";
 export const ADICIONAR_CLIENTE_LABEL = "Adicionar cliente";
 export const REMOVER_CLIENTE_LABEL = "Remover cliente";
@@ -114,7 +118,7 @@ export const DETALHE_PLACEHOLDER = "Adicione mais detalhes...";
 
 export const FECHAMENTO_UNSAVED_CONFIRM_TITLE = "Descartar dados não salvos?";
 export const FECHAMENTO_UNSAVED_CONFIRM_DESCRIPTION =
-  "Você preencheu informações de cliente que ainda não foram salvas. Deseja realmente sair sem concluir?";
+  "Você preencheu informações de clientes e/ou do checklist que ainda não foram salvas. Deseja realmente sair sem concluir?";
 export const FECHAMENTO_UNSAVED_CONFIRM_ACCEPT_LABEL = "Sair sem salvar";
 export const FECHAMENTO_UNSAVED_CONFIRM_CANCEL_LABEL = "Continuar preenchendo";
 
@@ -125,6 +129,10 @@ export const MOTIVO_OBRIGATORIO_MESSAGE = "Selecione um motivo para cada cliente
 export const MOTIVO_INVALIDO_MESSAGE =
   "Motivo inválido ou inativo. Atualize a página e tente novamente.";
 export const DETALHE_OBRIGATORIO_MESSAGE = "Adicione detalhes para o motivo selecionado.";
+export const CHECKLIST_INCOMPLETO_MESSAGE =
+  "Complete os três itens do checklist antes de concluir o atendimento.";
+export const CHECKLIST_INDISPONIVEL_MESSAGE =
+  "Não foi possível carregar o checklist. Atualize a página e tente novamente.";
 
 export const FUNCIONARIO_ALVO_INVALIDO_MESSAGE =
   "Não foi possível identificar esse colaborador. Atualize a página e tente novamente.";

@@ -19,6 +19,11 @@ export interface ClienteOutcomeInput {
   detalhe: string | null;
 }
 
+export interface ChecklistRespostaInput {
+  codigo: string;
+  concluido: boolean;
+}
+
 async function iniciarAtendimentoRpc(
   sessionToken: string,
   confirmarForaDeOrdem: boolean,
@@ -151,10 +156,10 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
   );
 
   const concluir = useCallback(
-    (clientes: ClienteOutcomeInput[]) =>
+    (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
       runBooleanRpc(
         "concluir_atendimento",
-        { p_session_token: sessionToken, p_clientes: clientes },
+        { p_session_token: sessionToken, p_clientes: clientes, p_checklist: checklist },
         "concluir_atendimento",
       ),
     [runBooleanRpc, sessionToken],

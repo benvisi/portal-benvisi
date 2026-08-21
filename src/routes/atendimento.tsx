@@ -51,6 +51,7 @@ import {
 import { ROUTES } from "@/config/routes";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
+import { useAtendimentoChecklist } from "@/hooks/useAtendimentoChecklist";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
 import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
 import { useListaVez } from "@/hooks/useListaVez";
@@ -74,6 +75,7 @@ function AtendimentoPage() {
   const ativoQuery = useAtendimentoAtivo(funcionarioId, sessionToken);
   const listaQuery = useListaVez(funcionarioId, sessionToken);
   const motivosQuery = useAtendimentoMotivos(sessionToken);
+  const checklistQuery = useAtendimentoChecklist(sessionToken);
   const actions = useAtendimentoActions(funcionarioId, sessionToken);
   const listaActions = useListaVezActions(funcionarioId, sessionToken);
   const shift = useShiftStart(funcionarioId, sessionToken);
@@ -243,10 +245,12 @@ function AtendimentoPage() {
             draft={draft}
             motivos={motivosQuery.data ?? []}
             motivosLoading={motivosQuery.isLoading}
+            checklistItens={checklistQuery.data ?? []}
+            checklistLoading={checklistQuery.isLoading}
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
             onVoltar={() => void actions.voltarAoAtendimento()}
-            onConcluir={(clientes) => void actions.concluir(clientes)}
+            onConcluir={(clientes, checklist) => void actions.concluir(clientes, checklist)}
           />
         ) : ativo ? (
           <AtendimentoAtivoCard

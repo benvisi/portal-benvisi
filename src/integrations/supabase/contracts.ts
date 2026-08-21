@@ -172,3 +172,31 @@ export function isAtendimentoMotivo(value: unknown): value is AtendimentoMotivo 
     typeof candidate.ordem_exibicao === "number"
   );
 }
+
+export interface AtendimentoChecklistItem {
+  id: string;
+  versao: number;
+  codigo: string;
+  titulo: string;
+  guia_bullets: string[] | null;
+  ordem_exibicao: number;
+  obrigatorio: boolean;
+}
+
+export function isAtendimentoChecklistItem(value: unknown): value is AtendimentoChecklistItem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.versao === "number" &&
+    typeof candidate.codigo === "string" &&
+    candidate.codigo.length > 0 &&
+    typeof candidate.titulo === "string" &&
+    (candidate.guia_bullets === null ||
+      (Array.isArray(candidate.guia_bullets) &&
+        candidate.guia_bullets.every((bullet) => typeof bullet === "string"))) &&
+    typeof candidate.ordem_exibicao === "number" &&
+    typeof candidate.obrigatorio === "boolean"
+  );
+}
