@@ -1600,26 +1600,228 @@ Scope:
 
 Validated in browser QA: voluntary leave, rejoin at the back of the queue, repeated leave/rejoin cycles, leave blocked while `Em atendimento`/`Finalizando`, manager/admin removal, non-manager permission/UI behavior, busy employees protected from removal, an employee outside Lista da Vez correctly ineligible as a delegated-start target, the full existing Atendimento regression sweep, and the final icon/color UX polish (distinct removal icon, removal confirmation, amber outside-the-queue state clearly distinct from the normal available state, rejoin still returns to the back). The stale-tab/direct-RPC rejection path and mobile-width layout were not manually exercised in browser QA; server-side validation, queue locking, and the responsive layout classes used elsewhere in this page remain the safeguard, and this is non-blocking for milestone completion.
 
-### Milestone 2B — Versioned Reset Checklist V1 (Required)
+## Milestone 2B — Checklist Operacional V1
 
-**Status:** IMPLEMENTED
+**Status: IMPLEMENTED**
 
-**Sequencing clarification (supersedes this milestone's earlier "Checklist V1 + Admin Checklist Policy" framing):** the admin-controlled `required` / `defer_allowed` policy toggle and the `Farei depois` deferred workflow are **not** part of 2B — they are reserved for Milestone 2C below, since exposing a working `defer_allowed` option before the deferred backlog/resolution behavior exists would create a choice the application cannot yet honor. 2B's behavior is unconditionally `required`: all three Checklist V1 confirmations must be completed before an Atendimento can be finalized, with no admin-facing policy control at all in this milestone. The persistence architecture is deliberately policy-agnostic so 2C can introduce the policy concept as its own additive migration without redesigning anything built here.
+O fechamento de um Atendimento inclui um checklist operacional obrigatório, destinado a restaurar rapidamente o ambiente de venda após o atendimento ao cliente.
 
-Scope:
+O checklist faz parte do mesmo fluxo de `Finalizando` já utilizado para registrar clientes, conversão e motivos.
 
-- three approved Checklist V1 confirmations — **Conferir o provador**, **Arrumar e/ou devolver as peças do atendimento**, **Verificar a loja toda** — each a single tappable confirmation; the explanatory guidance bullets under items 1 and 3 are display-only text, never separate checkboxes;
-- checklist item definitions live in a versioned catalog table (`atendimento_checklist_itens`: `versao`, stable `codigo`, `titulo`, `guia_bullets`, `ordem_exibicao`, `obrigatorio`, `ativo`) rather than fixed boolean columns, so a future Checklist V2 only requires inserting new rows under a new `versao` — no schema redesign, and historical V1 responses remain interpretable once V2 exists;
-- completed checklists persist as one row per Atendimento (`atendimento_checklists`: `id_atendimento` with a `unique` constraint, `id_funcionario` — the responsible employee, who completes their own checklist under this milestone's closing permissions — `versao`, versioned JSONB `respostas`, `completado_em`); never a bare `checklist_completed = true`;
-- checklist completion is folded into the same atomic `concluir_atendimento` transaction as customer-outcome finalization (section 8.13): the active checklist version and its required items are always resolved and validated server-side against the authoritative catalog, never trusted from the client, and a submission missing any required item is rejected before anything is persisted — no partial customer rows, no partial checklist row, Atendimento remains `finalizando`;
-- final submission remains disabled client-side until all three confirmations are checked, and checklist responses participate in the existing unsaved-data protection (**Voltar ao atendimento** / **Voltar ao painel**) exactly like customer-outcome entries;
-- an employee in `Finalizando` for checklist completion remains subject to all existing Milestone 2A.2 queue restrictions (cannot voluntarily leave or be manager/admin-removed) until the Atendimento is completed or abandoned.
+### Fluxo de fechamento
 
-Explicitly out of scope for 2B: `Farei depois`, deferred obligations/backlog, pending-checklist reminders, an admin policy toggle, a checklist-editor UI, and Checklist V2 — all reserved for Milestone 2C or later.
+O fluxo aprovado é:
 
-**Checklist version immutability:** once a checklist version has been used to close at least one Atendimento in production, its item definitions (`atendimento_checklist_itens` rows for that `versao`) must be treated as immutable — the same principle already applied to Checklist V1's motive catalog and to every other historically-referenced configuration in this system. A meaningful content change (adding/removing/renaming a confirmation, changing what `obrigatorio` means for an item) requires inserting a new `versao` rather than editing rows of an already-used version in place, so that `atendimento_checklists.versao` on every historical completion continues to identify exactly what the employee actually saw and confirmed at the time.
+1. O funcionário seleciona `Concluir atendimento`.
+2. O Atendimento entra em `Finalizando`.
+3. O funcionário registra um ou mais clientes.
+4. Para cada cliente, registra:
+   - Convertido / Não convertido;
+   - motivo correspondente;
+   - detalhe quando exigido pelo motivo.
+5. O funcionário completa o Checklist Operacional aplicável.
+6. O fechamento é enviado.
+7. O backend valida e persiste atomicamente:
+   - clientes;
+   - resultados e motivos;
+   - checklist;
+   - conclusão do Atendimento;
+   - retorno do funcionário ao final da Lista da Vez.
+8. O Atendimento passa para `concluido`.
 
-Validated in browser QA: the checklist section renders correctly within the closing flow with all guidance bullets legible and non-interactive; final submission stays disabled until every customer and every checklist item is complete, and enables correctly once both are; a successful submission atomically completes the Atendimento and returns the employee to the back of Lista da Vez; checklist progress alone (with no customer data entered) correctly triggers the unsaved-data warning on both **Voltar ao atendimento** and **Voltar ao painel**, and discarding correctly abandons it; rapid double-submission does not duplicate customer or checklist rows or return the employee to the queue twice; the full existing Atendimento/Lista da Vez regression sweep passed; and an employee in `Finalizando` for checklist completion remains correctly blocked from voluntary queue leave and manager/admin removal. Database validation additionally confirmed the Checklist V1 definition contains exactly the three expected items in the correct order, and a completed Atendimento persisted the expected versioned JSONB checklist response. The direct/stale-RPC incomplete-checklist rejection path was not manually exercised in browser QA; server-side validation (section 12) remains the enforcement mechanism, and this is non-blocking for milestone completion.
+Se qualquer parte da validação falhar, nenhuma parte do fechamento é parcialmente persistida e o funcionário continua indisponível em `Finalizando`.
+
+---
+
+### Checklist V1
+
+A versão 1 possui exatamente três confirmações principais:
+
+#### 1. Conferir o provador
+
+Orientações:
+
+- verificar se o cliente esqueceu ou perdeu algum item pessoal;
+- recolher peças que precisam ser arrumadas e/ou devolvidas;
+- retirar qualquer lixo;
+- deixar a cortina aberta para o lado direito.
+
+#### 2. Arrumar e/ou devolver as peças do atendimento
+
+Confirmar que as peças relacionadas ao Atendimento foram organizadas e/ou devolvidas adequadamente.
+
+#### 3. Verificar a loja toda
+
+Orientações:
+
+- organizar as peças e a exposição, incluindo pilhas;
+- repor peças quando necessário;
+- retirar qualquer lixo ou sujeira.
+
+As orientações são textos explicativos e **não representam controles ou confirmações individuais adicionais**.
+
+O funcionário realiza somente as três confirmações principais acima.
+
+---
+
+### Política no Milestone 2B
+
+No Milestone 2B, o checklist é obrigatório.
+
+Todas as confirmações obrigatórias da versão ativa precisam ser concluídas antes que o Atendimento possa ser finalizado.
+
+A obrigatoriedade é validada tanto:
+
+- na interface;
+- quanto no backend.
+
+A interface não é considerada a autoridade da regra de negócio.
+
+O Milestone 2B **não permite adiar o checklist**.
+
+Não existem ainda:
+
+- `Farei depois`;
+- obrigações pendentes de checklist;
+- contador de pendências;
+- resolução posterior;
+- política administrativa `defer_allowed`.
+
+Esses comportamentos pertencem ao **Milestone 2C**.
+
+---
+
+### Versionamento
+
+O checklist é versionado.
+
+A definição de cada versão possui itens com conceitos equivalentes a:
+
+- `versao`;
+- `codigo` estável;
+- título;
+- orientações;
+- ordem de exibição;
+- obrigatoriedade;
+- estado ativo.
+
+As respostas do Atendimento são armazenadas de forma versionada em JSONB.
+
+Exemplo conceitual:
+
+```json
+[
+  {
+    "codigo": "conferir_provador",
+    "concluido": true
+  },
+  {
+    "codigo": "arrumar_devolver_pecas",
+    "concluido": true
+  },
+  {
+    "codigo": "verificar_loja",
+    "concluido": true
+  }
+]
+```
+
+O backend determina qual é a versão aplicável e reconstrói o registro persistido a partir da definição autoritativa do checklist.
+
+O cliente não pode escolher arbitrariamente:
+
+- a versão;
+- os códigos válidos;
+- quais itens são obrigatórios;
+- ou declarar que o checklist está completo sem validação do servidor.
+
+---
+
+### Imutabilidade das versões utilizadas
+
+Depois que uma versão de checklist tiver sido utilizada em produção, sua definição deve ser considerada **imutável**.
+
+Não alterar retroativamente em uma versão já utilizada:
+
+- códigos;
+- títulos;
+- orientações;
+- significado dos itens;
+- conjunto de itens;
+- obrigatoriedade de forma que mude o significado histórico.
+
+Se houver uma mudança material no conteúdo ou significado do checklist, deverá ser criada uma **nova versão**.
+
+Exemplo:
+
+```text
+Checklist V1
+→ utilizado historicamente
+→ permanece intacto
+
+Nova necessidade operacional
+→ criar Checklist V2
+```
+
+Essa regra garante que um registro histórico continue representando exatamente o checklist que o funcionário visualizou e confirmou naquele momento.
+
+---
+
+### Persistência e auditabilidade
+
+Cada Atendimento concluído normalmente possui um único registro de conclusão de checklist.
+
+O registro preserva, no mínimo:
+
+- Atendimento;
+- funcionário responsável;
+- versão do checklist;
+- respostas;
+- momento da conclusão.
+
+Existe proteção de unicidade para impedir múltiplos registros normais de checklist para o mesmo Atendimento.
+
+No fluxo atual, o funcionário responsável também é quem conclui o próprio checklist.
+
+Conclusão por gerente/admin em nome de outro funcionário não faz parte deste milestone.
+
+A arquitetura deve permanecer compatível com o princípio global de:
+
+**Funcionário Responsável ≠ necessariamente Ator Autenticado**
+
+para futuras funções privilegiadas.
+
+---
+
+### Proteção de dados não salvos
+
+As respostas do checklist fazem parte do mesmo rascunho local do fechamento.
+
+Se o funcionário já tiver preenchido qualquer informação do checklist e tentar:
+
+- `Voltar ao atendimento`;
+- `Voltar ao painel`;
+
+a proteção contra perda de dados não salvos deve funcionar da mesma forma utilizada para clientes, motivos e detalhes.
+
+O rascunho não é persistido no servidor.
+
+Refresh do navegador ou fechamento da aba continuam fora do escopo atual.
+
+---
+
+### Relação com Lista da Vez
+
+Enquanto o Atendimento estiver em `Finalizando`, o funcionário continua indisponível.
+
+Ele não pode:
+
+- usar `Sair da Lista da Vez`;
+- ser removido da Lista da Vez por gerente/admin através do mecanismo normal de gerenciamento de participação.
+
+Após a conclusão válida do Atendimento e do checklist, o funcionário retorna ao **final da Lista da Vez**, preservando a regra existente.
+
+---
 
 ### Milestone 2C — Admin Checklist Policy + Deferred Checklist Backlog
 
