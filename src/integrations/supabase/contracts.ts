@@ -200,3 +200,11 @@ export function isAtendimentoChecklistItem(value: unknown): value is Atendimento
     typeof candidate.obrigatorio === "boolean"
   );
 }
+
+export type ChecklistPolicy = "required" | "defer_allowed";
+
+const CHECKLIST_POLICIES: readonly ChecklistPolicy[] = ["required", "defer_allowed"];
+
+export function isChecklistPolicy(value: unknown): value is ChecklistPolicy {
+  return typeof value === "string" && CHECKLIST_POLICIES.includes(value as ChecklistPolicy);
+}

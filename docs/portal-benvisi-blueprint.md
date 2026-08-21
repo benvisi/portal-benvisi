@@ -1825,20 +1825,99 @@ Após a conclusão válida do Atendimento e do checklist, o funcionário retorna
 
 ### Milestone 2C — Admin Checklist Policy + Deferred Checklist Backlog
 
-**Status:** APPROVED
+Milestone 2C is split into two parts:
+
+- **2C.1 — Checklist Policy + Deferral Backlog Creation** (below): how deferred checklist work gets created, authorized, and audited.
+- **2C.2 — Deferred Checklist Resolution** (below): how that backlog actually gets cleared. Not yet implemented.
+
+### Milestone 2C.1 — Checklist Policy + Deferral Backlog Creation
+
+**Status:** IMPLEMENTED
 
 Scope:
 
-- admin-controlled checklist policy (`required` / `defer_allowed`), building on 2B's versioned checklist architecture without redesigning it;
-- minimal admin control for that policy;
-- **Farei depois** action;
-- one durable historical deferral record per deferred Atendimento;
-- aggregated employee-facing pending count;
-- non-blocking reminder/nudge;
-- standalone checklist completion;
-- one successful checklist execution clears all currently outstanding deferred obligations for that employee;
-- completing the checklist during a later Atendimento also clears all previous outstanding obligations;
-- preserve individual historical deferrals for future reporting.
+- an authoritative, server-side checklist policy with exactly two values, `required` and `defer_allowed`, defaulting to `required` — a single current store/global policy, not per-employee/per-role/date-scoped;
+- only cargo `Administrador` may change the policy (server-enforced, actor resolved from the opaque session) — `Gerente` does **not** have policy-edit permission. This follows the existing convention already established by the dashboard's Administrativo module itself, which is likewise visible only to `Administrador`; `Gerente`'s existing extra privilege (Milestone 2A.2's Lista da Vez removal) is a day-to-day operational action, not store-wide configuration, so it is not treated as a comparable precedent here;
+- every actual policy transition is recorded in an append-only history (`checklist_policy_eventos`: prior value, new value, authenticated actor, timestamp) — a no-op "change" to the same value writes no new history row;
+- a lightweight admin screen (`/administrativo`, reached from the dashboard's existing Administrativo module) shows the current policy and lets the admin pick between **Obrigatório** and **Permitir fazer depois**, with a short lightweight confirmation before applying an actual change — no policy scheduling, no history UI, no broader settings subsystem;
+- under `required`: Milestone 2B behavior is preserved exactly — all required checklist confirmations must be completed, no `Farei depois` option exists at all, and normal checklist completion remains atomic with customer outcomes, Atendimento completion, and return to Lista da Vez;
+- under `defer_allowed`: Checklist V1 remains the preferred/default completion path; the employee may intentionally choose a visually secondary **Farei depois** action, with supportive copy ("Você poderá concluir este checklist depois.") that avoids language implying the checklist is waived, ignored, forgiven, or permanently skipped — deferred ≠ waived;
+- choosing **Farei depois** is an explicit, separate client intent — never inferred from an incomplete checklist submission — and is folded into the same atomic `concluir_atendimento` transaction as customer-outcome finalization. Any partial local checklist progress is discarded, not persisted: no `atendimento_checklists` completion row is ever written on the deferred path, regardless of how many items the employee had locally checked before choosing to defer;
+- a successful deferral creates exactly one durable pending obligation (`checklist_pendencias`, `unique (id_atendimento)`) preserving, at minimum: the source Atendimento, the responsible employee, the checklist version applicable at deferral time, the policy value in effect at deferral (a snapshot, not a live reference), the deferred timestamp, and a current pending/resolved state — never only a mutable pending-count number on the employee;
+- the employee sees an aggregated, backend-authoritative count of their own currently-pending obligations, currently on the Atendimento/Lista da Vez experience (no detail list, no resolution action yet — awareness only; hidden entirely when the count is zero, shown with restrained amber styling otherwise — e.g. "1 checklist pendente" / "3 checklists pendentes");
+- a successfully deferred Atendimento still becomes `concluido` and the employee still returns to the back of Lista da Vez exactly as a normal completion would — pending backlog never blocks continued Lista da Vez participation, Iniciar Atividades, or any other existing behavior;
+- pending obligations survive Manaus business-day boundaries indefinitely — they are never auto-reset, auto-expired, auto-waived, or deleted;
+- a policy change never rewrites or removes existing obligations, in either direction: switching `defer_allowed → required` leaves already-pending obligations pending (they are not deleted, waived, or auto-resolved), and switching `required → defer_allowed` does not alter historical completed checklists;
+- checklist-version immutability (Milestone 2B) is unaffected — a deferred obligation snapshots the exact `checklist_versao` that was authoritative at the moment of deferral, the same way a completed checklist snapshots its version.
+
+**Concurrency / data-integrity rule:** deferral and policy changes are serialized against each other through the same `checklist_config` singleton row, not left to incidental statement timing. `concluir_atendimento`'s deferral path takes a locking read (`FOR SHARE`) on that row when evaluating whether deferral is currently allowed; `set_checklist_policy` updates it under `FOR UPDATE`. These two lock modes conflict, so whichever transaction reaches the row first forces the other to wait until it commits, and the waiting transaction then observes the *post-commit* value rather than a stale snapshot. Practically: a deferral cannot commit based on a policy read that a concurrent policy change has already superseded — backend state, never UI state, determines whether **Farei depois** is actually honored at the moment of submission.
+
+**Explicitly out of scope for 2C.1** (reserved for 2C.2): resolving a pending obligation in any way — no standalone checklist completion, no `Concluir checklist pendente` action, no clearing of obligations (by a later Atendimento's checklist or otherwise), no resolver-relationship/resolution-timestamp/resolution-source logic, no manual admin waiver or deletion of a pending obligation, and no detailed per-obligation list UI. The `checklist_pendencias` schema includes nullable `resolvido_em` / `tipo_resolucao` / `id_resolucao` columns now specifically so 2C.2 can populate them without a further schema change, but nothing in 2C.1 reads or writes them.
+
+Validated in QA at a practical product-owner level: admin current-policy display and policy switching in both directions; **Farei depois** appearing only under `defer_allowed` and disappearing correctly when policy reverts to `required`; a deferral completing the Atendimento, returning the employee to the back of Lista da Vez, and creating a pending obligation; pending-count singular/plural wording across multiple deferrals; non-`Administrador` access correctly blocked from the policy control; cross-day persistence of pending obligations; and a general regression sweep. The policy-change-vs-deferral race and the rapid-double-tap/duplicate-deferral edge case were not manually exercised in browser QA — both are non-blocking, since the former is enforced by the `FOR SHARE`/`FOR UPDATE` serialization described above and the latter by the same Atendimento-row locking plus `checklist_pendencias`' `unique (id_atendimento)` that has protected every closing path since Milestone 2A.
+
+### Milestone 2C.2 — Deferred Checklist Resolution
+
+**Status:** NEXT
+
+Scope:
+
+- standalone checklist completion, decoupled from an active Atendimento;
+- **Concluir checklist pendente** action;
+- one genuine checklist completion — whether via the standalone action or via completing the checklist during a later Atendimento — resolves **all** currently outstanding deferred obligations for that employee, not just the one tied to a specific Atendimento;
+- explicit resolution relationships on `checklist_pendencias`: resolution timestamp, and resolution source (later Atendimento vs. standalone completion);
+- the actual later completion uses the current active checklist version at the time it happens; each original obligation nonetheless keeps preserving the checklist version that was applicable when *it* was deferred — resolving an obligation must never retroactively rewrite which version it was originally deferred under;
+- preserve individual historical deferrals (never destructively cleared) for future reporting;
+- concurrency-safe resolution: resolving multiple pending obligations at once, or resolving while a new deferral is being created, must not race into inconsistent state — reuse the same locking/serialization discipline already established for policy-vs-deferral in 2C.1 rather than inventing a new mechanism;
+- a persistent, global pending-checklist reminder that follows the employee across relevant Portal Benvisi screens (not just the Atendimento/Lista da Vez experience), which becomes actionable in 2C.2 and leads into the standalone checklist-completion flow — see the dedicated roadmap item below for the full approved direction, since this indicator itself is approved now even though its resolution action isn't built until 2C.2.
+
+Do not implement 2C.2 behavior as part of the 2C.1 closeout.
+
+### 2C.2 / Near-Term — Persistent Pending-Checklist Indicator
+
+**Status:** APPROVED DIRECTION
+
+The employee's pending-checklist reminder should not be conceptually limited to the Atendimento/Lista da Vez screen — 2C.1's banner there is a starting point, not the final placement.
+
+Approved direction:
+
+- pending-checklist state should persist visibly across relevant employee-facing areas of Portal Benvisi, not only while on `/atendimento`;
+- use a lightweight shared/global indicator rather than repeating a large banner on every screen — the likely implementation is the shared app shell/header/top-area or another consistently-available treatment;
+- when pending count = 0, avoid unnecessary clutter, exactly as 2C.1 already does;
+- when pending count > 0, show a clear but non-punitive amber/attention state;
+- in Milestone 2C.2 this persistent indicator becomes actionable and leads into the standalone checklist-completion flow — in 2C.1 it remains (like the current banner) awareness-only;
+- wording should communicate pending operational work, not discipline or failure.
+
+The purpose is to prevent an employee from navigating away from Atendimento and forgetting that a deferred checklist obligation still exists.
+
+This is approved scope for Milestone 2C.2 (or a near-term follow-up), not part of the 2C.1 closeout.
+
+### Future — Checklist Backlog Management Visibility
+
+**Status:** FUTURE
+
+Managers/admins should eventually be able to see operational checklist backlog by employee.
+
+Useful future information includes:
+
+- employee;
+- current unresolved count;
+- oldest pending obligation / age;
+- recent deferral frequency;
+- resolution time;
+- deferral rate;
+- unresolved trend over time.
+
+This should be treated primarily as an **administrative dashboard/reporting visualization**, not as another operational control embedded in Lista da Vez.
+
+Important product boundaries:
+
+- do not implement this dashboard now;
+- do not add manual waiver/delete/resolve actions here — any resolution action belongs entirely to Milestone 2C.2's employee-facing checklist-completion flow, not to an admin visibility screen;
+- do not turn pending-checklist visibility into punitive employee scoring;
+- preserve the durable data already established by 2C.1's `checklist_pendencias` (and whatever 2C.2 adds to it) so this visualization can be built later without redesigning the schema.
+
+This is a roadmap/reporting item — not part of 2C.1, and not required for 2C.2 completion.
 
 ### Future — Manager/Admin Atendimento Exception Handling
 

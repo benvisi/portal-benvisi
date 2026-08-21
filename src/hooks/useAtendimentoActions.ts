@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ATENDIMENTO_GENERIC_ERROR_MESSAGE } from "@/config/constants";
 import { isAtendimentoIniciado } from "@/integrations/supabase/contracts";
 import { atendimentoAtivoQueryKey } from "@/hooks/useAtendimentoAtivo";
+import { checklistPendenciasCountQueryKey } from "@/hooks/useChecklistPendenciasCount";
 import { listaVezQueryKey } from "@/hooks/useListaVez";
 import { useSessionErrorHandler } from "@/hooks/useSessionErrorHandler";
 import {
@@ -62,6 +63,9 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     if (!funcionarioId) return;
     void queryClient.invalidateQueries({ queryKey: atendimentoAtivoQueryKey(funcionarioId) });
     void queryClient.invalidateQueries({ queryKey: listaVezQueryKey(funcionarioId) });
+    void queryClient.invalidateQueries({
+      queryKey: checklistPendenciasCountQueryKey(funcionarioId),
+    });
   }, [queryClient, funcionarioId]);
 
   const runBooleanRpc = useCallback(
@@ -159,8 +163,31 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
       runBooleanRpc(
         "concluir_atendimento",
-        { p_session_token: sessionToken, p_clientes: clientes, p_checklist: checklist },
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: checklist,
+          p_adiar_checklist: false,
+        },
         "concluir_atendimento",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  // Milestone 2C.1: explicit, separate intent from concluir — never inferred
+  // from an incomplete checklist. p_checklist is omitted entirely (the
+  // backend never inspects it when p_adiar_checklist is true).
+  const adiarChecklist = useCallback(
+    (clientes: ClienteOutcomeInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento",
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: [],
+          p_adiar_checklist: true,
+        },
+        "concluir_atendimento (adiar checklist)",
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -173,5 +200,6 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     iniciarFechamento,
     voltarAoAtendimento,
     concluir,
+    adiarChecklist,
   };
 }

@@ -134,7 +134,7 @@ function DashboardPage() {
               title="Administrativo"
               description="Gestão, configurações e recursos administrativos."
               variant="secondary"
-              onClick={() => setModuleDialogOpen(true)}
+              onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO })}
             />
           )}
         </div>

@@ -11,6 +11,8 @@ import {
   CHECKLIST_LOADING_MESSAGE,
   CHECKLIST_SUBTITLE,
   CHECKLIST_TITLE,
+  FAREI_DEPOIS_LABEL,
+  FAREI_DEPOIS_SUPPORT_TEXT,
   FECHAMENTO_SUBMIT_LABEL,
   FECHAMENTO_SUBTITLE,
   FECHAMENTO_TITLE,
@@ -19,6 +21,7 @@ import {
 import type {
   AtendimentoChecklistItem,
   AtendimentoMotivo,
+  ChecklistPolicy,
 } from "@/integrations/supabase/contracts";
 import type { ClienteRascunho, FechamentoDraft } from "@/hooks/useFechamentoDraft";
 import type { ChecklistRespostaInput, ClienteOutcomeInput } from "@/hooks/useAtendimentoActions";
@@ -29,10 +32,12 @@ interface FechamentoAtendimentoProps {
   motivosLoading: boolean;
   checklistItens: AtendimentoChecklistItem[];
   checklistLoading: boolean;
+  checklistPolicy: ChecklistPolicy | undefined;
   submitting: boolean;
   errorMessage: string | null;
   onVoltar: () => void;
   onConcluir: (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) => void;
+  onFareiDepois: (clientes: ClienteOutcomeInput[]) => void;
 }
 
 function isClienteCompleto(cliente: ClienteRascunho, motivos: AtendimentoMotivo[]): boolean {
@@ -49,10 +54,12 @@ export function FechamentoAtendimento({
   motivosLoading,
   checklistItens,
   checklistLoading,
+  checklistPolicy,
   submitting,
   errorMessage,
   onVoltar,
   onConcluir,
+  onFareiDepois,
 }: FechamentoAtendimentoProps) {
   const [confirmVoltarOpen, setConfirmVoltarOpen] = useState(false);
 
@@ -61,6 +68,12 @@ export function FechamentoAtendimento({
     checklistItens.length > 0 &&
     checklistItens.every((item) => draft.checklist[item.codigo] === true);
   const formValido = clientesValidos && checklistValido;
+  // Milestone 2C.1: Farei depois is only ever offered under defer_allowed
+  // (section 7/8) — never inferred from an incomplete checklist, always an
+  // explicit separate action. Still requires valid customer data, exactly
+  // like the normal submit path (section 10: customer outcomes are still
+  // validated and persisted on the deferral path).
+  const podeAdiar = checklistPolicy === "defer_allowed" && clientesValidos;
 
   const handleVoltarClick = () => {
     if (draft.isDirty) {
@@ -70,18 +83,26 @@ export function FechamentoAtendimento({
     }
   };
 
+  const clientesPayload = () =>
+    draft.clientes.map((c) => ({
+      id_motivo: c.idMotivo as string,
+      detalhe: c.detalhe.trim() || null,
+    }));
+
   const handleSubmit = () => {
     if (!formValido || submitting) return;
     onConcluir(
-      draft.clientes.map((c) => ({
-        id_motivo: c.idMotivo as string,
-        detalhe: c.detalhe.trim() || null,
-      })),
+      clientesPayload(),
       checklistItens.map((item) => ({
         codigo: item.codigo,
         concluido: draft.checklist[item.codigo] === true,
       })),
     );
+  };
+
+  const handleFareiDepois = () => {
+    if (!podeAdiar || submitting) return;
+    onFareiDepois(clientesPayload());
   };
 
   return (
@@ -161,6 +182,25 @@ export function FechamentoAtendimento({
             FECHAMENTO_SUBMIT_LABEL
           )}
         </Button>
+        {podeAdiar && (
+          // Deliberately secondary — completing the checklist now remains
+          // the preferred/default path (section 8). Amber-toned rather than
+          // destructive-red: deferring isn't undoing anything, it just
+          // creates pending work, so it shouldn't read as a warning/error
+          // action.
+          <div className="flex flex-col items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-touch w-full border-warning/40 text-warning hover:bg-warning/10"
+              disabled={submitting}
+              onClick={handleFareiDepois}
+            >
+              {FAREI_DEPOIS_LABEL}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">{FAREI_DEPOIS_SUPPORT_TEXT}</p>
+          </div>
+        )}
         <Button
           type="button"
           variant="ghost"

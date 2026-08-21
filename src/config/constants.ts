@@ -104,6 +104,15 @@ export const CHECKLIST_TITLE = "Checklist de reposição";
 export const CHECKLIST_SUBTITLE = "Confirme os três itens antes de concluir o atendimento.";
 export const CHECKLIST_LOADING_MESSAGE = "Carregando checklist...";
 
+export const FAREI_DEPOIS_LABEL = "Farei depois";
+export const FAREI_DEPOIS_SUPPORT_TEXT = "Você poderá concluir este checklist depois.";
+
+export function getChecklistPendenciasCountLabel(count: number): string {
+  return count === 1 ? "1 checklist pendente" : `${count} checklists pendentes`;
+}
+
+export const CHECKLIST_PENDENCIAS_SUPPORT_TEXT = "Você tem checklist(s) para concluir depois.";
+
 export const CLIENTE_CARD_TITLE = "Cliente";
 export const ADICIONAR_CLIENTE_LABEL = "Adicionar cliente";
 export const REMOVER_CLIENTE_LABEL = "Remover cliente";
@@ -133,6 +142,11 @@ export const CHECKLIST_INCOMPLETO_MESSAGE =
   "Complete os três itens do checklist antes de concluir o atendimento.";
 export const CHECKLIST_INDISPONIVEL_MESSAGE =
   "Não foi possível carregar o checklist. Atualize a página e tente novamente.";
+export const ADIAMENTO_NAO_PERMITIDO_MESSAGE =
+  "Não é mais possível adiar o checklist. Complete-o para concluir o atendimento.";
+export const SEM_PERMISSAO_POLITICA_MESSAGE =
+  "Você não tem permissão para alterar a política do checklist.";
+export const POLITICA_INVALIDA_MESSAGE = "Política de checklist inválida.";
 
 export const FUNCIONARIO_ALVO_INVALIDO_MESSAGE =
   "Não foi possível identificar esse colaborador. Atualize a página e tente novamente.";
@@ -192,4 +206,26 @@ export function getIniciarParaAriaLabel(nome: string): string {
 
 export function getUndoButtonLabel(secondsLeft: number): string {
   return `${ATENDIMENTO_UNDO_LABEL} · ${secondsLeft}s`;
+}
+
+export const ADMINISTRATIVO_PAGE_TITLE = "Administrativo";
+
+export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
+export const CHECKLIST_POLICY_SECTION_SUBTITLE =
+  "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";
+export const CHECKLIST_POLICY_LOADING_MESSAGE = "Carregando política...";
+
+export const CHECKLIST_POLICY_REQUIRED_LABEL = "Obrigatório";
+export const CHECKLIST_POLICY_REQUIRED_DESCRIPTION =
+  "O checklist precisa ser concluído antes de finalizar o atendimento.";
+export const CHECKLIST_POLICY_DEFER_ALLOWED_LABEL = "Permitir fazer depois";
+export const CHECKLIST_POLICY_DEFER_ALLOWED_DESCRIPTION =
+  "O funcionário pode finalizar o atendimento e concluir o checklist posteriormente.";
+
+export const CHECKLIST_POLICY_CONFIRM_TITLE = "Alterar política do checklist?";
+export const CHECKLIST_POLICY_CONFIRM_ACCEPT_LABEL = "Confirmar";
+export const CHECKLIST_POLICY_CONFIRM_CANCEL_LABEL = "Cancelar";
+
+export function getChecklistPolicyConfirmDescription(policyLabel: string): string {
+  return `A política do checklist será alterada para "${policyLabel}".`;
 }
