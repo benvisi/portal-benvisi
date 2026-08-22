@@ -22,13 +22,15 @@ async function fetchChecklistPendenciasCount(sessionToken: string): Promise<numb
 }
 
 /**
- * The caller's own count of durable pending checklist obligations
- * (Milestone 2C.1, section 16) — awareness only, no detail list, no
- * resolution action. Not polled: unlike queue/active-Atendimento state,
- * this only ever changes as a direct result of the employee's own
- * concluir_atendimento calls in this milestone, so invalidating it
- * alongside those (see useAtendimentoActions) is sufficient — a normal
- * component mount/remount also refetches it via TanStack Query defaults.
+ * The caller's own count of durable pending checklist obligations —
+ * awareness only, no detail list. Invalidated locally after the employee's
+ * own concluir_atendimento/concluir_checklist_avulso calls (see
+ * useAtendimentoActions/useConcluirChecklistAvulso), and also polled
+ * (Milestone 2C.2 section 39) since a pending obligation can now be created
+ * or resolved from another device — same 5s interval already used by
+ * useListaVez/useAtendimentoAtivo/useChecklistPolicy for the same reason,
+ * and this hook now backs a persistent indicator shown across multiple
+ * authenticated pages, not just /atendimento.
  */
 export function useChecklistPendenciasCount(
   funcionarioId: string | null,
@@ -42,6 +44,7 @@ export function useChecklistPendenciasCount(
       : ["checklist-pendencias-count", null],
     queryFn: () => fetchChecklistPendenciasCount(sessionToken as string),
     enabled: funcionarioId !== null && sessionToken !== null,
+    refetchInterval: 5_000,
   });
 
   useEffect(() => {

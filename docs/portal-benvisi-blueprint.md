@@ -1858,39 +1858,55 @@ Validated in QA at a practical product-owner level: admin current-policy display
 
 ### Milestone 2C.2 — Deferred Checklist Resolution
 
-**Status:** NEXT
+**Status:** IMPLEMENTED
 
 Scope:
 
-- standalone checklist completion, decoupled from an active Atendimento;
-- **Concluir checklist pendente** action;
-- one genuine checklist completion — whether via the standalone action or via completing the checklist during a later Atendimento — resolves **all** currently outstanding deferred obligations for that employee, not just the one tied to a specific Atendimento;
-- explicit resolution relationships on `checklist_pendencias`: resolution timestamp, and resolution source (later Atendimento vs. standalone completion);
-- the actual later completion uses the current active checklist version at the time it happens; each original obligation nonetheless keeps preserving the checklist version that was applicable when *it* was deferred — resolving an obligation must never retroactively rewrite which version it was originally deferred under;
-- preserve individual historical deferrals (never destructively cleared) for future reporting;
-- concurrency-safe resolution: resolving multiple pending obligations at once, or resolving while a new deferral is being created, must not race into inconsistent state — reuse the same locking/serialization discipline already established for policy-vs-deferral in 2C.1 rather than inventing a new mechanism;
-- a persistent, global pending-checklist reminder that follows the employee across relevant Portal Benvisi screens (not just the Atendimento/Lista da Vez experience), which becomes actionable in 2C.2 and leads into the standalone checklist-completion flow — see the dedicated roadmap item below for the full approved direction, since this indicator itself is approved now even though its resolution action isn't built until 2C.2.
+- **Concluir checklist pendente**: a lightweight standalone checklist experience, fully independent of any Atendimento — same Checklist V1 items/guidance treatment as Atendimento closing, no customer/outcome/motive questions, no Atendimento created, no Lista da Vez/queue mutation of any kind;
+- one genuine, backend-validated checklist completion — whether via the standalone action or via completing the checklist normally during a later Atendimento's closing — resolves **all** obligations currently `pending` for that employee at the authoritative moment of resolution, not just one; the employee never selects or works through historical obligations individually — the concept stays simple: a count, a reminder, one action;
+- every original `checklist_pendencias` row remains individually auditable and untouched in its original fields (`id_atendimento`, `checklist_versao`, `politica_no_momento`, `adiado_em`) — resolution only flips `status` to `resolved` and records how;
+- the resolution relationship (which specific checklist completion resolved which obligation, when, and from which source) lives in a dedicated table rather than as loosely-typed columns directly on the pending row, so it stays a real, referentially-intact relationship instead of an ambiguous pointer — see the architecture note below;
+- resolution source is preserved and distinguishable: a later Atendimento's normal closing vs. a standalone completion;
+- the actual completion always performs the *current* authoritative active checklist version; each original obligation nonetheless keeps the version that was applicable when *it* was deferred — resolving an obligation never rewrites which version it was originally deferred under;
+- resolution can happen on a later Manaus business day, with no restriction to the same day/shift as the deferral;
+- the store's *current* checklist policy never blocks resolution of historical backlog — `required`/`defer_allowed` only ever governs whether a *new* deferral is currently allowed, never whether existing pending obligations can be cleared;
+- standalone completion is unavailable while the employee is `Em atendimento` or `Finalizando` — enforced server-side, not only by hiding the action — since they should resolve their current Atendimento through the normal flow first (which, if its checklist is genuinely completed, will itself clear the same backlog);
+- standalone completion does not require being inside Lista da Vez, and does not require today's Iniciar Atividades — an employee may clear backlog from a previous business day immediately after login, since this is operational cleanup, not attendance/timekeeping;
+- a persistent, actionable pending-checklist indicator (count + tap-to-open standalone completion) is shown across the dashboard and Atendimento — a shared component/hook pair rather than per-page duplicated banners or polling — hidden entirely at zero pending, restrained amber styling otherwise, full page-content width rather than a narrow floating pill so it reads as part of each page's shared content grid;
+- no manual admin waiver, resolve, or delete of a pending obligation exists anywhere in this milestone.
 
-Do not implement 2C.2 behavior as part of the 2C.1 closeout.
+**Persistent indicator placement:** the indicator is currently mounted directly on the dashboard and Atendimento pages because no shared authenticated app-shell/layout exists yet in this codebase — every page today is independently self-contained (its own header, its own `useRequireSession` call). This is functionally equivalent to a shell-hosted indicator (one shared component, one shared hook, one shared TanStack Query cache — no duplicated polling), just mounted per-page rather than once in a wrapping layout. If a shared authenticated shell is introduced later as additional modules are built, centralizing this indicator there instead remains a clean future simplification, not a behavior change.
 
-### 2C.2 / Near-Term — Persistent Pending-Checklist Indicator
+**Architecture — resolution relationship:** rather than adding two independently-nullable foreign keys directly onto `checklist_pendencias` (an awkward polymorphic-row pattern), resolution detail lives in a dedicated `checklist_pendencia_resolucoes` table: one row per resolved obligation, with an exclusive-arc pair of real foreign keys (exactly one of "resolved by this Atendimento's checklist completion" / "resolved by this standalone completion" populated, database-enforced) plus the version actually performed and the resolution timestamp. `checklist_pendencias` itself keeps the `resolvido_em`/`tipo_resolucao`/`id_resolucao` columns 2C.1 already reserved for this — populated as a cheap, single-table summary — so the pending-count query (`status = 'pending'`) needed no changes at all. Standalone completions get their own table, `checklist_conclusoes_avulsas` (no dummy/fake Atendimento is ever created to satisfy `atendimento_checklists`' schema, which genuinely requires a real Atendimento); unlike `atendimento_checklists`, it records both `id_funcionario` and `id_funcionario_ator` explicitly, since a standalone completion has no owning Atendimento row to anchor "responsible employee" the way `atendimento_checklists` already does — keeping the architecture compatible with a future privileged/manager completion-on-behalf-of workflow without another schema change, consistent with section 5.4.
 
-**Status:** APPROVED DIRECTION
+**Architecture — concurrency:** every operation that mutates an employee's pending checklist set (new deferral, standalone resolution, later-Atendimento resolution) acquires the same per-employee transaction-scoped advisory lock before touching `checklist_pendencias`. This makes deferral-vs-resolution and resolution-vs-resolution races for the same employee fully deterministic: whichever operation reaches the lock first completes, and the other observes the resulting post-commit state rather than racing a stale read — reusing the exact same lock-based serialization discipline 2C.1 established for policy-vs-deferral, not a new mechanism. The lock order across the whole Atendimento/checklist/queue surface is: Atendimento row → (deferral only) checklist policy row → per-employee checklist-backlog lock → per-day Lista da Vez lock, consistently in every code path, so no new deadlock path was introduced; standalone completion never touches the Atendimento or Lista da Vez locks at all.
 
-The employee's pending-checklist reminder should not be conceptually limited to the Atendimento/Lista da Vez screen — 2C.1's banner there is a starting point, not the final placement.
+Do not implement in 2C.2 (still future scope): manager/admin backlog visibility/dashboard (see "Future — Checklist Backlog Management Visibility" below, unchanged and still not implemented), detailed employee-facing history, deferral reasons/limits, and any manual resolution/waiver tooling.
 
-Approved direction:
+Validated in QA at a practical product-owner level: deferring multiple Atendimentos and confirming the pending indicator/count; standalone completion resolving all pending obligations while preserving every original row individually; a later Atendimento's normal checklist completion resolving prior backlog; standalone completion correctly blocked while `Em atendimento`/`Finalizando`; resolving old backlog after the store policy changed back to `required`; and a general regression sweep. Cross-day resolution, two-device simultaneous standalone resolution, and rapid double-submit duplicate protection were not manually exercised this round — all three are non-blocking, since they are protected by the same durable-row and per-employee advisory-lock design described above rather than by anything time- or session-dependent.
 
-- pending-checklist state should persist visibly across relevant employee-facing areas of Portal Benvisi, not only while on `/atendimento`;
-- use a lightweight shared/global indicator rather than repeating a large banner on every screen — the likely implementation is the shared app shell/header/top-area or another consistently-available treatment;
-- when pending count = 0, avoid unnecessary clutter, exactly as 2C.1 already does;
-- when pending count > 0, show a clear but non-punitive amber/attention state;
-- in Milestone 2C.2 this persistent indicator becomes actionable and leads into the standalone checklist-completion flow — in 2C.1 it remains (like the current banner) awareness-only;
-- wording should communicate pending operational work, not discipline or failure.
+### Milestone 2C.3 — Verificação Periódica do Checklist
 
-The purpose is to prevent an employee from navigating away from Atendimento and forgetting that a deferred checklist obligation still exists.
+**Status:** NEXT
 
-This is approved scope for Milestone 2C.2 (or a near-term follow-up), not part of the 2C.1 closeout.
+Approved product direction:
+
+- a third checklist-policy value, `periodic_verification`, alongside the existing `required` and `defer_allowed` — employee/admin-facing label **Verificação periódica**;
+- base random-sampling probability of approximately **20%** for whether a given eligible Atendimento's checklist becomes mandatory — a sampling probability, not a guarantee that exactly 20% of closings end up mandatory;
+- no two consecutive eligible Atendimentos for the same employee may both be mandatory;
+- a maximum-gap guardrail: after 3 consecutive non-mandatory eligible Atendimentos for an employee, the next eligible one becomes mandatory;
+- together, the random draw and the guardrail are calibrated (from historical Atendimento-volume analysis) to target roughly two mandatory checklist completions per normal employee working day — an operating target, not an exact daily quota, and never encoded as a literal "2 per day" rule;
+- the mandatory/non-mandatory decision is made and persisted **server-side, exactly once, at the moment an Atendimento first enters `Finalizando`** — never at Atendimento start, never client-side, and never re-rolled by a refresh, a device change, or a `Voltar ao atendimento` / re-enter-`Finalizando` cycle for that same Atendimento;
+- the employee receives no advance notice during the active (`Em atendimento`) phase of whether that Atendimento will turn out to require a mandatory checklist — no sampled/not-sampled status, probability, countdown, or remaining-Atendimentos indicator is ever shown while active;
+- if selected, neutral operational copy is used ("Neste atendimento, conclua o checklist antes de finalizar.") — never wording implying random selection, being singled out, or audit/surveillance framing;
+- a mandatory periodic Atendimento behaves like `required`: all checklist items must be completed, and **Farei depois** is unavailable and backend-rejected even if attempted directly;
+- a non-mandatory periodic Atendimento behaves like `defer_allowed`: normal completion or **Farei depois** both remain available, and either path interacts with existing pending backlog exactly as Milestone 2C.2 already defined (a genuine completion — mandatory or not — always resolves all currently-pending backlog for that employee);
+- sampling is not adaptive and not punitive: existing pending-backlog size, deferral history, or any per-employee "risk" signal never influences the sampling probability;
+- policy changes made after a given Atendimento's periodic decision was already persisted do not retroactively alter that Atendimento's decision — only future decisions are affected;
+- the algorithm (prior-history inspection, no-consecutive check, max-gap check, the random draw itself, and persistence) is entirely server-authoritative; the frontend only ever receives the already-made decision, never computes or influences it;
+- admin configuration for this milestone is limited to selecting `periodic_verification` as the active policy from the existing admin control — the 20% probability and the max-gap count are fixed application-level parameters in this version, not admin-configurable.
+
+Will be implemented after Milestone 2C.2 is committed and pushed. Do not mark fully IMPLEMENTED before product-owner browser QA.
 
 ### Future — Checklist Backlog Management Visibility
 

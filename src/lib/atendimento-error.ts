@@ -1,6 +1,7 @@
 import {
   ADIAMENTO_NAO_PERMITIDO_MESSAGE,
   ATENDIMENTO_ATIVO_EXISTENTE_MESSAGE,
+  ATENDIMENTO_ATIVO_IMPEDE_CHECKLIST_AVULSO_MESSAGE,
   ATENDIMENTO_NAO_ESTA_FINALIZANDO_MESSAGE,
   ATIVIDADES_NAO_INICIADAS_MESSAGE,
   CHECKLIST_INCOMPLETO_MESSAGE,
@@ -19,6 +20,7 @@ import {
   NENHUM_CLIENTE_INFORMADO_MESSAGE,
   POLITICA_INVALIDA_MESSAGE,
   PRAZO_PROVISORIO_EXPIRADO_MESSAGE,
+  SEM_CHECKLIST_PENDENTE_MESSAGE,
   SEM_PERMISSAO_CANCELAR_MESSAGE,
   SEM_PERMISSAO_POLITICA_MESSAGE,
   SEM_PERMISSAO_REMOVER_MESSAGE,
@@ -50,6 +52,8 @@ const KNOWN_ERROR_MESSAGES: Record<string, string> = {
   ADIAMENTO_NAO_PERMITIDO: ADIAMENTO_NAO_PERMITIDO_MESSAGE,
   SEM_PERMISSAO_POLITICA: SEM_PERMISSAO_POLITICA_MESSAGE,
   POLITICA_INVALIDA: POLITICA_INVALIDA_MESSAGE,
+  SEM_CHECKLIST_PENDENTE: SEM_CHECKLIST_PENDENTE_MESSAGE,
+  ATENDIMENTO_ATIVO_IMPEDE_CHECKLIST_AVULSO: ATENDIMENTO_ATIVO_IMPEDE_CHECKLIST_AVULSO_MESSAGE,
 };
 
 /**
@@ -69,6 +73,17 @@ function getAtendimentoErrorCode(error: unknown): string | null {
 
 export function isForaDeOrdemConfirmationRequired(error: unknown): boolean {
   return getAtendimentoErrorCode(error) === "CONFIRMACAO_FORA_DE_ORDEM_NECESSARIA";
+}
+
+/**
+ * Milestone 2C.2: distinguishes "another device already resolved the
+ * backlog before this submission landed" from a real failure, so callers
+ * can refresh to the current (zero-pending) state instead of showing a
+ * scary persistent error for what is actually a race the employee won
+ * nothing by losing.
+ */
+export function isSemChecklistPendenteError(error: unknown): boolean {
+  return getAtendimentoErrorCode(error) === "SEM_CHECKLIST_PENDENTE";
 }
 
 export function getAtendimentoErrorMessage(error: unknown): string | null {

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ClipboardCheck, Loader2, LogOut, Package, Settings, Users } from "lucide-react";
 
+import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { Button } from "@/components/ui/button";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { ModuleInProgressDialog } from "@/components/dashboard/ModuleInProgressDialog";
@@ -100,6 +101,11 @@ function DashboardPage() {
             {SIGN_OUT_BUTTON_LABEL}
           </Button>
         </header>
+
+        <PendingChecklistIndicator
+          funcionarioId={session.funcionario_id}
+          sessionToken={sessionToken}
+        />
 
         <div className="flex flex-col gap-4">
           {!isAdmin && (

@@ -111,7 +111,21 @@ export function getChecklistPendenciasCountLabel(count: number): string {
   return count === 1 ? "1 checklist pendente" : `${count} checklists pendentes`;
 }
 
-export const CHECKLIST_PENDENCIAS_SUPPORT_TEXT = "Você tem checklist(s) para concluir depois.";
+// Milestone 2C.2: the indicator this labels is now actionable everywhere it
+// appears (tap/click opens the standalone completion flow), so the hint
+// reflects that instead of the 2C.1 awareness-only framing.
+export const CHECKLIST_PENDENCIAS_SUPPORT_TEXT = "Toque para concluir agora.";
+
+export const CHECKLIST_AVULSO_TITLE = "Concluir checklist pendente";
+export const CHECKLIST_AVULSO_SUBTITLE =
+  "Complete o checklist operacional para concluir seus checklists pendentes.";
+export const CHECKLIST_AVULSO_SUBMIT_LABEL = "Concluir checklist";
+
+export function getChecklistAvulsoSuccessMessage(resolvedCount: number): string {
+  return resolvedCount === 1
+    ? "Checklist concluído."
+    : `${resolvedCount} checklists pendentes foram resolvidos.`;
+}
 
 export const CLIENTE_CARD_TITLE = "Cliente";
 export const ADICIONAR_CLIENTE_LABEL = "Adicionar cliente";
@@ -147,6 +161,9 @@ export const ADIAMENTO_NAO_PERMITIDO_MESSAGE =
 export const SEM_PERMISSAO_POLITICA_MESSAGE =
   "Você não tem permissão para alterar a política do checklist.";
 export const POLITICA_INVALIDA_MESSAGE = "Política de checklist inválida.";
+export const SEM_CHECKLIST_PENDENTE_MESSAGE = "Não há checklist pendente no momento.";
+export const ATENDIMENTO_ATIVO_IMPEDE_CHECKLIST_AVULSO_MESSAGE =
+  "Conclua seu atendimento atual antes de concluir o checklist pendente.";
 
 export const FUNCIONARIO_ALVO_INVALIDO_MESSAGE =
   "Não foi possível identificar esse colaborador. Atualize a página e tente novamente.";

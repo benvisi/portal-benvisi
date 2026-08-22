@@ -24,7 +24,6 @@ import {
   ATENDIMENTO_PAGE_TITLE,
   ATENDIMENTO_START_BUTTON_LABEL,
   ATIVIDADES_NAO_INICIADAS_MESSAGE,
-  CHECKLIST_PENDENCIAS_SUPPORT_TEXT,
   DELEGATE_CONFIRM_ACCEPT_LABEL,
   DELEGATE_CONFIRM_CANCEL_LABEL,
   ENTRAR_LISTA_DA_VEZ_LABEL,
@@ -41,7 +40,6 @@ import {
   REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL,
   SAIR_LISTA_DA_VEZ_LABEL,
   VOLTAR_AO_PAINEL_LABEL,
-  getChecklistPendenciasCountLabel,
   getDelegateForaDeOrdemConfirmDescription,
   getDelegateForaDeOrdemConfirmTitle,
   getDelegateInOrderConfirmDescription,
@@ -51,11 +49,11 @@ import {
   getRemoverConfirmTitle,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
+import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useAtendimentoChecklist } from "@/hooks/useAtendimentoChecklist";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
-import { useChecklistPendenciasCount } from "@/hooks/useChecklistPendenciasCount";
 import { useChecklistPolicy } from "@/hooks/useChecklistPolicy";
 import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
 import { useListaVez } from "@/hooks/useListaVez";
@@ -81,7 +79,6 @@ function AtendimentoPage() {
   const motivosQuery = useAtendimentoMotivos(sessionToken);
   const checklistQuery = useAtendimentoChecklist(sessionToken);
   const checklistPolicyQuery = useChecklistPolicy(sessionToken);
-  const pendenciasCountQuery = useChecklistPendenciasCount(funcionarioId, sessionToken);
   const actions = useAtendimentoActions(funcionarioId, sessionToken);
   const listaActions = useListaVezActions(funcionarioId, sessionToken);
   const shift = useShiftStart(funcionarioId, sessionToken);
@@ -247,19 +244,13 @@ function AtendimentoPage() {
         </header>
 
         {/*
-          Milestone 2C.1: awareness only — no detail list, no action button.
-          Hidden entirely at count 0 to avoid clutter (section 17); the
-          count itself is always backend-authoritative (get_checklist_pendencias_count),
-          never derived from local state.
+          Milestone 2C.2: now the same shared, actionable indicator used on
+          the dashboard — tapping it opens the standalone checklist
+          completion flow. Superseded the 2C.1 awareness-only banner that
+          used to live here directly (avoids showing the count twice per
+          section 29).
         */}
-        {pendenciasCountQuery.data !== undefined && pendenciasCountQuery.data > 0 && (
-          <div className="flex flex-col gap-0.5 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3">
-            <p className="text-sm font-semibold text-warning">
-              {getChecklistPendenciasCountLabel(pendenciasCountQuery.data)}
-            </p>
-            <p className="text-xs text-muted-foreground">{CHECKLIST_PENDENCIAS_SUPPORT_TEXT}</p>
-          </div>
-        )}
+        <PendingChecklistIndicator funcionarioId={funcionarioId} sessionToken={sessionToken} />
 
         {ativo?.status === "finalizando" ? (
           <FechamentoAtendimento
