@@ -97,6 +97,7 @@ export interface AtendimentoAtivo {
   fora_de_ordem: boolean;
   prazo_provisorio_em: string;
   iniciado_por_nome: string | null;
+  checklist_obrigatorio: boolean | null;
 }
 
 export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
@@ -110,7 +111,9 @@ export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
     typeof candidate.iniciado_em === "string" &&
     typeof candidate.fora_de_ordem === "boolean" &&
     typeof candidate.prazo_provisorio_em === "string" &&
-    (candidate.iniciado_por_nome === null || typeof candidate.iniciado_por_nome === "string")
+    (candidate.iniciado_por_nome === null || typeof candidate.iniciado_por_nome === "string") &&
+    (candidate.checklist_obrigatorio === null ||
+      typeof candidate.checklist_obrigatorio === "boolean")
   );
 }
 
@@ -201,9 +204,13 @@ export function isAtendimentoChecklistItem(value: unknown): value is Atendimento
   );
 }
 
-export type ChecklistPolicy = "required" | "defer_allowed";
+export type ChecklistPolicy = "required" | "defer_allowed" | "periodic_verification";
 
-const CHECKLIST_POLICIES: readonly ChecklistPolicy[] = ["required", "defer_allowed"];
+const CHECKLIST_POLICIES: readonly ChecklistPolicy[] = [
+  "required",
+  "defer_allowed",
+  "periodic_verification",
+];
 
 export function isChecklistPolicy(value: unknown): value is ChecklistPolicy {
   return typeof value === "string" && CHECKLIST_POLICIES.includes(value as ChecklistPolicy);

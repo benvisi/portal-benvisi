@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import {
   ADICIONAR_CLIENTE_LABEL,
   CHECKLIST_LOADING_MESSAGE,
+  CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE,
   CHECKLIST_SUBTITLE,
   CHECKLIST_TITLE,
   FAREI_DEPOIS_LABEL,
@@ -33,6 +34,12 @@ interface FechamentoAtendimentoProps {
   checklistItens: AtendimentoChecklistItem[];
   checklistLoading: boolean;
   checklistPolicy: ChecklistPolicy | undefined;
+  // Milestone 2C.3: this specific Atendimento's own persisted
+  // periodic-verification decision, if any — null means no decision was
+  // ever made for it (governed by required/defer_allowed at every
+  // Finalizando entry so far), in which case checklistPolicy is what
+  // decides Farei depois availability, exactly as in 2C.1/2C.2.
+  checklistObrigatorio: boolean | null;
   submitting: boolean;
   errorMessage: string | null;
   onVoltar: () => void;
@@ -55,6 +62,7 @@ export function FechamentoAtendimento({
   checklistItens,
   checklistLoading,
   checklistPolicy,
+  checklistObrigatorio,
   submitting,
   errorMessage,
   onVoltar,
@@ -68,12 +76,30 @@ export function FechamentoAtendimento({
     checklistItens.length > 0 &&
     checklistItens.every((item) => draft.checklist[item.codigo] === true);
   const formValido = clientesValidos && checklistValido;
-  // Milestone 2C.1: Farei depois is only ever offered under defer_allowed
-  // (section 7/8) — never inferred from an incomplete checklist, always an
-  // explicit separate action. Still requires valid customer data, exactly
-  // like the normal submit path (section 10: customer outcomes are still
-  // validated and persisted on the deferral path).
-  const podeAdiar = checklistPolicy === "defer_allowed" && clientesValidos;
+  // Milestone 2C.1/2C.3: Farei depois is never inferred from an incomplete
+  // checklist, always an explicit separate action, and still requires
+  // valid customer data (section 10). Availability: this Atendimento's own
+  // persisted periodic decision (if any) is authoritative and overrides
+  // the live store policy for it — checklistObrigatorio === true always
+  // blocks deferral (a sampled/guardrail-selected Atendimento behaves like
+  // required), checklistObrigatorio === false always allows it regardless
+  // of what the live policy says now. Only when no per-Atendimento
+  // decision exists (checklistObrigatorio === null) does the live
+  // checklistPolicy decide, exactly as in 2C.1/2C.2.
+  const podeAdiar =
+    (checklistObrigatorio === false ||
+      (checklistObrigatorio === null && checklistPolicy === "defer_allowed")) &&
+    clientesValidos;
+  // Milestone 2C.3 QA fix: derived once and reused for both the copy below
+  // and (potentially) future callers, instead of repeating the `=== true`
+  // comparison inline — the strict comparison itself was already correct
+  // (checklistObrigatorio is only ever true/false/null), the actual QA
+  // finding was that the swapped-in text used the exact same
+  // text-muted-foreground weight/color as the routine subtitle it replaces,
+  // making it easy to miss at a glance since it was the only signal that
+  // this closing behaves differently. Styling only — no icon, no
+  // warning/destructive color, so it stays neutral/non-alarming per spec.
+  const checklistObrigatorioPeriodico = checklistObrigatorio === true;
 
   const handleVoltarClick = () => {
     if (draft.isDirty) {
@@ -141,7 +167,17 @@ export function FechamentoAtendimento({
       <div className="flex flex-col gap-3 border-t border-border pt-4">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-foreground">{CHECKLIST_TITLE}</h3>
-          <p className="text-sm text-muted-foreground">{CHECKLIST_SUBTITLE}</p>
+          <p
+            className={
+              checklistObrigatorioPeriodico
+                ? "text-sm font-medium text-foreground"
+                : "text-sm text-muted-foreground"
+            }
+          >
+            {checklistObrigatorioPeriodico
+              ? CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE
+              : CHECKLIST_SUBTITLE}
+          </p>
         </div>
         {checklistLoading ? (
           <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">

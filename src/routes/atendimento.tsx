@@ -260,6 +260,7 @@ function AtendimentoPage() {
             checklistItens={checklistQuery.data ?? []}
             checklistLoading={checklistQuery.isLoading}
             checklistPolicy={checklistPolicyQuery.data}
+            checklistObrigatorio={ativo?.checklist_obrigatorio ?? null}
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
             onVoltar={() => void actions.voltarAoAtendimento()}

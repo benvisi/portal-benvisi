@@ -238,6 +238,16 @@ export const CHECKLIST_POLICY_REQUIRED_DESCRIPTION =
 export const CHECKLIST_POLICY_DEFER_ALLOWED_LABEL = "Permitir fazer depois";
 export const CHECKLIST_POLICY_DEFER_ALLOWED_DESCRIPTION =
   "O funcionário pode finalizar o atendimento e concluir o checklist posteriormente.";
+export const CHECKLIST_POLICY_PERIODIC_LABEL = "Verificação periódica";
+export const CHECKLIST_POLICY_PERIODIC_DESCRIPTION =
+  "O sistema exige o checklist em alguns atendimentos para manter a rotina de verificação sem torná-la obrigatória em todos.";
+
+// Milestone 2C.3: shown on the closing screen only when this specific
+// Atendimento was selected as mandatory under periodic_verification —
+// deliberately neutral/operational, never implying random selection or
+// audit/surveillance framing.
+export const CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE =
+  "Neste atendimento, conclua o checklist antes de finalizar.";
 
 export const CHECKLIST_POLICY_CONFIRM_TITLE = "Alterar política do checklist?";
 export const CHECKLIST_POLICY_CONFIRM_ACCEPT_LABEL = "Confirmar";

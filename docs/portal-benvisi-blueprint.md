@@ -1887,26 +1887,106 @@ Validated in QA at a practical product-owner level: deferring multiple Atendimen
 
 ### Milestone 2C.3 — Verificação Periódica do Checklist
 
-**Status:** NEXT
+**Status:** IMPLEMENTED
 
-Approved product direction:
+Validated at a practical product-owner level in the browser: admin can select Verificação periódica; three consecutive non-mandatory periodic Atendimentos are followed by a forced-mandatory one; mandatory periodic closings block Farei depois, require the checklist, and a successful completion resolves existing pending backlog; non-mandatory periodic closings behave like `defer_allowed`; no two consecutive mandatory selections occur; `Voltar ao atendimento` does not reroll a persisted decision; a policy change made after a decision was persisted does not override that Atendimento's own decision. One UI defect found during this QA round — the mandatory-closing explanatory copy was not visually distinct enough to be noticed — was fixed (see "Employee-facing copy" below) and re-validated.
 
-- a third checklist-policy value, `periodic_verification`, alongside the existing `required` and `defer_allowed` — employee/admin-facing label **Verificação periódica**;
-- base random-sampling probability of approximately **20%** for whether a given eligible Atendimento's checklist becomes mandatory — a sampling probability, not a guarantee that exactly 20% of closings end up mandatory;
-- no two consecutive eligible Atendimentos for the same employee may both be mandatory;
-- a maximum-gap guardrail: after 3 consecutive non-mandatory eligible Atendimentos for an employee, the next eligible one becomes mandatory;
-- together, the random draw and the guardrail are calibrated (from historical Atendimento-volume analysis) to target roughly two mandatory checklist completions per normal employee working day — an operating target, not an exact daily quota, and never encoded as a literal "2 per day" rule;
-- the mandatory/non-mandatory decision is made and persisted **server-side, exactly once, at the moment an Atendimento first enters `Finalizando`** — never at Atendimento start, never client-side, and never re-rolled by a refresh, a device change, or a `Voltar ao atendimento` / re-enter-`Finalizando` cycle for that same Atendimento;
-- the employee receives no advance notice during the active (`Em atendimento`) phase of whether that Atendimento will turn out to require a mandatory checklist — no sampled/not-sampled status, probability, countdown, or remaining-Atendimentos indicator is ever shown while active;
-- if selected, neutral operational copy is used ("Neste atendimento, conclua o checklist antes de finalizar.") — never wording implying random selection, being singled out, or audit/surveillance framing;
-- a mandatory periodic Atendimento behaves like `required`: all checklist items must be completed, and **Farei depois** is unavailable and backend-rejected even if attempted directly;
-- a non-mandatory periodic Atendimento behaves like `defer_allowed`: normal completion or **Farei depois** both remain available, and either path interacts with existing pending backlog exactly as Milestone 2C.2 already defined (a genuine completion — mandatory or not — always resolves all currently-pending backlog for that employee);
-- sampling is not adaptive and not punitive: existing pending-backlog size, deferral history, or any per-employee "risk" signal never influences the sampling probability;
-- policy changes made after a given Atendimento's periodic decision was already persisted do not retroactively alter that Atendimento's decision — only future decisions are affected;
-- the algorithm (prior-history inspection, no-consecutive check, max-gap check, the random draw itself, and persistence) is entirely server-authoritative; the frontend only ever receives the already-made decision, never computes or influences it;
-- admin configuration for this milestone is limited to selecting `periodic_verification` as the active policy from the existing admin control — the 20% probability and the max-gap count are fixed application-level parameters in this version, not admin-configurable.
+## Policy modes
 
-Will be implemented after Milestone 2C.2 is committed and pushed. Do not mark fully IMPLEMENTED before product-owner browser QA.
+```text
+required
+defer_allowed
+periodic_verification
+```
+
+Employee/admin-facing labels:
+
+- `required` → **Obrigatório**
+- `defer_allowed` → **Permitir fazer depois**
+- `periodic_verification` → **Verificação periódica**
+
+Scope, as implemented:
+
+- a third checklist-policy value, `periodic_verification`, alongside the existing `required` and `defer_allowed` — employee/admin-facing label **Verificação periódica**, selectable from the same existing admin policy control (`administrativo.tsx`), same Administrador-only authorization as 2C.1;
+- base random-sampling probability of approximately **20%** (`random() < 0.20`, evaluated inside the SECURITY DEFINER RPC — never `Math.random()`, never client-side) for whether a given eligible Atendimento's checklist becomes mandatory — a sampling probability, not a guarantee that exactly 20% of closings end up mandatory;
+- no two consecutive eligible Atendimentos for the same employee may both be mandatory (the "no-consecutive" rule) — if the most recent eligible Atendimento was mandatory, the random draw is skipped entirely and this one is forced non-mandatory;
+- a maximum-gap guardrail: after 3 consecutive non-mandatory eligible Atendimentos for an employee, the next eligible one is forced mandatory, skipping the random draw;
+- together, the random draw and the guardrail target roughly two mandatory checklist completions per normal employee working day — an operating target, not an exact daily quota, and is never encoded as a literal "2 per day" rule anywhere in the algorithm;
+- "eligible", for both the no-consecutive and max-gap history, means "was itself decided under `periodic_verification`" (`checklist_politica_no_momento = 'periodic_verification' and checklist_obrigatorio is not null`) — Atendimentos decided under a different policy, or that never reached `Finalizando` at all, are simply absent from the filtered history and can neither break nor extend the streak;
+- the mandatory/non-mandatory decision is made and persisted **server-side, exactly once, at the moment an Atendimento first enters `Finalizando`** (inside `iniciar_fechamento_atendimento`, gated on `checklist_obrigatorio is null`) — never at Atendimento start, never client-side, and never re-rolled by a refresh, a device change, or a `Voltar ao atendimento` / re-enter-`Finalizando` cycle, because the decision columns are only ever written once per Atendimento and are checked before any new computation is attempted;
+- the employee receives no advance notice during the active (`Em atendimento`) phase of whether that Atendimento will turn out to require a mandatory checklist — no sampled/not-sampled status, probability, countdown, or remaining-Atendimentos indicator is shown while active;
+- if selected, neutral operational copy is shown on the closing screen ("Neste atendimento, conclua o checklist antes de finalizar.") in place of the normal checklist subtitle — never wording implying random selection, being singled out, or audit/surveillance framing;
+- a mandatory periodic Atendimento behaves exactly like `required`: **Farei depois** is hidden client-side and backend-rejected (`ADIAMENTO_NAO_PERMITIDO`) even if attempted directly;
+- a non-mandatory periodic Atendimento behaves exactly like `defer_allowed`: normal completion or **Farei depois** both remain available, and either path interacts with existing pending backlog exactly as Milestone 2C.2 already defined (a genuine completion — mandatory or not — always resolves all currently-pending backlog for that employee via `resolver_checklist_pendencias`);
+- sampling is not adaptive and not punitive: existing pending-backlog size, deferral history, or any per-employee "risk" signal never influences the sampling probability or enters the algorithm at all;
+- **policy-change precedence rule:** once a per-Atendimento decision is persisted (`checklist_obrigatorio is not null`), it is permanently authoritative for that Atendimento and the live `checklist_config.policy` value is never consulted for it again, in either `iniciar_fechamento_atendimento` (skipped by the `is null` gate) or `concluir_atendimento`'s deferral branch (the `is not null` branch bypasses the live-policy read entirely). A decision is only ever computed when none yet exists for that Atendimento at that moment — including on a second `Finalizando` entry after a `Voltar ao atendimento`, if the first entry happened under a non-periodic policy and the policy has since changed to `periodic_verification`; this is correctly the Atendimento's *first* decision, not a reroll, since none was made before. This composes cleanly with 2C.1's "live policy at final submit" rule rather than conflicting with it: 2C.1's rule governs the case where no per-Atendimento decision exists; this milestone adds a per-Atendimento decision that, once made, simply takes precedence over that live read for that one Atendimento;
+- the algorithm (prior-history inspection, no-consecutive check, max-gap check, the random draw itself, and persistence) is entirely server-authoritative inside `iniciar_fechamento_atendimento`; the frontend (`get_atendimento_ativo`'s new `checklist_obrigatorio` output column, surfaced to `FechamentoAtendimento` as the `checklistObrigatorio` prop) only ever receives the already-made decision, never computes or influences it;
+- admin configuration for this milestone is limited to selecting `periodic_verification` as the active policy from the existing admin control — the 20% probability and the max-gap count are fixed application-level constants in `iniciar_fechamento_atendimento`, not admin-configurable, and no technical detail (probability, streak counters) is exposed in the admin UI.
+
+**Schema:** four new nullable columns directly on `atendimentos` — `checklist_obrigatorio` (the decision), `checklist_decisao_motivo` (`'sorteio' | 'gap_maximo' | 'pos_obrigatorio' | 'nao_selecionado'`, a `CHECK`-enforced enum, never a bare null when a decision exists), `checklist_decisao_em` (when), `checklist_politica_no_momento` (snapshot of the policy active at decision time, same snapshot-not-live-reference pattern as `checklist_pendencias.politica_no_momento` since 2C.1). A `CHECK` constraint keeps `checklist_obrigatorio is null` and `checklist_decisao_em is null` in lockstep. A 1:1 columns-on-`atendimentos` model was chosen over a separate table since the relationship is genuinely 1:1 and always read/written in the same transaction as the Atendimento's own status transition.
+
+**Concurrency:** no new lock was introduced for this milestone. `iniciar_fechamento_atendimento` already takes `select ... where status = 'ativo' for update` on the specific Atendimento row, and the pre-existing partial unique index (one active/finalizing Atendimento per employee) makes it structurally impossible for the same employee to have two Atendimentos concurrently transitioning into `Finalizando` — so the periodic-decision computation is already fully serialized per employee by locks/invariants that predate this milestone. A second concurrent call for the *same* Atendimento (double-tap, two devices) blocks on that row lock, then finds `status <> 'ativo'` once unblocked and fails cleanly before reaching the decision logic — a decision is made at most once. The new `checklist_config` read inside `iniciar_fechamento_atendimento` uses `for share`, in the same lock order already established for `concluir_atendimento`'s deferral branch since 2C.1 (Atendimento row → `checklist_config` `for share` → per-employee `checklist_pendencias` advisory lock → per-day Lista da Vez advisory lock) — no new deadlock path.
+
+**Decision reasons / auditability:** every periodic decision this algorithm ever makes carries an explicit `checklist_decisao_motivo`, never a bare null when a decision exists — `sorteio` (genuine random draw selected it), `gap_maximo` (forced mandatory by the guardrail), `pos_obrigatorio` (forced non-mandatory by the no-consecutive rule), or `nao_selecionado` (ordinary non-selection from the random draw). Alongside the reason, `checklist_decisao_em` (timestamp) and `checklist_politica_no_momento` (policy snapshot at decision time) are preserved, plus the `checklist_obrigatorio` result itself — enough to reconstruct, per employee, exactly which decisions were made, why, and under what policy, without building any reporting UI now. The backend remains the sole source of truth for all of this; nothing is derived or reconstructed client-side.
+
+## Employee behavior
+
+**Mandatory periodic Atendimento** — when the persisted decision is mandatory: the checklist must be completed; **Farei depois** is unavailable (hidden client-side, backend-rejected with `ADIAMENTO_NAO_PERMITIDO` if attempted directly); the employee sees neutral explanatory copy in place of the routine checklist subtitle: **"Neste atendimento, conclua o checklist antes de finalizar."** A successful checklist completion is a genuine completion and therefore resolves any previously pending checklist obligations under the existing 2C.2 rules.
+
+**Non-mandatory periodic Atendimento** — when the persisted decision is non-mandatory: the employee may complete the checklist normally, or use **Farei depois**; normal deferred-obligation behavior applies exactly as under `defer_allowed`.
+
+**Employee-facing copy — QA fix:** browser QA found that the mandatory-closing message, while correctly computed and correctly gating `Farei depois`/checklist completion, was easy to miss — it replaced the routine subtitle using the exact same low-emphasis `text-muted-foreground` weight/color, so it read as just another instance of ordinary body text rather than a signal that this particular closing behaves differently. Fixed in `FechamentoAtendimento.tsx`: the swapped-in message now renders with `text-foreground` + `font-medium` (still no color, icon, or border implying warning/audit/surveillance) instead of `text-muted-foreground`, making it legible at a glance while remaining neutral and non-alarming. The underlying data flow and condition (`checklist_obrigatorio === true`, sourced from `get_atendimento_ativo`) were already correct — this was a visual-weight defect, not a logic defect.
+
+## Policy-change precedence
+
+Once an Atendimento has received a persisted periodic decision on entering `Finalizando`, that decision remains authoritative for that Atendimento even if the global checklist policy changes afterward:
+
+```text
+periodic → decision = non-mandatory
+admin changes policy to required
+→ existing Atendimento remains non-mandatory
+```
+
+```text
+periodic → decision = mandatory
+admin changes policy to defer_allowed
+→ existing Atendimento remains mandatory
+```
+
+The new global policy applies only to future Atendimentos that have not yet received a durable closing decision — full reasoning above under "policy-change precedence rule".
+
+Final validation: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly, including after the copy-visibility fix.
+
+### Future — Agendamento da Política do Checklist
+
+**Status:** FUTURE
+
+Administrators may eventually pre-schedule which checklist policy should be active during defined future periods, e.g.:
+
+```text
+Seg–Qui → Verificação periódica
+Sex–Dom → Obrigatório
+```
+
+or date windows such as:
+
+```text
+01/12–24/12 → Obrigatório
+restante → Verificação periódica
+```
+
+Potential business uses include high-volume retail periods, campaigns, holiday periods, onboarding/training periods, and any period where stricter operational verification is desired.
+
+Important product rules:
+
+- this is FUTURE scope only — not implemented, not scaffolded, no scheduling behavior exists in the codebase today;
+- first version should remain simple: scheduled policy windows, no complex rules engine;
+- scheduled changes affect Atendimentos that have **not yet received a persisted closing decision** — an Atendimento that already received a periodic decision in `Finalizando` keeps that decision even if a scheduled policy transition occurs afterward, following the exact same policy-change-precedence architecture already established across 2C.1–2C.3, not a new rule;
+- scheduled changes must remain server-authoritative and auditable, consistent with `checklist_policy_eventos`;
+- do not turn this into payroll/timekeeping;
+- do not create employee-specific schedules at this stage — one store-wide schedule, not per-employee.
+
+Builds directly on the policy and decision-precedence architecture established in 2C.1–2C.3; no schema or algorithm changes were made in anticipation of this — it remains a clean, additive future extension.
 
 ### Future — Checklist Backlog Management Visibility
 
