@@ -12,4 +12,12 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      // Allow requests proxied through the dev.benvisi.com.br Cloudflare
+      // Tunnel — otherwise Vite rejects them with "Blocked request. This
+      // host is not allowed."
+      allowedHosts: ["dev.benvisi.com.br"],
+    },
+  },
 });
