@@ -1015,7 +1015,9 @@ Messages must not:
 
 An Atendimento may contain multiple customers with different outcomes.
 
-If at least one customer converted, the completion feedback should generally use the positive conversion category.
+### APPROVED — supersedes this section's earlier "collapse into converted" wording (see Milestone 2E)
+
+A mixed Atendimento (at least one Convertido **and** at least one Não convertido customer) uses its own dedicated third message category rather than being collapsed into the converted category — see Milestone 2E for the final approved three-category model (converted / non_converted / mixed) and its curated message pools.
 
 The application should not highlight individual non-converted customers in the celebratory feedback.
 
@@ -2095,11 +2097,53 @@ Concretely, `concluir_atendimento_pendente`'s only `lista_vez_fila` interaction 
 
 **Queue-integrity QA:** no current-day membership (Case A) — pass, recovery created no membership/position. Existing current-day membership (Case B) — pass, `disponivel` was restored while `na_fila` and the exact `posicao` were preserved and the employee was not sent to the back. Deliberate `na_fila = false` (Case C) — **not manually exercised**; documented as an unexercised edge case rather than tested, non-blocking because the corrective `UPDATE`'s `WHERE` clause structurally requires `na_fila = true` and contains no insert/upsert/rejoin path at all.
 
-### Later Approved Atendimento Work
+### Milestone 2E — Positive Reinforcement
 
-Still approved but not part of the immediate 2A → 2A.1 → 2B → 2C → 2D sequence:
+**Status:** IMPLEMENTED
 
-- positive reinforcement after successful closure.
+Implements section 8.15: after a successfully completed Atendimento, a brief, varied, non-punitive positive-reinforcement message appears as a transient toast — never a blocking modal, never a dedicated success screen, never delaying the return to Lista da Vez.
+
+**Three categories, determined purely by customer-outcome composition (section 2/8.15.3):**
+
+- `converted` — every customer in the Atendimento is Convertido (including a single-customer Atendimento);
+- `non_converted` — every customer is Não convertido (including a single-customer Atendimento);
+- `mixed` — at least one Convertido **and** at least one Não convertido — its own dedicated pool, never collapsed into `converted` (this supersedes 8.15.3's earlier "generally use the positive conversion category" wording — a deliberate, explicit product decision made for this milestone).
+
+No ratio/threshold calculation of any kind — any mixture of the two outcomes is simply `mixed`.
+
+**Curated production content, stored in code — `src/config/atendimento-feedback.ts`:** `CONVERTED_MESSAGES` (exactly 100), `NON_CONVERTED_MESSAGES` (exactly 150), `MIXED_MESSAGES` (exactly 25) — every message reproduced byte-for-byte from the approved production library, including emoji, capitalization, and punctuation. No runtime AI generation of any kind (no OpenAI/Claude/other API/Supabase Edge AI/runtime prompt) — selection is a deterministic local random pick from these fixed pools only. Not stored in the database, and no admin message-editor exists — the library is application content, changed only through a code review.
+
+**Selection:** classify the completed Atendimento's customer categories, then pick uniformly at random from the matching pool. A single immediate-repeat avoidance re-roll (in-memory, per category, scoped to the browser tab — never persisted, never a database history table) skips showing the exact same message twice in a row within the same category when the pool has more than one entry; a second consecutive match is accepted rather than looping, per the approved "keep this simple" direction.
+
+**Trigger points — only after the backend RPC has already confirmed success:** ordinary `concluir_atendimento` completion (covering `required`, `defer_allowed` complete-now, and both mandatory/non-mandatory `periodic_verification` outcomes — the checklist policy path never affects which message pool is used); `defer_allowed`'s Farei depois path (still a genuine successful Atendimento conclusion — checklist deferral is tracked separately and never changes reinforcement tone or category, section 15); and Milestone 2D's `concluir_atendimento_pendente` previous-day recovery completion. The customer-outcome categories are captured synchronously from the closing draft *before* the RPC call is awaited (never re-derived afterward, since the draft can reset once the query invalidation triggered by a successful call resolves) — satisfying "never infer from UI state after the draft has already reset" while still deriving from exactly what was validated and submitted. No reinforcement is shown for a failed/rejected submission, a `Voltar ao atendimento` (Finalizando → ativo), an accidental-start cancellation, a session failure, or an Atendimento that remains `pendente_fechamento` unresolved.
+
+**Standalone checklist completion (Concluir checklist pendente) is explicitly excluded** — it keeps its own existing, separate, concise operational success toast (`getChecklistAvulsoSuccessMessage`); the 275-message Atendimento library is never used there.
+
+**No gamification of any kind:** no points, badges, stars, streaks, leaderboards, employee/conversion scoring, achievement tables, or reinforcement-message history/logs. A message-selection failure can never cause Atendimento completion to fail — completion has already succeeded by the time reinforcement is attempted, and the selection call is defensively wrapped so it can never throw into its caller.
+
+**No database migration** — this milestone is entirely frontend/application-content; no schema, RPC, or persisted-state change was needed or introduced.
+
+**Visual presentation — final polish.** The default toast styling read as a generic system notification (near-white background blending into the surrounding UI). Fixed with a presentation-only pass, kept centralized entirely inside `src/config/atendimento-feedback.ts` (`atendimento.tsx` needed no changes for this) — no copy, classification, selection, or trigger-point logic was touched:
+
+- a modest size/prominence increase applied uniformly to every category (slightly more padding, slightly larger text, and this app's own `--shadow-card` value reused for the elevation, so the toast's depth matches every other elevated surface in the app) — still a single-line transient toast, never a banner, modal, or full-screen celebration, no confetti, no large icons, no animation that delays dismissal or operation;
+- a soft, category-specific pastel background/border/text-color treatment, applied via sonner's own per-toast CSS custom-property hooks (`--normal-bg` / `--normal-border` / `--normal-text`, plus `--border-radius`) rather than Tailwind classes — this reliably overrides sonner's built-in default styling instead of racing it on CSS specificity:
+  - `converted` → light green ("warm / positive / successful");
+  - `non_converted` → light blue/calm ("encouraging / forward-looking / neutral-positive") — deliberately never red, pink, gray, or any warning/destructive treatment, so a non-converted outcome never visually reads as failure;
+  - `mixed` → light amber/gold ("positive-neutral / warm / balanced") — sharing warning's hue for visual continuity with the rest of the app, but the pastel treatment and copy keep the tone celebratory, not cautionary.
+- the three background/border/text hues (152° green / 230° blue / 75° amber) intentionally match this app's existing `--success` / `--info` / `--warning` design tokens (`src/styles.css`) at pastel lightness/chroma — visual consistency with the rest of the app's semantic color language, not a one-off palette;
+- the color differences are explicitly presentation only, never a performance grading — they exist to keep every outcome feeling positive and legible, not to rank customers or employees against each other.
+
+**Final QA status:**
+
+- single converted customer → Converted pool — **PASS**;
+- single non-converted customer → Non-Converted pool — **PASS**;
+- multiple all-converted customers → Converted pool — **PASS**;
+- multiple all-non-converted customers → Non-Converted pool — **PASS**;
+- mixed converted + non-converted → Mixed pool — **not manually exercised in the browser yet**; non-blocking, since the classification logic (`temConvertido && temNaoConvertido → "mixed"`) is exact and code-validated, and mixed reuses the exact same trigger/selection/styling pipeline already proven correct for the other two categories;
+- `Farei depois` → reinforcement still appears with the correct customer-outcome category — **PASS**;
+- previous-day recovery completion → reinforcement appears correctly — **PASS**;
+- standalone checklist completion remains on its own separate success feedback, never the 275-message library — confirmed in code, unchanged by this milestone;
+- code-level validation: message-library counts exactly 100 / 150 / 25 with no accidental duplicates/omissions, `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
 
 Other future Atendimento capabilities remain documented in their respective sections.
 

@@ -50,8 +50,14 @@ import {
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { formatDiaCurto } from "@/lib/datetime";
+import { showAtendimentoReinforcement } from "@/config/atendimento-feedback";
+import type { MotivoCategoria } from "@/integrations/supabase/contracts";
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
-import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
+import {
+  useAtendimentoActions,
+  type ChecklistRespostaInput,
+  type ClienteOutcomeInput,
+} from "@/hooks/useAtendimentoActions";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useAtendimentoChecklist } from "@/hooks/useAtendimentoChecklist";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
@@ -144,6 +150,48 @@ function AtendimentoPage() {
   // "estou fora da Lista da Vez", distinct from souNaFila above.
   const estouNaLista = lista.some((entry) => entry.id_funcionario === funcionarioId);
   const isManagerOrAdmin = session.cargo === ADMINISTRATOR_CARGO || session.cargo === MANAGER_CARGO;
+
+  // Milestone 2E, section 17: captured synchronously from the draft BEFORE
+  // awaiting the RPC, never after — the draft-reset effect above can fire as
+  // soon as the query invalidation triggered inside actions.* resolves,
+  // which races with (and could otherwise beat) reading draft.clientes
+  // after the await. Reading it here, before any await, is immune to that.
+  const capturarCategoriasClientes = (): MotivoCategoria[] =>
+    draft.clientes
+      .map((cliente) => cliente.categoria)
+      .filter((categoria): categoria is MotivoCategoria => categoria !== null);
+
+  // Milestone 2E: reinforcement is shown only when the backend RPC actually
+  // reports success (section 1/5/14) — never speculatively, never on a
+  // failed/validation-rejected submission.
+  const handleConcluir = async (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => {
+    const categorias = capturarCategoriasClientes();
+    const success = await actions.concluir(clientes, checklist);
+    if (success) showAtendimentoReinforcement(categorias);
+  };
+
+  // Section 12/15: Farei depois still concludes the Atendimento successfully
+  // (2C.1) — reinforcement category comes from customer conversion outcome
+  // only, never influenced by the checklist-deferral decision.
+  const handleFareiDepois = async (clientes: ClienteOutcomeInput[]) => {
+    const categorias = capturarCategoriasClientes();
+    const success = await actions.adiarChecklist(clientes);
+    if (success) showAtendimentoReinforcement(categorias);
+  };
+
+  // Section 12: a previous-day recovered Atendimento gets the same
+  // reinforcement treatment as any other successful completion.
+  const handleConcluirPendente = async (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => {
+    const categorias = capturarCategoriasClientes();
+    const success = await actions.concluirPendente(clientes, checklist);
+    if (success) showAtendimentoReinforcement(categorias);
+  };
 
   const handleStartClick = async () => {
     // Iniciar Atividades eligibility is checked first, before any Lista da
@@ -293,7 +341,7 @@ function AtendimentoPage() {
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
             onVoltar={() => {}}
-            onConcluir={(clientes, checklist) => void actions.concluirPendente(clientes, checklist)}
+            onConcluir={(clientes, checklist) => void handleConcluirPendente(clientes, checklist)}
             onFareiDepois={() => {}}
           />
         ) : ativo?.status === "finalizando" ? (
@@ -308,8 +356,8 @@ function AtendimentoPage() {
             submitting={actions.submitting}
             errorMessage={actions.errorMessage}
             onVoltar={() => void actions.voltarAoAtendimento()}
-            onConcluir={(clientes, checklist) => void actions.concluir(clientes, checklist)}
-            onFareiDepois={(clientes) => void actions.adiarChecklist(clientes)}
+            onConcluir={(clientes, checklist) => void handleConcluir(clientes, checklist)}
+            onFareiDepois={(clientes) => void handleFareiDepois(clientes)}
           />
         ) : ativo ? (
           <AtendimentoAtivoCard
