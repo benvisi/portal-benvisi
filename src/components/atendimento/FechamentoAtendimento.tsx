@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ADICIONAR_CLIENTE_LABEL,
+  ATENDIMENTO_PENDENTE_SUBTITLE,
+  ATENDIMENTO_PENDENTE_TITLE,
   CHECKLIST_LOADING_MESSAGE,
   CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE,
   CHECKLIST_SUBTITLE,
@@ -18,6 +20,7 @@ import {
   FECHAMENTO_SUBTITLE,
   FECHAMENTO_TITLE,
   VOLTAR_AO_ATENDIMENTO_LABEL,
+  getAtendimentoPendenteDataLabel,
 } from "@/config/constants";
 import type {
   AtendimentoChecklistItem,
@@ -40,6 +43,16 @@ interface FechamentoAtendimentoProps {
   // Finalizando entry so far), in which case checklistPolicy is what
   // decides Farei depois availability, exactly as in 2C.1/2C.2.
   checklistObrigatorio: boolean | null;
+  // Milestone 2D: renders this Atendimento's closing as previous-day
+  // recovery (section 9/12) instead of an ordinary same-day Finalizando —
+  // Farei depois is unconditionally unavailable and the internal Voltar ao
+  // atendimento action is hidden (there is no live "active" state to return
+  // to), regardless of checklistObrigatorio/checklistPolicy. onVoltar is
+  // simply never invoked in this mode; callers pass a no-op.
+  isPendingRecovery?: boolean;
+  // The original Atendimento's Manaus business day, pre-formatted as
+  // "DD/MM" — only used (and only rendered) when isPendingRecovery is true.
+  diaOriginalFormatado?: string | null;
   submitting: boolean;
   errorMessage: string | null;
   onVoltar: () => void;
@@ -63,6 +76,8 @@ export function FechamentoAtendimento({
   checklistLoading,
   checklistPolicy,
   checklistObrigatorio,
+  isPendingRecovery = false,
+  diaOriginalFormatado = null,
   submitting,
   errorMessage,
   onVoltar,
@@ -86,7 +101,13 @@ export function FechamentoAtendimento({
   // of what the live policy says now. Only when no per-Atendimento
   // decision exists (checklistObrigatorio === null) does the live
   // checklistPolicy decide, exactly as in 2C.1/2C.2.
+  // Milestone 2D: Farei depois is never available during previous-day
+  // recovery (section 14), regardless of any historical checklist_obrigatorio
+  // value — see the migration comment on concluir_atendimento_pendente for
+  // the full reasoning on why this does not conflict with a previously-
+  // persisted non-mandatory periodic decision.
   const podeAdiar =
+    !isPendingRecovery &&
     (checklistObrigatorio === false ||
       (checklistObrigatorio === null && checklistPolicy === "defer_allowed")) &&
     clientesValidos;
@@ -134,8 +155,17 @@ export function FechamentoAtendimento({
   return (
     <Card className="flex flex-col gap-4 p-6 shadow-card">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-foreground">{FECHAMENTO_TITLE}</h2>
-        <p className="text-sm text-muted-foreground">{FECHAMENTO_SUBTITLE}</p>
+        <h2 className="text-lg font-semibold text-foreground">
+          {isPendingRecovery ? ATENDIMENTO_PENDENTE_TITLE : FECHAMENTO_TITLE}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {isPendingRecovery ? ATENDIMENTO_PENDENTE_SUBTITLE : FECHAMENTO_SUBTITLE}
+        </p>
+        {isPendingRecovery && diaOriginalFormatado && (
+          <p className="text-xs text-muted-foreground">
+            {getAtendimentoPendenteDataLabel(diaOriginalFormatado)}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -237,25 +267,29 @@ export function FechamentoAtendimento({
             <p className="text-center text-xs text-muted-foreground">{FAREI_DEPOIS_SUPPORT_TEXT}</p>
           </div>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          className="min-touch w-full"
-          disabled={submitting}
-          onClick={handleVoltarClick}
-        >
-          {VOLTAR_AO_ATENDIMENTO_LABEL}
-        </Button>
+        {!isPendingRecovery && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-touch w-full"
+            disabled={submitting}
+            onClick={handleVoltarClick}
+          >
+            {VOLTAR_AO_ATENDIMENTO_LABEL}
+          </Button>
+        )}
       </div>
 
-      <UnsavedDataConfirmDialog
-        open={confirmVoltarOpen}
-        onOpenChange={setConfirmVoltarOpen}
-        onConfirmDiscard={() => {
-          setConfirmVoltarOpen(false);
-          onVoltar();
-        }}
-      />
+      {!isPendingRecovery && (
+        <UnsavedDataConfirmDialog
+          open={confirmVoltarOpen}
+          onOpenChange={setConfirmVoltarOpen}
+          onConfirmDiscard={() => {
+            setConfirmVoltarOpen(false);
+            onVoltar();
+          }}
+        />
+      )}
     </Card>
   );
 }

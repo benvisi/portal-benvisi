@@ -49,6 +49,7 @@ import {
   getRemoverConfirmTitle,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
+import { formatDiaCurto } from "@/lib/datetime";
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { useAtendimentoActions } from "@/hooks/useAtendimentoActions";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
@@ -93,35 +94,55 @@ function AtendimentoPage() {
   const [removerAlvo, setRemoverAlvo] = useState<{ id: string; nome: string } | null>(null);
   const [removerOpen, setRemoverOpen] = useState(false);
 
-  const emFinalizando = ativoQuery.data?.status === "finalizando";
+  // Milestone 2D: previous-day recovery reuses the same closing form/draft
+  // as an ordinary Finalizando (section 12), so both statuses count as "in
+  // the closing flow" for the draft-reset and unsaved-data-protection logic
+  // below.
+  const emFluxoDeFechamento =
+    ativoQuery.data?.status === "finalizando" || ativoQuery.data?.status === "pendente_fechamento";
 
   // The draft only makes sense while actually in the closing flow. Resetting
-  // it whenever we're not in finalizando (rather than only on a specific
-  // action) covers every path out — Voltar ao atendimento, a successful
-  // final submission, or an initial mount before closing was ever entered —
-  // so re-entering closing later always starts from a blank form instead of
-  // resurrecting data the employee already discarded or submitted.
-  // resetDraft is destructured out (not draft.reset used inline) so this
-  // effect depends on the one stable function, not the whole draft object,
-  // which is a fresh literal every render and would otherwise re-fire this
-  // effect — and therefore call setClientes — on every single render.
+  // it whenever we're not in finalizando/pendente_fechamento (rather than
+  // only on a specific action) covers every path out — Voltar ao
+  // atendimento, a successful final submission, or an initial mount before
+  // closing was ever entered — so re-entering closing later always starts
+  // from a blank form instead of resurrecting data the employee already
+  // discarded or submitted. resetDraft is destructured out (not draft.reset
+  // used inline) so this effect depends on the one stable function, not the
+  // whole draft object, which is a fresh literal every render and would
+  // otherwise re-fire this effect — and therefore call setClientes — on
+  // every single render.
   useEffect(() => {
-    if (!emFinalizando) resetDraft();
-  }, [emFinalizando, resetDraft]);
+    if (!emFluxoDeFechamento) resetDraft();
+  }, [emFluxoDeFechamento, resetDraft]);
 
   if (!ready || !session) return null;
 
   const ativo = ativoQuery.data ?? null;
+  const isPendingRecovery = ativo?.status === "pendente_fechamento";
   const lista = listaQuery.data ?? [];
   const disponiveis = lista.filter((entry) => entry.status === "disponivel");
   const ocupados = lista.filter((entry) => entry.status !== "disponivel");
   const souPrimeiro = disponiveis.length > 0 && disponiveis[0].id_funcionario === funcionarioId;
-  // Milestone 2A.2: presence in disponiveis (rather than a dedicated flag)
-  // is enough to know whether the employee currently participates in Lista
-  // da Vez — get_lista_vez_estado already excludes anyone who left/was
-  // removed entirely, so absence here (once Iniciar Atividades is done and
-  // the query has actually loaded) means "outside".
+  // souNaFila additionally requires status === "disponivel" — correct for
+  // gating actions that only make sense while actually available (e.g. Sair
+  // da Lista da Vez, which the backend itself only permits while
+  // disponivel). It is NOT a safe proxy for queue membership in general:
+  // before Milestone 2D, an employee with no own active Atendimento (!ativo)
+  // could never legitimately have disponivel = false, so "not in
+  // disponiveis" and "not na_fila" were equivalent. 2D breaks that
+  // invariant — a previous-day recovery leaves the Atendimento concluded
+  // (ativo becomes null) while today's own queue row could, in an edge
+  // case, still be mid-restoration. Using souNaFila for the "estou fora da
+  // Lista da Vez" gate below would then incorrectly tell a genuine member
+  // they're outside the queue.
   const souNaFila = disponiveis.some((entry) => entry.id_funcionario === funcionarioId);
+  // Milestone 2D: presence in `lista` at all, regardless of status —
+  // get_lista_vez_estado already excludes na_fila = false rows entirely
+  // (Milestone 2A.2), so mere presence here is exactly "am I still a queue
+  // member", independent of disponivel. This is the correct signal for
+  // "estou fora da Lista da Vez", distinct from souNaFila above.
+  const estouNaLista = lista.some((entry) => entry.id_funcionario === funcionarioId);
   const isManagerOrAdmin = session.cargo === ADMINISTRATOR_CARGO || session.cargo === MANAGER_CARGO;
 
   const handleStartClick = async () => {
@@ -152,7 +173,7 @@ function AtendimentoPage() {
   };
 
   const handleVoltarPainelClick = () => {
-    if (emFinalizando && draft.isDirty) {
+    if (emFluxoDeFechamento && draft.isDirty) {
       setConfirmVoltarPainelOpen(true);
       return;
     }
@@ -252,7 +273,30 @@ function AtendimentoPage() {
         */}
         <PendingChecklistIndicator funcionarioId={funcionarioId} sessionToken={sessionToken} />
 
-        {ativo?.status === "finalizando" ? (
+        {isPendingRecovery ? (
+          // Milestone 2D: previous-day recovery takes precedence over every
+          // normal Atendimento operation (section 10) — no Iniciar
+          // atendimento, no Lista da Vez actions, no bypass. Reuses the same
+          // closing form as an ordinary Finalizando (section 12).
+          <FechamentoAtendimento
+            isPendingRecovery
+            diaOriginalFormatado={
+              ativo?.dia_negocio_original ? formatDiaCurto(ativo.dia_negocio_original) : null
+            }
+            draft={draft}
+            motivos={motivosQuery.data ?? []}
+            motivosLoading={motivosQuery.isLoading}
+            checklistItens={checklistQuery.data ?? []}
+            checklistLoading={checklistQuery.isLoading}
+            checklistPolicy={undefined}
+            checklistObrigatorio={null}
+            submitting={actions.submitting}
+            errorMessage={actions.errorMessage}
+            onVoltar={() => {}}
+            onConcluir={(clientes, checklist) => void actions.concluirPendente(clientes, checklist)}
+            onFareiDepois={() => {}}
+          />
+        ) : ativo?.status === "finalizando" ? (
           <FechamentoAtendimento
             draft={draft}
             motivos={motivosQuery.data ?? []}
@@ -277,7 +321,7 @@ function AtendimentoPage() {
             onCancelarProvisorio={() => void actions.cancelar(ativo.id)}
             onIniciarFechamento={() => void actions.iniciarFechamento()}
           />
-        ) : !shift.isLoading && shift.startedToday && !listaQuery.isLoading && !souNaFila ? (
+        ) : !shift.isLoading && shift.startedToday && !listaQuery.isLoading && !estouNaLista ? (
           // Milestone 2A.2: activities were already started today, but the
           // employee currently isn't a Lista da Vez participant (voluntary
           // leave or manager/admin removal). Iniciar atendimento is hidden
@@ -364,10 +408,11 @@ function AtendimentoPage() {
           </Card>
         )}
 
-        <Card className="flex flex-col gap-4 p-6 shadow-card">
-          <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
+        {!isPendingRecovery && (
+          <Card className="flex flex-col gap-4 p-6 shadow-card">
+            <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
 
-          {/*
+            {/*
             Delegate-start/delegate-cancel actions (Milestone 2A.1) originate
             from this card, not from the ativo/finalizando/start card above,
             which has its own errorMessage display for its own actions — an
@@ -375,105 +420,106 @@ function AtendimentoPage() {
             silently (e.g. the target became unavailable between the confirm
             dialog and the RPC call).
           */}
-          {actions.errorMessage && (
-            <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
-              {actions.errorMessage}
-            </p>
-          )}
-          {listaActions.errorMessage && (
-            <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
-              {listaActions.errorMessage}
-            </p>
-          )}
+            {actions.errorMessage && (
+              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                {actions.errorMessage}
+              </p>
+            )}
+            {listaActions.errorMessage && (
+              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                {listaActions.errorMessage}
+              </p>
+            )}
 
-          {listaQuery.isLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
-            </div>
-          ) : lista.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_EMPTY_MESSAGE}</p>
-          ) : (
-            <ol className="flex flex-col gap-2">
-              {disponiveis.map((entry) => {
-                const souEu = entry.id_funcionario === funcionarioId;
-                return (
-                  <li
-                    key={entry.id_funcionario}
-                    className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
-                  >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                      {entry.ordem}
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{entry.nome}</span>
-                    {souEu ? (
-                      <Badge variant="outline" className="ml-auto">
-                        {LISTA_DA_VEZ_VOCE_LABEL}
-                      </Badge>
-                    ) : (
-                      <div className="ml-auto flex items-center gap-1">
-                        {isManagerOrAdmin && (
-                          // Manager/admin exception action (Milestone 2A.2,
-                          // section 15) — UserMinus is deliberately a
-                          // different silhouette from Iniciar atendimento's
-                          // UserPlus below (they looked too similar at
-                          // mobile icon sizes with a shared UserX/UserPlus
-                          // pairing), and destructive-red by default (not
-                          // just on hover) so this reads as the cautionary
-                          // action at a glance. Never shown on the
-                          // employee's own row (that's what Sair da Lista
-                          // da Vez, above, is for) or on Em
-                          // atendimento/Finalizando rows (those render via
-                          // EmAtendimentoRow instead, not this branch).
+            {listaQuery.isLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
+              </div>
+            ) : lista.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_EMPTY_MESSAGE}</p>
+            ) : (
+              <ol className="flex flex-col gap-2">
+                {disponiveis.map((entry) => {
+                  const souEu = entry.id_funcionario === funcionarioId;
+                  return (
+                    <li
+                      key={entry.id_funcionario}
+                      className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
+                        {entry.ordem}
+                      </span>
+                      <span className="text-sm font-medium text-foreground">{entry.nome}</span>
+                      {souEu ? (
+                        <Badge variant="outline" className="ml-auto">
+                          {LISTA_DA_VEZ_VOCE_LABEL}
+                        </Badge>
+                      ) : (
+                        <div className="ml-auto flex items-center gap-1">
+                          {isManagerOrAdmin && (
+                            // Manager/admin exception action (Milestone 2A.2,
+                            // section 15) — UserMinus is deliberately a
+                            // different silhouette from Iniciar atendimento's
+                            // UserPlus below (they looked too similar at
+                            // mobile icon sizes with a shared UserX/UserPlus
+                            // pairing), and destructive-red by default (not
+                            // just on hover) so this reads as the cautionary
+                            // action at a glance. Never shown on the
+                            // employee's own row (that's what Sair da Lista
+                            // da Vez, above, is for) or on Em
+                            // atendimento/Finalizando rows (those render via
+                            // EmAtendimentoRow instead, not this branch).
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="min-touch h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                handleRemoverClick({ id: entry.id_funcionario, nome: entry.nome })
+                              }
+                              aria-label={getRemoverAriaLabel(entry.nome)}
+                            >
+                              <UserMinus className="h-4 w-4" aria-hidden />
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="min-touch h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            className="min-touch h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                             onClick={() =>
-                              handleRemoverClick({ id: entry.id_funcionario, nome: entry.nome })
+                              handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
                             }
-                            aria-label={getRemoverAriaLabel(entry.nome)}
+                            aria-label={getIniciarParaAriaLabel(entry.nome)}
                           >
-                            <UserMinus className="h-4 w-4" aria-hidden />
+                            <UserPlus className="h-4 w-4" aria-hidden />
                           </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="min-touch h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                          onClick={() =>
-                            handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
-                          }
-                          aria-label={getIniciarParaAriaLabel(entry.nome)}
-                        >
-                          <UserPlus className="h-4 w-4" aria-hidden />
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-              {ocupados.map((entry) => (
-                <EmAtendimentoRow
-                  key={entry.id_funcionario}
-                  nome={entry.nome}
-                  status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
-                  iniciadoEm={entry.iniciado_em}
-                  souEu={entry.id_funcionario === funcionarioId}
-                  idAtendimento={entry.id_atendimento}
-                  prazoProvisorioEm={entry.prazo_provisorio_em}
-                  podeCancelarComoIniciador={
-                    entry.id_funcionario_iniciador === funcionarioId &&
-                    entry.id_funcionario_iniciador !== entry.id_funcionario
-                  }
-                  cancelando={actions.submitting}
-                  onCancelarInicio={handleCancelarDelegado}
-                />
-              ))}
-            </ol>
-          )}
-        </Card>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+                {ocupados.map((entry) => (
+                  <EmAtendimentoRow
+                    key={entry.id_funcionario}
+                    nome={entry.nome}
+                    status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
+                    iniciadoEm={entry.iniciado_em}
+                    souEu={entry.id_funcionario === funcionarioId}
+                    idAtendimento={entry.id_atendimento}
+                    prazoProvisorioEm={entry.prazo_provisorio_em}
+                    podeCancelarComoIniciador={
+                      entry.id_funcionario_iniciador === funcionarioId &&
+                      entry.id_funcionario_iniciador !== entry.id_funcionario
+                    }
+                    cancelando={actions.submitting}
+                    onCancelarInicio={handleCancelarDelegado}
+                  />
+                ))}
+              </ol>
+            )}
+          </Card>
+        )}
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

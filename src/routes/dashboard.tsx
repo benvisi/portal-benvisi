@@ -14,6 +14,7 @@ import {
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { getManausGreeting } from "@/lib/datetime";
+import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useTermoStatus } from "@/hooks/useTermoStatus";
 import { useSignOut } from "@/hooks/useSignOut";
@@ -33,6 +34,15 @@ function DashboardPage() {
   const sessionToken = session?.session_token ?? null;
   const termoStatus = useTermoStatus(funcionarioId, sessionToken);
   const accepted = termoStatus.data === true;
+  // Milestone 2D: a previous-day pendente_fechamento Atendimento takes
+  // precedence over normal dashboard/operational activity (section 9/10) —
+  // same blocking-redirect pattern already used for Termo acceptance below,
+  // reused rather than duplicated. Only queried once Termo is already
+  // accepted (mirrors ShiftStartCard/PendingChecklistIndicator's existing
+  // gating further down), since there is nothing meaningful to check before
+  // that.
+  const ativoQuery = useAtendimentoAtivo(accepted ? funcionarioId : null, sessionToken);
+  const hasPendingRecovery = ativoQuery.data?.status === "pendente_fechamento";
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -40,6 +50,12 @@ function DashboardPage() {
       void navigate({ to: ROUTES.TERMS, replace: true });
     }
   }, [ready, termoStatus.isSuccess, accepted, navigate]);
+
+  useEffect(() => {
+    if (ready && accepted && hasPendingRecovery) {
+      void navigate({ to: ROUTES.ATENDIMENTO, replace: true });
+    }
+  }, [ready, accepted, hasPendingRecovery, navigate]);
 
   if (!ready || !session) return null;
 
@@ -68,6 +84,18 @@ function DashboardPage() {
   // result and the redirect effect above firing — all normal transitions,
   // never an error.
   if (!accepted) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+      </main>
+    );
+  }
+
+  // Milestone 2D: covers the initial pending-Atendimento check and the brief
+  // gap before the redirect effect above fires — same treatment as the
+  // Termo loading state, so the dashboard's normal modules are never
+  // flashed before a pending-recovery redirect.
+  if (ativoQuery.isLoading || hasPendingRecovery) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6">
         <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />

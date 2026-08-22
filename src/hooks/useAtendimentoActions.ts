@@ -192,6 +192,23 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     [runBooleanRpc, sessionToken],
   );
 
+  // Milestone 2D: recovery completion for a previous-day pendente_fechamento
+  // Atendimento. No p_adiar_checklist parameter exists on this RPC at all —
+  // Farei depois is never offered during recovery (section 14).
+  const concluirPendente = useCallback(
+    (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento_pendente",
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: checklist,
+        },
+        "concluir_atendimento_pendente",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
   return {
     submitting,
     errorMessage,
@@ -201,5 +218,6 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     voltarAoAtendimento,
     concluir,
     adiarChecklist,
+    concluirPendente,
   };
 }

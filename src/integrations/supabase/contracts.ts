@@ -86,9 +86,13 @@ export function isListaVezEntry(value: unknown): value is ListaVezEntry {
   );
 }
 
-export type AtendimentoStatus = "ativo" | "finalizando";
+export type AtendimentoStatus = "ativo" | "finalizando" | "pendente_fechamento";
 
-const ATENDIMENTO_STATUSES: readonly AtendimentoStatus[] = ["ativo", "finalizando"];
+const ATENDIMENTO_STATUSES: readonly AtendimentoStatus[] = [
+  "ativo",
+  "finalizando",
+  "pendente_fechamento",
+];
 
 export interface AtendimentoAtivo {
   id: string;
@@ -98,6 +102,11 @@ export interface AtendimentoAtivo {
   prazo_provisorio_em: string;
   iniciado_por_nome: string | null;
   checklist_obrigatorio: boolean | null;
+  // Milestone 2D: the Manaus calendar date (YYYY-MM-DD) this Atendimento
+  // originally belonged to — only meaningful once status is
+  // "pendente_fechamento" (drives the recovery screen's contextual date
+  // copy); null for a same-day ativo/finalizando Atendimento.
+  dia_negocio_original: string | null;
 }
 
 export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
@@ -113,7 +122,8 @@ export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
     typeof candidate.prazo_provisorio_em === "string" &&
     (candidate.iniciado_por_nome === null || typeof candidate.iniciado_por_nome === "string") &&
     (candidate.checklist_obrigatorio === null ||
-      typeof candidate.checklist_obrigatorio === "boolean")
+      typeof candidate.checklist_obrigatorio === "boolean") &&
+    (candidate.dia_negocio_original === null || typeof candidate.dia_negocio_original === "string")
   );
 }
 

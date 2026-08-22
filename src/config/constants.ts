@@ -94,11 +94,28 @@ export const NENHUM_ATENDIMENTO_ATIVO_MESSAGE = "Não há atendimento ativo para
 export const PRAZO_PROVISORIO_EXPIRADO_MESSAGE =
   "O prazo para cancelar este atendimento já passou.";
 
+// Milestone 2D
+export const ATENDIMENTO_PENDENTE_FECHAMENTO_MESSAGE =
+  "Conclua seu atendimento pendente antes de iniciar um novo atendimento.";
+export const NENHUM_ATENDIMENTO_PENDENTE_MESSAGE = "Não há atendimento pendente para esta ação.";
+
 export const FECHAMENTO_STATUS_LABEL = "Finalizando";
 export const FECHAMENTO_TITLE = "Finalizar atendimento";
 export const FECHAMENTO_SUBTITLE = "Registre os clientes atendidos antes de concluir.";
 export const FECHAMENTO_SUBMIT_LABEL = "Concluir atendimento";
 export const VOLTAR_AO_ATENDIMENTO_LABEL = "Voltar ao atendimento";
+
+// Milestone 2D: shown instead of FECHAMENTO_TITLE/FECHAMENTO_SUBTITLE when
+// closing a previous-day pendente_fechamento Atendimento — deliberately
+// neutral/operational ("workflow recovery", never "erro", "irregularidade",
+// "falha", or "advertência" — section 25).
+export const ATENDIMENTO_PENDENTE_TITLE = "Atendimento pendente de conclusão";
+export const ATENDIMENTO_PENDENTE_SUBTITLE =
+  "Finalize as informações deste atendimento antes de continuar.";
+
+export function getAtendimentoPendenteDataLabel(dataFormatada: string): string {
+  return `Atendimento iniciado em ${dataFormatada}.`;
+}
 
 export const CHECKLIST_TITLE = "Checklist de reposição";
 export const CHECKLIST_SUBTITLE = "Confirme os três itens antes de concluir o atendimento.";
