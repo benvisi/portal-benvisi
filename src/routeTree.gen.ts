@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AtendimentoRouteImport } from './routes/atendimento'
+import { Route as AdministrativoRouteImport } from './routes/administrativo'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TermosRoute = TermosRouteImport.update({
@@ -23,6 +25,16 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtendimentoRoute = AtendimentoRouteImport.update({
+  id: '/atendimento',
+  path: '/atendimento',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministrativoRoute = AdministrativoRouteImport.update({
+  id: '/administrativo',
+  path: '/administrativo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +43,44 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/administrativo': typeof AdministrativoRoute
+  '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/administrativo': typeof AdministrativoRoute
+  '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/administrativo': typeof AdministrativoRoute
+  '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/termos'
+  fullPaths: '/' | '/administrativo' | '/atendimento' | '/dashboard' | '/termos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/termos'
-  id: '__root__' | '/' | '/dashboard' | '/termos'
+  to: '/' | '/administrativo' | '/atendimento' | '/dashboard' | '/termos'
+  id:
+    | '__root__'
+    | '/'
+    | '/administrativo'
+    | '/atendimento'
+    | '/dashboard'
+    | '/termos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdministrativoRoute: typeof AdministrativoRoute
+  AtendimentoRoute: typeof AtendimentoRoute
   DashboardRoute: typeof DashboardRoute
   TermosRoute: typeof TermosRoute
 }
@@ -75,6 +101,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atendimento': {
+      id: '/atendimento'
+      path: '/atendimento'
+      fullPath: '/atendimento'
+      preLoaderRoute: typeof AtendimentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administrativo': {
+      id: '/administrativo'
+      path: '/administrativo'
+      fullPath: '/administrativo'
+      preLoaderRoute: typeof AdministrativoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +127,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdministrativoRoute: AdministrativoRoute,
+  AtendimentoRoute: AtendimentoRoute,
   DashboardRoute: DashboardRoute,
   TermosRoute: TermosRoute,
 }

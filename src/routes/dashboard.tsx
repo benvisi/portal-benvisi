@@ -2,10 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ClipboardCheck, Loader2, LogOut, Package, Settings, Users } from "lucide-react";
 
+import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { Button } from "@/components/ui/button";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { ModuleInProgressDialog } from "@/components/dashboard/ModuleInProgressDialog";
 import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
+import { TextSizeToggle } from "@/components/dashboard/TextSizeToggle";
 import {
   ADMINISTRATOR_CARGO,
   DASHBOARD_WELCOME_MESSAGE,
@@ -13,6 +15,7 @@ import {
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { getManausGreeting } from "@/lib/datetime";
+import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useTermoStatus } from "@/hooks/useTermoStatus";
 import { useSignOut } from "@/hooks/useSignOut";
@@ -32,6 +35,15 @@ function DashboardPage() {
   const sessionToken = session?.session_token ?? null;
   const termoStatus = useTermoStatus(funcionarioId, sessionToken);
   const accepted = termoStatus.data === true;
+  // Milestone 2D: a previous-day pendente_fechamento Atendimento takes
+  // precedence over normal dashboard/operational activity (section 9/10) —
+  // same blocking-redirect pattern already used for Termo acceptance below,
+  // reused rather than duplicated. Only queried once Termo is already
+  // accepted (mirrors ShiftStartCard/PendingChecklistIndicator's existing
+  // gating further down), since there is nothing meaningful to check before
+  // that.
+  const ativoQuery = useAtendimentoAtivo(accepted ? funcionarioId : null, sessionToken);
+  const hasPendingRecovery = ativoQuery.data?.status === "pendente_fechamento";
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -39,6 +51,12 @@ function DashboardPage() {
       void navigate({ to: ROUTES.TERMS, replace: true });
     }
   }, [ready, termoStatus.isSuccess, accepted, navigate]);
+
+  useEffect(() => {
+    if (ready && accepted && hasPendingRecovery) {
+      void navigate({ to: ROUTES.ATENDIMENTO, replace: true });
+    }
+  }, [ready, accepted, hasPendingRecovery, navigate]);
 
   if (!ready || !session) return null;
 
@@ -74,32 +92,37 @@ function DashboardPage() {
     );
   }
 
+  // Milestone 2D: covers the initial pending-Atendimento check and the brief
+  // gap before the redirect effect above fires — same treatment as the
+  // Termo loading state, so the dashboard's normal modules are never
+  // flashed before a pending-recovery redirect.
+  if (ativoQuery.isLoading || hasPendingRecovery) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+      </main>
+    );
+  }
+
   const isAdmin = session.cargo === ADMINISTRATOR_CARGO;
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold uppercase tracking-widest text-brand">
-              Benvisi
-            </span>
-            <h1 className="text-2xl font-semibold text-foreground">
-              {getManausGreeting()}, {session.nome}!
-            </h1>
-            <p className="text-sm text-muted-foreground">{DASHBOARD_WELCOME_MESSAGE}</p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-touch shrink-0 gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => void signOut()}
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            {SIGN_OUT_BUTTON_LABEL}
-          </Button>
+        <header className="flex flex-col gap-1">
+          <span className="text-xs font-semibold uppercase tracking-widest text-brand">
+            Benvisi
+          </span>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {getManausGreeting()}, {session.nome}!
+          </h1>
+          <p className="text-sm text-muted-foreground">{DASHBOARD_WELCOME_MESSAGE}</p>
         </header>
+
+        <PendingChecklistIndicator
+          funcionarioId={session.funcionario_id}
+          sessionToken={sessionToken}
+        />
 
         <div className="flex flex-col gap-4">
           {!isAdmin && (
@@ -111,7 +134,7 @@ function DashboardPage() {
             title="Atendimento"
             description="Atendimento ao cliente e apoio às vendas."
             variant="brand"
-            onClick={() => setModuleDialogOpen(true)}
+            onClick={() => void navigate({ to: ROUTES.ATENDIMENTO })}
           />
           <ModuleCard
             icon={Package}
@@ -134,9 +157,31 @@ function DashboardPage() {
               title="Administrativo"
               description="Gestão, configurações e recursos administrativos."
               variant="secondary"
-              onClick={() => setModuleDialogOpen(true)}
+              onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO })}
             />
           )}
+        </div>
+
+        {/*
+          Dashboard utility area — deliberately separate from the header
+          (kept focused on greeting/identity) and from the operational
+          modules above. Same location and layout on every viewport: normal
+          document flow (no fixed/sticky/overlay), a subtle top divider,
+          and flex-wrap so Texto maior and Sair stack gracefully rather than
+          losing their labels on narrow widths.
+        */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <TextSizeToggle />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-touch gap-2 text-muted-foreground hover:text-foreground"
+            onClick={() => void signOut()}
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            {SIGN_OUT_BUTTON_LABEL}
+          </Button>
         </div>
       </div>
 

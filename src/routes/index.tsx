@@ -94,7 +94,15 @@ function LoginPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 flex-col gap-6">
+          // items-center matters here: PinPanel below is `w-full max-w-xs`
+          // with no margin-auto of its own (unlike the desktop <section>,
+          // which centers via its own `items-center`). Without this on the
+          // parent, flexbox's default `align-items: stretch` still caps
+          // PinPanel at max-w-xs but anchors it to the cross-axis start
+          // (left edge) rather than centering it — on a viewport wider than
+          // 320px (every iPhone), that reads as extra margin on the right
+          // only. Voltar keeps `self-start` below so it isn't re-centered.
+          <div className="flex flex-1 flex-col items-center gap-6">
             <button
               type="button"
               onClick={login.onBack}

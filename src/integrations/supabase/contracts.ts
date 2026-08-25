@@ -48,3 +48,180 @@ export function isVerifyPinSuccess(value: unknown): value is VerifyPinSuccess {
     candidate.session_token.length > 0
   );
 }
+
+export type ListaVezStatus = "disponivel" | "em_atendimento" | "finalizando";
+
+const LISTA_VEZ_STATUSES: readonly ListaVezStatus[] = [
+  "disponivel",
+  "em_atendimento",
+  "finalizando",
+];
+
+export interface ListaVezEntry {
+  id_funcionario: string;
+  nome: string;
+  status: ListaVezStatus;
+  ordem: number | null;
+  iniciado_em: string | null;
+  id_atendimento: string | null;
+  id_funcionario_iniciador: string | null;
+  prazo_provisorio_em: string | null;
+}
+
+export function isListaVezEntry(value: unknown): value is ListaVezEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_funcionario === "string" &&
+    candidate.id_funcionario.length > 0 &&
+    typeof candidate.nome === "string" &&
+    typeof candidate.status === "string" &&
+    LISTA_VEZ_STATUSES.includes(candidate.status as ListaVezStatus) &&
+    (candidate.ordem === null || typeof candidate.ordem === "number") &&
+    (candidate.iniciado_em === null || typeof candidate.iniciado_em === "string") &&
+    (candidate.id_atendimento === null || typeof candidate.id_atendimento === "string") &&
+    (candidate.id_funcionario_iniciador === null ||
+      typeof candidate.id_funcionario_iniciador === "string") &&
+    (candidate.prazo_provisorio_em === null || typeof candidate.prazo_provisorio_em === "string")
+  );
+}
+
+export type AtendimentoStatus = "ativo" | "finalizando" | "pendente_fechamento";
+
+const ATENDIMENTO_STATUSES: readonly AtendimentoStatus[] = [
+  "ativo",
+  "finalizando",
+  "pendente_fechamento",
+];
+
+export interface AtendimentoAtivo {
+  id: string;
+  status: AtendimentoStatus;
+  iniciado_em: string;
+  fora_de_ordem: boolean;
+  prazo_provisorio_em: string;
+  iniciado_por_nome: string | null;
+  checklist_obrigatorio: boolean | null;
+  // Milestone 2D: the Manaus calendar date (YYYY-MM-DD) this Atendimento
+  // originally belonged to — only meaningful once status is
+  // "pendente_fechamento" (drives the recovery screen's contextual date
+  // copy); null for a same-day ativo/finalizando Atendimento.
+  dia_negocio_original: string | null;
+}
+
+export function isAtendimentoAtivo(value: unknown): value is AtendimentoAtivo {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.status === "string" &&
+    ATENDIMENTO_STATUSES.includes(candidate.status as AtendimentoStatus) &&
+    typeof candidate.iniciado_em === "string" &&
+    typeof candidate.fora_de_ordem === "boolean" &&
+    typeof candidate.prazo_provisorio_em === "string" &&
+    (candidate.iniciado_por_nome === null || typeof candidate.iniciado_por_nome === "string") &&
+    (candidate.checklist_obrigatorio === null ||
+      typeof candidate.checklist_obrigatorio === "boolean") &&
+    (candidate.dia_negocio_original === null || typeof candidate.dia_negocio_original === "string")
+  );
+}
+
+/**
+ * iniciar_atendimento's own return shape — deliberately narrower than
+ * AtendimentoAtivo. It never returned a status column (a freshly-started
+ * Atendimento is always 'ativo' by construction, so there was never
+ * anything to disambiguate), and Milestone 2A did not change that RPC's
+ * signature. AtendimentoAtivo gained a required status field for
+ * get_atendimento_ativo's newer shape; reusing that guard here caused a
+ * confirmed bug — iniciar_atendimento's genuinely successful response was
+ * rejected by isAtendimentoAtivo for lacking status, throwing client-side
+ * after the server had already committed the new Atendimento, surfacing a
+ * false "start failed" error while the backend state was actually correct.
+ */
+export interface AtendimentoIniciado {
+  id: string;
+  iniciado_em: string;
+  fora_de_ordem: boolean;
+  prazo_provisorio_em: string;
+}
+
+export function isAtendimentoIniciado(value: unknown): value is AtendimentoIniciado {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.iniciado_em === "string" &&
+    typeof candidate.fora_de_ordem === "boolean" &&
+    typeof candidate.prazo_provisorio_em === "string"
+  );
+}
+
+export type MotivoCategoria = "convertido" | "nao_convertido";
+
+const MOTIVO_CATEGORIAS: readonly MotivoCategoria[] = ["convertido", "nao_convertido"];
+
+export interface AtendimentoMotivo {
+  id: string;
+  codigo: string;
+  categoria: MotivoCategoria;
+  rotulo: string;
+  detalhe_obrigatorio: boolean;
+  ordem_exibicao: number;
+}
+
+export function isAtendimentoMotivo(value: unknown): value is AtendimentoMotivo {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.codigo === "string" &&
+    typeof candidate.categoria === "string" &&
+    MOTIVO_CATEGORIAS.includes(candidate.categoria as MotivoCategoria) &&
+    typeof candidate.rotulo === "string" &&
+    typeof candidate.detalhe_obrigatorio === "boolean" &&
+    typeof candidate.ordem_exibicao === "number"
+  );
+}
+
+export interface AtendimentoChecklistItem {
+  id: string;
+  versao: number;
+  codigo: string;
+  titulo: string;
+  guia_bullets: string[] | null;
+  ordem_exibicao: number;
+  obrigatorio: boolean;
+}
+
+export function isAtendimentoChecklistItem(value: unknown): value is AtendimentoChecklistItem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.versao === "number" &&
+    typeof candidate.codigo === "string" &&
+    candidate.codigo.length > 0 &&
+    typeof candidate.titulo === "string" &&
+    (candidate.guia_bullets === null ||
+      (Array.isArray(candidate.guia_bullets) &&
+        candidate.guia_bullets.every((bullet) => typeof bullet === "string"))) &&
+    typeof candidate.ordem_exibicao === "number" &&
+    typeof candidate.obrigatorio === "boolean"
+  );
+}
+
+export type ChecklistPolicy = "required" | "defer_allowed" | "periodic_verification";
+
+const CHECKLIST_POLICIES: readonly ChecklistPolicy[] = [
+  "required",
+  "defer_allowed",
+  "periodic_verification",
+];
+
+export function isChecklistPolicy(value: unknown): value is ChecklistPolicy {
+  return typeof value === "string" && CHECKLIST_POLICIES.includes(value as ChecklistPolicy);
+}

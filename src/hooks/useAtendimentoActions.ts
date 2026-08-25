@@ -1,0 +1,223 @@
+import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { supabase } from "@/integrations/supabase/client";
+import { ATENDIMENTO_GENERIC_ERROR_MESSAGE } from "@/config/constants";
+import { isAtendimentoIniciado } from "@/integrations/supabase/contracts";
+import { atendimentoAtivoQueryKey } from "@/hooks/useAtendimentoAtivo";
+import { checklistPendenciasCountQueryKey } from "@/hooks/useChecklistPendenciasCount";
+import { listaVezQueryKey } from "@/hooks/useListaVez";
+import { useSessionErrorHandler } from "@/hooks/useSessionErrorHandler";
+import {
+  getAtendimentoErrorMessage,
+  isForaDeOrdemConfirmationRequired,
+} from "@/lib/atendimento-error";
+
+export type IniciarAtendimentoResult = "ok" | "requires_confirmation" | "error";
+
+export interface ClienteOutcomeInput {
+  id_motivo: string;
+  detalhe: string | null;
+}
+
+export interface ChecklistRespostaInput {
+  codigo: string;
+  concluido: boolean;
+}
+
+async function iniciarAtendimentoRpc(
+  sessionToken: string,
+  confirmarForaDeOrdem: boolean,
+  idFuncionarioAlvo: string | null,
+) {
+  const { data, error } = await supabase.rpc("iniciar_atendimento", {
+    p_session_token: sessionToken,
+    p_confirmar_fora_de_ordem: confirmarForaDeOrdem,
+    p_id_funcionario_alvo: idFuncionarioAlvo,
+  });
+
+  if (error) throw error;
+
+  const rows = Array.isArray(data) ? data : [];
+  const row = rows[0];
+  if (row === undefined || !isAtendimentoIniciado(row)) {
+    throw new Error("iniciar_atendimento returned no Atendimento row");
+  }
+  return row;
+}
+
+/**
+ * Bundles every Atendimento mutation (start, cancel-provisional, enter
+ * closing, abandon closing, final submission) behind one submitting/error
+ * state, mirroring useShiftStart's shape. Every successful call invalidates
+ * both the active-Atendimento and Lista da Vez queries for this employee,
+ * since all of these RPCs change at least one of those.
+ */
+export function useAtendimentoActions(funcionarioId: string | null, sessionToken: string | null) {
+  const queryClient = useQueryClient();
+  const handleSessionError = useSessionErrorHandler();
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const invalidate = useCallback(() => {
+    if (!funcionarioId) return;
+    void queryClient.invalidateQueries({ queryKey: atendimentoAtivoQueryKey(funcionarioId) });
+    void queryClient.invalidateQueries({ queryKey: listaVezQueryKey(funcionarioId) });
+    void queryClient.invalidateQueries({
+      queryKey: checklistPendenciasCountQueryKey(funcionarioId),
+    });
+  }, [queryClient, funcionarioId]);
+
+  const runBooleanRpc = useCallback(
+    async (
+      rpcName: string,
+      params: Record<string, unknown>,
+      errorLabel: string,
+    ): Promise<boolean> => {
+      if (submitting || !sessionToken) return false;
+      setSubmitting(true);
+      setErrorMessage(null);
+
+      try {
+        const { data, error } = await supabase.rpc(rpcName, params);
+        if (error) throw error;
+        if (data !== true) throw new Error(`${rpcName} did not report success`);
+        invalidate();
+        return true;
+      } catch (error) {
+        console.error(`[useAtendimentoActions] ${errorLabel} failed:`, error);
+        if (handleSessionError(error)) return false;
+        setErrorMessage(getAtendimentoErrorMessage(error) ?? ATENDIMENTO_GENERIC_ERROR_MESSAGE);
+        return false;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [submitting, sessionToken, invalidate, handleSessionError],
+  );
+
+  const iniciar = useCallback(
+    async (
+      confirmarForaDeOrdem: boolean,
+      idFuncionarioAlvo?: string,
+    ): Promise<IniciarAtendimentoResult> => {
+      if (submitting || !sessionToken) return "error";
+      setSubmitting(true);
+      setErrorMessage(null);
+
+      try {
+        await iniciarAtendimentoRpc(sessionToken, confirmarForaDeOrdem, idFuncionarioAlvo ?? null);
+        invalidate();
+        return "ok";
+      } catch (error) {
+        console.error("[useAtendimentoActions] iniciar_atendimento failed:", error);
+        if (handleSessionError(error)) return "error";
+        if (isForaDeOrdemConfirmationRequired(error)) {
+          // The client's queue snapshot was stale (someone else changed the
+          // queue between render and this call) — refresh it and let the
+          // caller show the same out-of-turn confirmation it would have
+          // shown had the snapshot been fresh, instead of failing silently.
+          invalidate();
+          return "requires_confirmation";
+        }
+        setErrorMessage(getAtendimentoErrorMessage(error) ?? ATENDIMENTO_GENERIC_ERROR_MESSAGE);
+        return "error";
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [submitting, sessionToken, invalidate, handleSessionError],
+  );
+
+  const cancelar = useCallback(
+    (idAtendimento: string) =>
+      runBooleanRpc(
+        "cancelar_atendimento_provisorio",
+        { p_session_token: sessionToken, p_id_atendimento: idAtendimento },
+        "cancelar_atendimento_provisorio",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  const iniciarFechamento = useCallback(
+    () =>
+      runBooleanRpc(
+        "iniciar_fechamento_atendimento",
+        { p_session_token: sessionToken },
+        "iniciar_fechamento_atendimento",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  const voltarAoAtendimento = useCallback(
+    () =>
+      runBooleanRpc(
+        "voltar_ao_atendimento",
+        { p_session_token: sessionToken },
+        "voltar_ao_atendimento",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  const concluir = useCallback(
+    (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento",
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: checklist,
+          p_adiar_checklist: false,
+        },
+        "concluir_atendimento",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  // Milestone 2C.1: explicit, separate intent from concluir — never inferred
+  // from an incomplete checklist. p_checklist is omitted entirely (the
+  // backend never inspects it when p_adiar_checklist is true).
+  const adiarChecklist = useCallback(
+    (clientes: ClienteOutcomeInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento",
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: [],
+          p_adiar_checklist: true,
+        },
+        "concluir_atendimento (adiar checklist)",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  // Milestone 2D: recovery completion for a previous-day pendente_fechamento
+  // Atendimento. No p_adiar_checklist parameter exists on this RPC at all —
+  // Farei depois is never offered during recovery (section 14).
+  const concluirPendente = useCallback(
+    (clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento_pendente",
+        {
+          p_session_token: sessionToken,
+          p_clientes: clientes,
+          p_checklist: checklist,
+        },
+        "concluir_atendimento_pendente",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  return {
+    submitting,
+    errorMessage,
+    iniciar,
+    cancelar,
+    iniciarFechamento,
+    voltarAoAtendimento,
+    concluir,
+    adiarChecklist,
+    concluirPendente,
+  };
+}
