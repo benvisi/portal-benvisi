@@ -150,6 +150,16 @@ function AtendimentoPage() {
   // "estou fora da Lista da Vez", distinct from souNaFila above.
   const estouNaLista = lista.some((entry) => entry.id_funcionario === funcionarioId);
   const isManagerOrAdmin = session.cargo === ADMINISTRATOR_CARGO || session.cargo === MANAGER_CARGO;
+  // Stabilization fix: Administrador does not personally participate in the
+  // selling rotation — they observe/manage Lista da Vez and can delegate-
+  // start for others, but are never expected to personally do Iniciar
+  // atividades or Iniciar atendimento. Scoped narrowly to the two "you
+  // need to start/join" prompt cards below (the ones that were actually
+  // confusing an admin who never runs their own Atendimento); the
+  // ativo/finalizando branches above are left untouched since an admin
+  // genuinely holding an active Atendimento (however that happened) should
+  // still see its real state, not have it hidden.
+  const isAdmin = session.cargo === ADMINISTRATOR_CARGO;
 
   // Milestone 2E, section 17: captured synchronously from the draft BEFORE
   // awaiting the RPC, never after — the draft-reset effect above can fire as
@@ -369,7 +379,10 @@ function AtendimentoPage() {
             onCancelarProvisorio={() => void actions.cancelar(ativo.id)}
             onIniciarFechamento={() => void actions.iniciarFechamento()}
           />
-        ) : !shift.isLoading && shift.startedToday && !listaQuery.isLoading && !estouNaLista ? (
+        ) : isAdmin ? null : !shift.isLoading &&
+          shift.startedToday &&
+          !listaQuery.isLoading &&
+          !estouNaLista ? (
           // Milestone 2A.2: activities were already started today, but the
           // employee currently isn't a Lista da Vez participant (voluntary
           // leave or manager/admin removal). Iniciar atendimento is hidden

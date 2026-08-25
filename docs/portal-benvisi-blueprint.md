@@ -262,6 +262,16 @@ It is not currently the preferred implementation workflow for core Portal Benvis
 
 Rapid prototyping tools may be considered later for low-risk UI/CRUD modules, but core business logic should preserve Portal Benvisi architecture and security conventions.
 
+## 4.4 Environments — Test/Demo Data vs Production
+
+### APPROVED
+
+Portal Benvisi is **not yet** declared operational production. The current Supabase project contains development/demo/test data and is currently the only database (a longer-term separate dev/test vs production Supabase environment split remains advisable, but is not required before merging Epic 2).
+
+- `main` means stable/approved code — merging a feature branch into `main` is a code-readiness signal, not an operational rollout decision;
+- the current environment may continue to be used for product demos and controlled exploration after a merge;
+- transactional test/demo data will be cleaned in a deliberate pre-production cleanup pass before real operational launch — no cleanup tooling exists or is scoped yet, and none should be built speculatively ahead of that decision.
+
 ---
 
 # 5. Security and Trust Model
@@ -597,6 +607,23 @@ The implementation must protect against:
 
 The exact table name, columns, indexing strategy, and transactional implementation are technical implementation decisions for the developer, provided the approved queue behavior is preserved.
 
+### 8.5.5 Role-Based Queue Participation
+
+### APPROVED — Epic 2 Stabilization
+
+Whether Iniciar Atividades automatically enters an employee into Lista da Vez depends on cargo:
+
+- **Vendedor** — Iniciar Atividades auto-enters Lista da Vez, unchanged since Milestone 1.
+- **Gerente** — Iniciar Atividades records operational readiness only; it does **not** auto-enter Lista da Vez. A Gerente may still manually **Entrar na Lista da Vez** afterward (normal back-of-queue behavior, same action Vendedor already uses to rejoin after voluntarily leaving), and keeps **Sair da Lista da Vez**, re-entry, and every existing delegated/management action.
+- **Administrador** — does not personally participate in Lista da Vez at all, neither automatically nor manually. The Administrador's role in Atendimento is observation and management: viewing Lista da Vez, delegating a start on behalf of an eligible employee, removing an available employee, and administering checklist policy — never personally starting, joining, or being expected to join the selling rotation.
+
+This is a fixed cargo rule, not a configurable setting — see "Future — Configurable Gerente Auto-Join" below for a possible later refinement that would not change this section's Administrador behavior.
+
+### 8.5.6 Administrador Atendimento UX
+
+### APPROVED — Epic 2 Stabilization
+
+Because the Administrador does not personally participate in Lista da Vez, the Atendimento page must not show them personal participation prompts: no "Iniciar atividades" requirement framed as blocking their own Atendimento, no personal "Iniciar atendimento" button, and no personal Sair/Entrar na Lista da Vez controls. Lista da Vez itself, and every existing management action already authorized for Administrador (delegated start, removal, checklist policy administration), remain fully visible and functional.
 
 ## 8.6 Starting an Atendimento
 
@@ -1451,6 +1478,29 @@ Where possible, exact visual values should ultimately be implemented as shared d
 
 The absence of a completed Design System document should **not** block implementation of approved product functionality when the existing application already provides an established visual language.
 
+## 14.5 Accessibility
+
+### Small Accessibility MVP — Larger Text
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+A deliberately small, first accessibility capability: a user-controlled **Texto maior** (larger text) preference, offered alongside the default **Padrão** sizing. This is not a full accessibility overhaul — it is scoped to readability only.
+
+**QA status:** toggle behavior, persistence, Login/PIN mobile layout, notice/indicator layouts, the reinforcement toast, desktop, and the final Aa-trigger interaction (Padrão/Texto maior hidden until tapped) — all **PASS**. The ~13% increase is confirmed intentional and kept as-is (not increased on a subjective "feels subtle" observation alone — pending real employee feedback). Placement and presentation went through three polish rounds: first collapsed into the header on mobile only; then moved out of the header entirely into a Dashboard utility area near the bottom, using the same placement and interaction model on mobile, tablet, and desktop (no per-device placement rules); then, per final product direction, the always-visible Padrão/Texto maior options within that area were tucked behind a compact **Aa** trigger to keep the row subtle. All three rounds are now browser-verified.
+
+**What it is:**
+
+- the bottom utility area contains a compact **Aa** accessibility trigger that opens the Padrão / Texto maior options, alongside the always-visible **Sair** action — the same location and interaction model on every viewport (normal document flow, not fixed/sticky/overlay), separated from the header and from the operational modules by a subtle divider; Sair always shows its text label, never icon-only;
+- a device/browser presentation preference, stored in `localStorage` under a Portal-Benvisi-namespaced key — **never** sent to Supabase, never employee-account data, never read by any backend RPC;
+- applied by toggling a `data-text-size` attribute on `<html>`, which a small, unlayered CSS rule uses to override Tailwind's own `--text-*` typography-scale custom properties by approximately 13% (within the approved 12–15% range) — every component already using Tailwind's ordinary `text-*` utilities picks up the larger scale automatically, with no per-component `if (larger) ... else ...` branching anywhere;
+- deliberately scoped to typography only — spacing, padding, gaps, widths, icon sizes, and touch targets are untouched, so this cannot become an accidental "zoom the whole interface." Line-heights are not separately overridden either: Tailwind's line-height values are unitless ratios that already scale proportionally with whatever font-size is applied;
+- applied as early as practical via a tiny inline script in `<head>` (before first paint) reading the stored preference, so a returning employee does not see a flash of normal-size text before it enlarges — the same standard technique used for dark-mode-before-hydration, not new SSR/hydration infrastructure;
+- the Milestone 2E reinforcement toast's font size now also derives from the same shared `--text-sm` variable (previously a fixed pixel value) so it participates in the same scale consistently rather than being a fixed-size exception.
+
+**What it deliberately is not (yet):** contrast options, color-vision-safe alternatives, additional text-size levels beyond the two, reduced motion, or a broader accessibility audit. Do not treat this section as implying any of those already exist.
+
+**Future accessibility roadmap** (not approved for implementation, listed for context only): stronger contrast options; color-vision-safe alternatives; additional text-size levels; reduced motion; a broader accessibility review across the whole application.
+
 ---
 
 # 15. Engineering Principles
@@ -1522,9 +1572,11 @@ Implementation agents should also run relevant build, typecheck, lint, and autom
 
 ## 16.2 Current Epic
 
-### APPROVED / IN DEVELOPMENT
+### Epic 2 — IMPLEMENTED / QA COMPLETE / READY TO MERGE
 
 **Epic 2 — Atendimento**
+
+Development complete for the approved scope; product-owner practical QA (section-by-section, see the Epic 2 Stabilization subsection below) is complete; the `feature/epic-2-atendimento` branch is ready to merge into `main`. This marks the branch ready to merge, not the system as operational production — see section 4.4, Environments — Test/Demo Data vs Production.
 
 ### Milestone 1 — Lista da Vez + Atendimento Foundation
 
@@ -1605,6 +1657,8 @@ Validated in browser QA: voluntary leave, rejoin at the back of the queue, repea
 ## Milestone 2B — Checklist Operacional V1
 
 **Status: IMPLEMENTED**
+
+**Nota (Epic 2 Stabilization):** o conteúdo do item 2 abaixo descreve fielmente a V1, histórica e imutável. Uma **Checklist V2** foi introduzida posteriormente apenas para adicionar orientações ao item 2 — mesmos três itens, mesma obrigatoriedade, nenhuma nova confirmação — e é hoje a versão ativa. Ver a entrada "Epic 2 Stabilization" no roadmap para o detalhe completo e o motivo de V1 nunca ter sido editada em vez de criar V2.
 
 O fechamento de um Atendimento inclui um checklist operacional obrigatório, destinado a restaurar rapidamente o ambiente de venda após o atendimento ao cliente.
 
@@ -2030,6 +2084,18 @@ Future scope may include:
 - preserving separate attribution between responsible salesperson and authenticated administrative actor;
 - treating these actions as exception/assistance workflows rather than normal sales-floor behavior.
 
+### Future — Configurable Gerente Auto-Join
+
+**Status:** FUTURE — considered, not approved for implementation now
+
+Epic 2 Stabilization fixed Gerente's Lista da Vez participation as "manual only, never automatic" (section 8.5.5) — a hard-coded cargo rule, not a setting.
+
+A future admin-configurable toggle could instead control whether Gerente auto-joins Lista da Vez on Iniciar Atividades, e.g.:
+
+> **Gerentes entram automaticamente na Lista da Vez ao iniciar atividades**
+
+Important: this toggle, if built, would control only the *automatic* behavior. It must not be conflated with *whether* Gerente is allowed to participate at all — manual participation (Entrar na Lista da Vez) should remain available to Gerente regardless of this setting's value. Do not implement this toggle now.
+
 ### Future — Session Management / Concurrent Login Controls
 
 **Status:** FUTURE
@@ -2065,6 +2131,13 @@ Either way, `finalizando_em - iniciado_em` is the correct, deterministic custome
 
 **Schema (`atendimentos`, additive):** `pendente_desde timestamptz` (when the lazy transition happened — may be well after the cutoff), `dia_negocio_original date` (the Manaus calendar date the Atendimento belonged to, locked in at transition time), `fim_dia_negocio_original timestamptz` (the computed cutoff, kept as its own auditable column even when `finalizando_em` was left holding a different, earlier value). Status check/consistency constraints and the one-active-Atendimento-per-employee partial unique index are widened to include `pendente_fechamento`.
 
+> **Dev/QA simulation note (not a production behavior change).** A regression run once reported a recovered Atendimento with a ~1440-minute (24-hour) duration instead of the expected ~455–456 minutes for a same-scenario `ativo`-through-midnight case. Investigated and confirmed as a **test-fixture artifact**, not a code defect: the row's `finalizando_em` carried real, non-zero microsecond precision — something the synthesized-midnight code path can never produce, since `(v_dia_original + 1)::timestamp at time zone 'America/Manaus'` is always an exact, zero-fractional-second instant. This proves the row had already genuinely entered `finalizando` (a real `iniciar_fechamento_atendimento` call, `finalizando_em = now()`) before the manual `UPDATE atendimentos SET iniciado_em = iniciado_em - interval '1 day'` ran — so the correctly-preserved-per-design `finalizando_em` ended up representing "moments after the Atendimento's original, undated start," roughly 24 hours after the now-independently-backdated `iniciado_em`. The duration formula and the transition logic both behaved exactly as designed; the fixture itself became internally inconsistent because only one of the two related timestamps was shifted.
+>
+> **Correct simulation procedure going forward:**
+> - To simulate a genuinely-`ativo`-through-midnight case (exercises the synthesized-midnight branch): start the Atendimento and do **not** enter Finalizando at all; before backdating, confirm `status = 'ativo'` and `finalizando_em is null`; then run `update atendimentos set iniciado_em = iniciado_em - interval '1 day' where id = '<id>';` and trigger the lazy transition.
+> - To simulate a genuine abandoned-Finalizando-then-crossed-midnight case (exercises the preserve-existing-`finalizando_em` branch): actually enter Finalizando (tap Concluir atendimento, do not submit) so `finalizando_em` is genuinely set; then backdate **both** timestamps by the same interval — `update atendimentos set iniciado_em = iniciado_em - interval '1 day', finalizando_em = finalizando_em - interval '1 day' where id = '<id>';` — keeping the two internally consistent.
+> - Backdating only `iniciado_em` on a row that has already entered `finalizando` does not represent any real scenario and will not produce a meaningful duration.
+
 **Recovery completion — a new, separate RPC (`concluir_atendimento_pendente`), not a branch of `concluir_atendimento`:**
 
 - customer-outcome validation/persistence is identical to `concluir_atendimento`'s;
@@ -2096,6 +2169,8 @@ Concretely, `concluir_atendimento_pendente`'s only `lista_vez_fila` interaction 
 **Migrations:** `supabase/migrations/20260822_001_add_atendimento_pendente_fechamento.sql` (initial implementation) and `supabase/migrations/20260822_002_fix_pendente_fechamento_queue_disponibilidade.sql` (additive QA correction, described above) — both immutable applied history; neither was ever rewritten. **PostgREST schema reload required** after `20260822_001` (`get_atendimento_ativo` gained a new output column via `DROP FUNCTION` + `CREATE FUNCTION`) — `notify pgrst, 'reload schema';`.
 
 **Queue-integrity QA:** no current-day membership (Case A) — pass, recovery created no membership/position. Existing current-day membership (Case B) — pass, `disponivel` was restored while `na_fila` and the exact `posicao` were preserved and the employee was not sent to the back. Deliberate `na_fila = false` (Case C) — **not manually exercised**; documented as an unexercised edge case rather than tested, non-blocking because the corrective `UPDATE`'s `WHERE` clause structurally requires `na_fila = true` and contains no insert/upsert/rejoin path at all.
+
+**Duration/cutoff QA:** a reported ~1440-minute duration result was investigated and confirmed to be a test-fixture artifact, not a code defect — see the dev/QA simulation note above. The synthesized-midnight and preserve-existing-`finalizando_em` branches are both confirmed correct by that investigation; no production change was made.
 
 ### Milestone 2E — Positive Reinforcement
 
@@ -2129,8 +2204,8 @@ No ratio/threshold calculation of any kind — any mixture of the two outcomes i
 - a soft, category-specific pastel background/border/text-color treatment, applied via sonner's own per-toast CSS custom-property hooks (`--normal-bg` / `--normal-border` / `--normal-text`, plus `--border-radius`) rather than Tailwind classes — this reliably overrides sonner's built-in default styling instead of racing it on CSS specificity:
   - `converted` → light green ("warm / positive / successful");
   - `non_converted` → light blue/calm ("encouraging / forward-looking / neutral-positive") — deliberately never red, pink, gray, or any warning/destructive treatment, so a non-converted outcome never visually reads as failure;
-  - `mixed` → light amber/gold ("positive-neutral / warm / balanced") — sharing warning's hue for visual continuity with the rest of the app, but the pastel treatment and copy keep the tone celebratory, not cautionary.
-- the three background/border/text hues (152° green / 230° blue / 75° amber) intentionally match this app's existing `--success` / `--info` / `--warning` design tokens (`src/styles.css`) at pastel lightness/chroma — visual consistency with the rest of the app's semantic color language, not a one-off palette;
+  - `mixed` → **soft lavender/light purple** ("positive / calm / distinct") — see the Epic 2 Stabilization entry below for why this replaced an earlier amber/gold treatment.
+- converted/non-converted hues (152° green / 230° blue) intentionally match this app's existing `--success` / `--info` design tokens (`src/styles.css`) at pastel lightness/chroma; mixed deliberately does not reuse `--warning`'s amber (see below) and instead uses a standalone lavender hue (300°) chosen for this purpose only;
 - the color differences are explicitly presentation only, never a performance grading — they exist to keep every outcome feeling positive and legible, not to rank customers or employees against each other.
 
 **Final QA status:**
@@ -2139,13 +2214,37 @@ No ratio/threshold calculation of any kind — any mixture of the two outcomes i
 - single non-converted customer → Non-Converted pool — **PASS**;
 - multiple all-converted customers → Converted pool — **PASS**;
 - multiple all-non-converted customers → Non-Converted pool — **PASS**;
-- mixed converted + non-converted → Mixed pool — **not manually exercised in the browser yet**; non-blocking, since the classification logic (`temConvertido && temNaoConvertido → "mixed"`) is exact and code-validated, and mixed reuses the exact same trigger/selection/styling pipeline already proven correct for the other two categories;
+- mixed converted + non-converted → Mixed pool (soft lavender/purple) — **PASS**;
 - `Farei depois` → reinforcement still appears with the correct customer-outcome category — **PASS**;
 - previous-day recovery completion → reinforcement appears correctly — **PASS**;
 - standalone checklist completion remains on its own separate success feedback, never the 275-message library — confirmed in code, unchanged by this milestone;
 - code-level validation: message-library counts exactly 100 / 150 / 25 with no accidental duplicates/omissions, `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
 
 Other future Atendimento capabilities remain documented in their respective sections.
+
+### Epic 2 Stabilization — Targeted UX / Business-Rule Corrections
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+A batch of targeted corrections found during practical Epic 2 regression testing, applied together. Product-owner regression testing on this batch — including the later Dashboard accessibility placement/interaction polish and the previous-day-recovery duration QA investigation (both resolved as described below) — is now complete; this closes Epic 2 for merge purposes (section 16.2 status above).
+
+**1. Mandatory periodic checklist message visibility (Milestone 2C.3).** The neutral explanatory message ("Neste atendimento, conclua o checklist antes de finalizar.") was rendering correctly in every code path audited, but as plain text sharing the same weight/family as the routine checklist subtitle — easy to overlook, and easy to visually conflate with the unrelated amber pending-checklist backlog indicator that can legitimately appear on the same screen. Fixed by giving the mandatory-periodic message its own bordered chip using the `info` (blue) design token — deliberately a different color family from `warning`/amber, which this app already uses for pending/deferred/needs-attention states — so a current mandatory periodic decision and old deferred backlog can never be visually confused. The backlog indicator itself is unchanged and was already structurally independent (`PendingChecklistIndicator` only ever reads `checklist_pendencias` counts, never `checklist_obrigatorio`) — the two remain, and must remain, separate concepts.
+
+**2. Reinforcement Mixed toast color (Milestone 2E).** Changed from light amber/gold to soft lavender/light purple. Amber already means pending work / deferred checklist / needs-attention throughout this app (the backlog indicator, Farei depois, the periodic-mandatory chip above); reusing that family for a positive Mixed-outcome toast created semantic confusion. Lavender (hue 300°, same pastel lightness/chroma as converted/non-converted) is calm, distinct, and unambiguously positive. No change to the 275 approved messages, classification logic, random selection, or anti-repeat behavior.
+
+**3. Administrador Atendimento UX (section 8.5.5/8.5.6).** The Administrador no longer sees personal "Iniciar atividades" / "Iniciar atendimento" participation prompts on `/atendimento` — only the two "you need to start/join" cards were gated off; an Administrador genuinely holding an active Atendimento (however that occurred) still sees its real state. Lista da Vez and every existing management action remain fully visible.
+
+**4. Login/PIN horizontal centering on mobile.** Root cause: the mobile PIN-entry wrapper (`src/routes/index.tsx`) rendered `PinPanel` (`w-full max-w-xs`, no margin-auto of its own) inside a flex-column parent with no `items-center`. Flexbox's default `align-items: stretch` still caps a `max-width`-constrained child at that width, but anchors it to the cross-axis start (left) rather than centering it — on any viewport wider than 320px (effectively every phone), that reads as extra margin on the right only. This reproduces identically in any browser at that viewport width; it was not a Safari-specific or `100vw`/safe-area issue (neither pattern exists in this codebase, and `viewport-fit=cover` was never set, so Safari does not extend content into the safe area here). Fixed by adding `items-center` to that wrapper, matching the desktop split-screen panel, which already centers this exact way. The `Voltar` back button keeps its explicit `self-start` so it is not incidentally re-centered.
+
+**5. Checklist Item 2 guidance (Checklist V2).** Added the two approved guidance bullets under "Arrumar e/ou devolver as peças do atendimento" ("Dobrar ou colocar corretamente no cabide as peças do atendimento." / "Devolver as peças ao local correto ou encaminhá-las para reposição."). Checklist V1 has been live in production since Milestone 2B, and per this project's own checklist-versioning rule, a used version's item content (including guidance) is immutable — so this was implemented as **Checklist V2** (three items, identical to V1 except item 2's `guia_bullets`), not an in-place edit of V1. V1's items were marked `ativo = false`; V2 becomes the active version via the same `max(versao) where ativo = true` resolution every checklist-completion RPC already uses. No new checklist confirmation was added — still exactly three primary confirmations, and the new bullets are guidance only, never separate checkboxes. No RPC or frontend changes were needed beyond the new version's data.
+
+**6. Gerente / Administrador and Lista da Vez auto-join (section 8.5.5).** Vendedor is unchanged (Iniciar Atividades still auto-enters Lista da Vez). Gerente's Iniciar Atividades now records operational readiness only — no automatic Lista da Vez entry — but a Gerente may still manually **Entrar na Lista da Vez** afterward (existing action, unchanged queue-entry/back-of-queue behavior) and retains Sair da Lista da Vez and every existing management action. Administrador does not personally join Lista da Vez at all, automatically or manually — enforced both by hiding the manual-join UI (item 3 above) and, backend-authoritatively, by `entrar_lista_da_vez` rejecting cargo = Administrador outright. This is a fixed cargo rule for now, not a configurable setting — see the new Future roadmap entry below.
+
+**6a. Post-apply audit correction — exclusion vs. inclusion.** After `20260823_002` was applied, an audit found its auto-join gate (`cargo not in ('Gerente', 'Administrador')`) was an *exclusion* check, correct only if `cargo` is provably restricted to exactly those two values plus Vendedor — which nothing in this codebase guarantees (no `cargo` CHECK constraint exists in tracked migration history, the frontend treats `cargo` as an open string everywhere with no enum/union type, and section 2.3 explicitly anticipates future roles beyond the current three). Left uncorrected, any future or currently-unmodeled non-selling cargo (e.g. Caixa, Estoque, Operacional) would auto-join Lista da Vez simply by not being Gerente or Administrador. Corrected additively — `20260823_002` itself was left untouched — by `20260824_001_restrict_lista_vez_auto_join_to_vendedor.sql`, which changes the gate to an *inclusion* check, `cargo = 'Vendedor'`. This is the rule this section's own prose already described ("Vendedor — Iniciar Atividades auto-enters Lista da Vez") — only the SQL's shape was wrong, not the documented intent. `entrar_lista_da_vez`'s `cargo = 'Administrador'` rejection is unaffected — that check correctly needs the opposite shape (broad-allow/narrow-deny: manual join stays available to anyone except Administrador).
+
+**Migrations (additive, not yet applied — apply in order):** `supabase/migrations/20260823_001_add_checklist_v2_item2_guidance.sql`, `supabase/migrations/20260823_002_restrict_gerente_admin_lista_auto_join.sql`, `supabase/migrations/20260824_001_restrict_lista_vez_auto_join_to_vendedor.sql`. None modifies an already-applied migration file. No PostgREST schema reload is required for any of them — every changed function (`registrar_turno_presenca`, `entrar_lista_da_vez`) keeps its exact existing signature (`CREATE OR REPLACE` in place), and the checklist migration is pure data (no function changes at all).
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly. Product-owner browser regression testing for this entire batch — plus the Dashboard accessibility Aa-trigger interaction (section 14.5) and the previous-day-recovery duration QA-fixture investigation (section 8.14) — is complete and **PASS**.
 
 ## 16.3 Planned Operational Modules
 

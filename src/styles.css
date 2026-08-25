@@ -97,6 +97,45 @@
   --ring: oklch(0.548 0.213 264);
 }
 
+/*
+ * Accessibility MVP — "Texto maior" (src/lib/text-size.ts,
+ * useTextSizePreference). Deliberately scoped to Tailwind's *typography*
+ * scale only (--text-*), never --spacing or any dimension/geometry token —
+ * padding, gaps, widths, icon sizes, and touch targets are completely
+ * unaffected, so this cannot turn into an accidental "zoom the whole app"
+ * the way a root `font-size` percentage would. Every `text-*` utility
+ * already compiles to `font-size: var(--text-*)`, so overriding these
+ * variables here is the single place this needs to live — no component
+ * needs its own large/small branch.
+ *
+ * This rule is intentionally OUTSIDE any @layer: unlayered CSS always wins
+ * over Tailwind's own `@layer theme` (where these variables are normally
+ * defined), regardless of selector specificity or source order, so this
+ * reliably overrides the defaults without needing `!important` or a
+ * higher-specificity selector.
+ *
+ * ~13% increase (within the approved 12-15% range) applied to every step
+ * of the standard scale, including steps not currently used anywhere in
+ * the app today, so future typography additions are covered automatically.
+ * Line-heights are deliberately left untouched: Tailwind's `--text-*
+ * --line-height` values are unitless ratios (e.g. calc(1.25 / .875)), which
+ * already scale proportionally with whatever font-size is applied — no
+ * separate override is needed for readable line spacing at the larger size.
+ */
+html[data-text-size="grande"] {
+  --text-xs: 0.8475rem;
+  --text-sm: 0.9888rem;
+  --text-base: 1.13rem;
+  --text-lg: 1.2713rem;
+  --text-xl: 1.4125rem;
+  --text-2xl: 1.695rem;
+  --text-3xl: 2.1188rem;
+  --text-4xl: 2.5425rem;
+  --text-5xl: 3.39rem;
+  --text-6xl: 4.2375rem;
+  --text-7xl: 5.085rem;
+}
+
 @utility min-touch {
   min-height: 44px;
   min-width: 44px;

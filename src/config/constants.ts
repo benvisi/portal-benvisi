@@ -60,6 +60,14 @@ export const MODULE_IN_PROGRESS_ACK_LABEL = "Entendi";
 
 export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
 
+// Small accessibility MVP: larger-text preference. Deliberately plain
+// PT-BR wording (no "escala tipográfica" / "font scaling" / "A11y") per
+// the approved copy direction — the control must read clearly on its own
+// without relying on the icon.
+export const TEXT_SIZE_TOGGLE_LABEL = "Tamanho do texto";
+export const TEXT_SIZE_PADRAO_LABEL = "Padrão";
+export const TEXT_SIZE_GRANDE_LABEL = "Texto maior";
+
 export const ATENDIMENTO_PAGE_TITLE = "Atendimento";
 export const VOLTAR_AO_PAINEL_LABEL = "Voltar ao painel";
 
@@ -203,6 +211,13 @@ export const FUNCIONARIO_EM_ATENDIMENTO_MESSAGE =
   "Este funcionário está em atendimento e não pode ser removido da Lista da Vez.";
 export const SEM_PERMISSAO_REMOVER_MESSAGE =
   "Você não tem permissão para remover este colaborador da Lista da Vez.";
+
+// Epic 2 Stabilization: defense-in-depth backend rejection for
+// entrar_lista_da_vez when called as Administrador — the frontend already
+// never shows this action to an Administrador, so this message should not
+// normally be user-visible in practice.
+export const SEM_PARTICIPACAO_ADMINISTRADOR_MESSAGE =
+  "Administradores não participam pessoalmente da Lista da Vez.";
 
 export function getRemoverConfirmTitle(nome: string): string {
   return `Remover ${nome} da Lista da Vez?`;

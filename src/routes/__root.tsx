@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { TEXT_SIZE_INLINE_SCRIPT } from "../lib/text-size";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -112,8 +113,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the inline script below sets
+    // data-text-size on this element before React hydrates, based on a
+    // client-only localStorage preference the server-rendered markup can't
+    // know about — an intentional, expected mismatch on this one
+    // attribute (the standard fix for theme/preference flash-before-paint,
+    // same technique used for dark-mode toggles), not a real bug to warn
+    // about.
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/*
+          Must run first, synchronously, before any stylesheet/paint — this
+          is what lets a returning employee's "Texto maior" preference
+          apply immediately instead of flashing normal-size text first. See
+          src/lib/text-size.ts for what this does and why it's a tiny
+          hand-written script rather than a bundled module.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: TEXT_SIZE_INLINE_SCRIPT }} />
         <HeadContent />
       </head>
       <body>

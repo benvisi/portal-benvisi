@@ -350,9 +350,13 @@ function pickMessage(category: AtendimentoOutcomeCategory): string {
  * basis (see `[data-sonner-toast][data-styled='true']` in sonner's own
  * stylesheet), so setting them here — rather than via Tailwind classes —
  * reliably overrides sonner's own default styling instead of racing it on
- * specificity. Hues (152 green / 230 blue / 75 amber) intentionally match
- * this app's existing --success/--info/--warning design tokens (see
- * styles.css) at a pastel lightness/chroma appropriate for a toast
+ * specificity. Converted/non-converted hues (152 green / 230 blue)
+ * intentionally match this app's existing --success/--info design tokens
+ * (see styles.css); mixed deliberately does NOT reuse --warning's amber
+ * (hue 75) despite being the same "third category" pattern — amber already
+ * means pending/deferred/needs-attention in this app, so mixed uses a
+ * standalone soft lavender (hue 300) instead, chosen for this purpose only.
+ * All three stay at a pastel lightness/chroma appropriate for a toast
  * background — light/pastel per spec, never saturated, and never the
  * destructive/red palette for the non-converted case.
  */
@@ -371,13 +375,17 @@ const CATEGORY_TOAST_STYLE: Record<AtendimentoOutcomeCategory, CSSProperties> = 
     "--normal-border": "oklch(0.82 0.08 230)",
     "--normal-text": "oklch(0.32 0.09 230)",
   } as CSSProperties,
-  // Mixed — light amber/gold ("positive-neutral / warm / balanced"), not a
-  // warning color despite sharing warning's hue — the pastel treatment and
-  // copy keep the tone celebratory, not cautionary.
+  // Mixed — soft lavender/light purple ("positive / calm / distinct"),
+  // NOT amber/warning: this app already uses amber/warning for pending
+  // work, deferred checklists, and things requiring attention, so reusing
+  // that family for a positive Mixed Atendimento would create semantic
+  // confusion (stabilization fix). Lavender reads as celebratory and
+  // clearly distinct from both the other two categories and from any
+  // warning/destructive treatment elsewhere in the app.
   mixed: {
-    "--normal-bg": "oklch(0.95 0.045 75)",
-    "--normal-border": "oklch(0.83 0.11 75)",
-    "--normal-text": "oklch(0.35 0.1 75)",
+    "--normal-bg": "oklch(0.95 0.025 300)",
+    "--normal-border": "oklch(0.82 0.07 300)",
+    "--normal-text": "oklch(0.38 0.11 300)",
   } as CSSProperties,
 };
 
@@ -385,9 +393,17 @@ const CATEGORY_TOAST_STYLE: Record<AtendimentoOutcomeCategory, CSSProperties> = 
 // restrained and professional, not a banner/celebration (section 4). Reuses
 // this app's own --shadow-card value (styles.css) for the shadow so the
 // toast's depth matches every other elevated surface in the app.
+//
+// fontSize deliberately references Tailwind's own --text-sm variable
+// instead of a hardcoded px value — the accessibility "Texto maior"
+// preference (src/lib/text-size.ts) works by overriding that exact
+// variable on <html>, so this toast automatically participates in the
+// same centralized typography scale instead of being a fixed-size
+// exception (still restrained under the larger setting: --text-sm scales
+// from 14px to ~15.8px, not "comically large").
 const TOAST_PROMINENCE_STYLE: CSSProperties = {
   padding: "18px 20px",
-  fontSize: "15px",
+  fontSize: "var(--text-sm)",
   fontWeight: 500,
   boxShadow: "0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 6px -2px rgb(15 23 42 / 0.04)",
   ...({ "--border-radius": "14px" } as CSSProperties),

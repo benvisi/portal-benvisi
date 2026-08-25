@@ -197,17 +197,23 @@ export function FechamentoAtendimento({
       <div className="flex flex-col gap-3 border-t border-border pt-4">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-foreground">{CHECKLIST_TITLE}</h3>
-          <p
-            className={
-              checklistObrigatorioPeriodico
-                ? "text-sm font-medium text-foreground"
-                : "text-sm text-muted-foreground"
-            }
-          >
-            {checklistObrigatorioPeriodico
-              ? CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE
-              : CHECKLIST_SUBTITLE}
-          </p>
+          {checklistObrigatorioPeriodico ? (
+            // Stabilization fix: this must be structurally impossible to
+            // confuse with the shared amber pending-checklist backlog
+            // indicator (PendingChecklistIndicator, which can legitimately
+            // appear on this same screen for genuine old deferred
+            // obligations — a completely separate concept). Using the
+            // `info` token here — never `warning`/amber, never
+            // destructive — gives this its own distinct color family, and a
+            // bordered chip (not plain body text) makes it impossible to
+            // mistake for routine muted subtitle copy. Still neutral/
+            // non-punitive: no icon implying an alert, just a labeled note.
+            <p className="w-fit rounded-lg border border-info/40 bg-info/10 px-2.5 py-1.5 text-sm font-medium text-info">
+              {CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{CHECKLIST_SUBTITLE}</p>
+          )}
         </div>
         {checklistLoading ? (
           <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
