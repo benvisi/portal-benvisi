@@ -276,6 +276,33 @@ export const NOSSOS_PRINCIPIOS_PAGE_SUBTITLE =
 export const ATRIBUTOS_PESSOAIS_LABEL = "Atributos pessoais";
 export const VALORES_CULTURAIS_LABEL = "Valores culturais";
 
+// Epic 4, Milestone 4A/4B: Operações module foundation.
+export const OPERACOES_TITLE = "Operações";
+export const OPERACOES_DASHBOARD_SUBTITLE =
+  "Acesse procedimentos e atividades operacionais da loja.";
+export const OPERACOES_PAGE_SUBTITLE =
+  "Recursos e procedimentos de apoio ao trabalho no dia a dia da loja.";
+export const VOLTAR_A_OPERACOES_LABEL = "Voltar a Operações";
+
+export const LINKS_IMPORTANTES_TITLE = "Links Importantes";
+export const LINKS_IMPORTANTES_CARD_DESCRIPTION =
+  "Acesso rápido a canais e ferramentas externas aprovadas.";
+export const LINKS_IMPORTANTES_PAGE_SUBTITLE =
+  "Canais e ferramentas externas aprovadas pela empresa.";
+export const EXTERNAL_LINK_INDICATOR_LABEL = "Abre em uma página externa";
+export const APP_STORE_LABEL = "App Store";
+export const GOOGLE_PLAY_LABEL = "Google Play";
+
+export const MENSAGENS_WHATSAPP_TITLE = "Mensagens para WhatsApp";
+export const MENSAGENS_WHATSAPP_CARD_DESCRIPTION =
+  "Modelos prontos para agilizar o atendimento ao cliente.";
+export const MENSAGENS_WHATSAPP_PAGE_SUBTITLE =
+  "Modelos aprovados para agilizar o atendimento ao cliente pelo WhatsApp. Toque em uma situação para ver a mensagem e copiar.";
+export const COPIAR_MENSAGEM_LABEL = "Copiar mensagem";
+export const MENSAGEM_COPIADA_LABEL = "Mensagem copiada.";
+export const MENSAGEM_COPIA_ERRO_MESSAGE =
+  "Não foi possível copiar automaticamente. Selecione o texto acima para copiar manualmente.";
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";
