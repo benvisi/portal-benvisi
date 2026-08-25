@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ClipboardCheck, Loader2, LogOut, Package, Settings, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, Loader2, LogOut, Package, Settings, Users } from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
 import { TextSizeToggle } from "@/components/dashboard/TextSizeToggle";
 import {
   ADMINISTRATOR_CARGO,
+  CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
+  CONHECIMENTO_CULTURA_TITLE,
   DASHBOARD_WELCOME_MESSAGE,
   SIGN_OUT_BUTTON_LABEL,
 } from "@/config/constants";
@@ -149,6 +151,13 @@ function DashboardPage() {
             description="Acesse procedimentos e atividades operacionais da loja."
             variant="brand"
             onClick={() => setModuleDialogOpen(true)}
+          />
+          <ModuleCard
+            icon={BookOpen}
+            title={CONHECIMENTO_CULTURA_TITLE}
+            description={CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE}
+            variant="brand"
+            onClick={() => void navigate({ to: ROUTES.CONHECIMENTO_CULTURA })}
           />
 
           {isAdmin && (

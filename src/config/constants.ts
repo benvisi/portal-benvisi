@@ -259,6 +259,23 @@ export function getUndoButtonLabel(secondsLeft: number): string {
 
 export const ADMINISTRATIVO_PAGE_TITLE = "Administrativo";
 
+// Epic 3, Milestone 3A: Conhecimento & Cultura module foundation.
+export const CONHECIMENTO_CULTURA_TITLE = "Conhecimento & Cultura";
+export const CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE =
+  "Princípios, produtos e formas de trabalhar.";
+export const CONHECIMENTO_CULTURA_PAGE_SUBTITLE =
+  "Conteúdos para reforçar conhecimento e cultura no seu dia a dia, sem tirar o foco do atendimento.";
+export const VOLTAR_A_CONHECIMENTO_CULTURA_LABEL = "Voltar a Conhecimento & Cultura";
+
+export const NOSSOS_PRINCIPIOS_TITLE = "Nossos Princípios";
+export const NOSSOS_PRINCIPIOS_CARD_DESCRIPTION =
+  "Os valores e comportamentos que orientam a forma como trabalhamos, atendemos e tomamos decisões.";
+export const NOSSOS_PRINCIPIOS_PAGE_SUBTITLE =
+  "Os comportamentos e valores que orientam a forma como trabalhamos, atendemos nossos clientes e tomamos decisões.";
+
+export const ATRIBUTOS_PESSOAIS_LABEL = "Atributos pessoais";
+export const VALORES_CULTURAIS_LABEL = "Valores culturais";
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";
