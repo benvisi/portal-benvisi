@@ -13,6 +13,8 @@ import {
   CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
   CONHECIMENTO_CULTURA_TITLE,
   DASHBOARD_WELCOME_MESSAGE,
+  OPERACOES_DASHBOARD_SUBTITLE,
+  OPERACOES_TITLE,
   SIGN_OUT_BUTTON_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
@@ -147,10 +149,10 @@ function DashboardPage() {
           />
           <ModuleCard
             icon={ClipboardCheck}
-            title="Operações"
-            description="Acesse procedimentos e atividades operacionais da loja."
+            title={OPERACOES_TITLE}
+            description={OPERACOES_DASHBOARD_SUBTITLE}
             variant="brand"
-            onClick={() => setModuleDialogOpen(true)}
+            onClick={() => void navigate({ to: ROUTES.OPERACOES })}
           />
           <ModuleCard
             icon={BookOpen}

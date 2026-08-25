@@ -14,7 +14,10 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AtendimentoRouteImport } from './routes/atendimento'
 import { Route as AdministrativoRouteImport } from './routes/administrativo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OperacoesIndexRouteImport } from './routes/operacoes/index'
 import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
+import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
+import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
 
 const TermosRoute = TermosRouteImport.update({
@@ -42,10 +45,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperacoesIndexRoute = OperacoesIndexRouteImport.update({
+  id: '/operacoes/',
+  path: '/operacoes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConhecimentoCulturaIndexRoute =
   ConhecimentoCulturaIndexRouteImport.update({
     id: '/conhecimento-cultura/',
     path: '/conhecimento-cultura/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const OperacoesMensagensWhatsappRoute =
+  OperacoesMensagensWhatsappRouteImport.update({
+    id: '/operacoes/mensagens-whatsapp',
+    path: '/operacoes/mensagens-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const OperacoesLinksImportantesRoute =
+  OperacoesLinksImportantesRouteImport.update({
+    id: '/operacoes/links-importantes',
+    path: '/operacoes/links-importantes',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ConhecimentoCulturaPrincipiosRoute =
@@ -62,7 +82,10 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
+  '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
+  '/operacoes/': typeof OperacoesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -71,7 +94,10 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
+  '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/conhecimento-cultura': typeof ConhecimentoCulturaIndexRoute
+  '/operacoes': typeof OperacoesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -81,7 +107,10 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
+  '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
+  '/operacoes/': typeof OperacoesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -92,7 +121,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/links-importantes'
+    | '/operacoes/mensagens-whatsapp'
     | '/conhecimento-cultura/'
+    | '/operacoes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -101,7 +133,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/links-importantes'
+    | '/operacoes/mensagens-whatsapp'
     | '/conhecimento-cultura'
+    | '/operacoes'
   id:
     | '__root__'
     | '/'
@@ -110,7 +145,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/links-importantes'
+    | '/operacoes/mensagens-whatsapp'
     | '/conhecimento-cultura/'
+    | '/operacoes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -120,7 +158,10 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   TermosRoute: typeof TermosRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
+  OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
+  OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
   ConhecimentoCulturaIndexRoute: typeof ConhecimentoCulturaIndexRoute
+  OperacoesIndexRoute: typeof OperacoesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,11 +201,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operacoes/': {
+      id: '/operacoes/'
+      path: '/operacoes'
+      fullPath: '/operacoes/'
+      preLoaderRoute: typeof OperacoesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/conhecimento-cultura/': {
       id: '/conhecimento-cultura/'
       path: '/conhecimento-cultura'
       fullPath: '/conhecimento-cultura/'
       preLoaderRoute: typeof ConhecimentoCulturaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/mensagens-whatsapp': {
+      id: '/operacoes/mensagens-whatsapp'
+      path: '/operacoes/mensagens-whatsapp'
+      fullPath: '/operacoes/mensagens-whatsapp'
+      preLoaderRoute: typeof OperacoesMensagensWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/links-importantes': {
+      id: '/operacoes/links-importantes'
+      path: '/operacoes/links-importantes'
+      fullPath: '/operacoes/links-importantes'
+      preLoaderRoute: typeof OperacoesLinksImportantesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/conhecimento-cultura/principios': {
@@ -184,7 +246,10 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   TermosRoute: TermosRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
+  OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
+  OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,
   ConhecimentoCulturaIndexRoute: ConhecimentoCulturaIndexRoute,
+  OperacoesIndexRoute: OperacoesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1341,9 +1341,9 @@ The employee should be able to understand product-family availability within sec
 
 # 10. Operações / Logística & Tarefas
 
-### PLANNED / PARTIALLY DEFINED
+### PLANNED / PARTIALLY DEFINED — TWO RESOURCES IMPLEMENTED
 
-None of the workflows below are implemented yet. They remain distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 3 near-term sequence, not here.
+**Links Importantes** and **Mensagens para WhatsApp** are implemented — see Epic 4, Milestones 4A and 4B (section 16.2) for their full scope. Every other workflow below remains unimplemented future/planned scope, distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 4 near-term sequence, not here.
 
 **Escala / horários de trabalho**
 
@@ -1393,9 +1393,13 @@ None of the workflows below are implemented yet. They remain distinct from the f
 - operational / marketing / other categories;
 - future voting/upvoting remains a roadmap possibility.
 
-**Links Importantes**
+**Links Importantes — IMPLEMENTED (Milestone 4A)**
 
-- curated links to external tools/forms Portal should not own yet, e.g. the sensitive anonymous HR Google Form.
+- curated links to external tools/forms Portal should not own yet: the confidential external Canal de Denúncia Segura e Sigilosa Google Form, and official app-store links for the YOOBIC ONE and CRM360 mobile apps. Portal is a front door to these systems, not an owner or replacement of them — it stores no complaint content and integrates with neither app.
+
+**Mensagens para WhatsApp — IMPLEMENTED (Milestone 4B)**
+
+- a static, grouped library of approved WhatsApp customer-service message templates employees can find and copy quickly, with placeholders left for manual personalization. No WhatsApp API integration, no message sending, no conversation storage.
 
 **Tarefas / Pendências da Gerência**
 
@@ -1428,11 +1432,12 @@ Intended future content categories:
 - Lacoste / brand knowledge;
 - product knowledge;
 - selling / customer-service knowledge;
+- **Técnica CVB** (Característica-Vantagem-Benefício) — sales/product training examples (e.g. Conforto e uso diário, Variedade de cores, Durabilidade, Polo Paris). Considered for Milestone 4B's Mensagens para WhatsApp and deliberately removed from there during that milestone's closeout: these are training/technique examples, not ready-to-send customer message templates, so they belong here as training content once this category is built, not in a copy-to-clipboard message library;
 - operational training;
 - short knowledge checks / quizzes;
 - AI-generated training material based on approved source content.
 
-**Only Nossos Princípios is implemented, as Epic 3 Milestone 3A** (section 16.2) — the Dashboard tile, the `/conhecimento-cultura` content hub, and the `/conhecimento-cultura/principios` page. Every other category above remains future scope: not implemented, not scaffolded, and not implied as available by the hub page's architecture (which anticipates additional cards later without pre-building disabled placeholders for them now).
+**Only Nossos Princípios is implemented, as Epic 3 Milestone 3A** (section 16.2) — the Dashboard tile, the `/conhecimento-cultura` content hub, and the `/conhecimento-cultura/principios` page. Every other category above, including Técnica CVB, remains future scope: not implemented, not scaffolded, and not implied as available by the hub page's architecture (which anticipates additional cards later without pre-building disabled placeholders for them now).
 
 Training/knowledge content should avoid excessive friction in the employee's normal sales workflow.
 
@@ -2347,22 +2352,13 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 ### Epic 3 — Conhecimento & Cultura
 
-**Status:** IN DEVELOPMENT
+**Status:** IMPLEMENTED / MERGED TO MAIN
 
-**Epic 3 — Conhecimento & Cultura.** See section 12 for the module's purpose and full future content-category list. This epic is the employee-facing broadening of Portal Benvisi beyond Atendimento — starting with a small, demo-quality first slice rather than the whole module at once.
-
-**Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
-
-1. Conhecimento & Cultura — Nossos Princípios (Milestone 3A, below);
-2. Operações — Links Importantes (section 10);
-3. Operações — Escala V1 (section 10);
-4. after evaluating Escala V1's complexity/quality in practice, likely move into Consulta de Estoque (section 9).
-
-Links Importantes, Escala, and Consulta de Estoque are **not** implemented by this sequence entry — they remain future/planned scope (section 10 / section 9) until their own milestone is completed.
+**Epic 3 — Conhecimento & Cultura.** See section 12 for the module's purpose and full future content-category list. This epic is the employee-facing broadening of Portal Benvisi beyond Atendimento — starting with a small, demo-quality first slice rather than the whole module at once. Milestone 3A (below) is complete, product-owner browser QA passed (including final tile order/subtitle polish), and `feature/conhecimento-cultura` has been merged into `main`.
 
 ### Milestone 3A — Module Foundation + Nossos Princípios
 
-**Status:** IMPLEMENTED IN CODE / PENDING FINAL VISUAL QA
+**Status:** IMPLEMENTED
 
 Scope:
 
@@ -2377,9 +2373,60 @@ Scope:
 
 **Not implemented in Milestone 3A** (future content categories under Conhecimento & Cultura, section 12): Lacoste/brand knowledge, product knowledge, selling/customer-service knowledge, operational training, knowledge-check quizzes, AI-generated training material. The hub page's architecture anticipates these as additional cards later; none are scaffolded or implied as already available. See "Princípios em Ação" below (section 12) for an additional future capability documented, but not implemented, during this milestone's closeout.
 
-**QA status:** Dashboard tile presence, the Conhecimento & Cultura hub, the Nossos Princípios card, all five principles/content, the accordion interaction, back navigation, mobile layout, `Texto maior`, and desktop layout — all **PASS**. Two final polish items followed that QA pass and are captured here: the Dashboard tile was moved to the last normal employee-facing position (after Atendimento, Estoque, Operações — before the Administrador-only Administrativo tile) and its subtitle was shortened to "Princípios, produtos e formas de trabalhar." **Re-verify tile order and subtitle in the browser before marking this milestone fully IMPLEMENTED** — every other QA area above already passed and does not need to be re-run.
+**QA status:** Dashboard tile presence, the Conhecimento & Cultura hub, the Nossos Princípios card, all five principles/content, the accordion interaction, back navigation, mobile layout, `Texto maior`, desktop layout, and the final Dashboard tile order/subtitle polish (tile moved to the last normal employee-facing position; subtitle shortened to "Princípios, produtos e formas de trabalhar.") — all **PASS**.
 
 Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
+
+### Epic 4 — Operações
+
+**Status:** IN DEVELOPMENT
+
+**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with two small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though 4A/4B are complete — more Operações features (starting with Escala V1) are still planned.
+
+**Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
+
+1. Conhecimento & Cultura — Nossos Princípios (Milestone 3A) — **complete**;
+2. Operações — Links Importantes (Milestone 4A, below) — **complete, QA passed**;
+3. Operações — Mensagens para WhatsApp (Milestone 4B, below) — **complete, QA passed**;
+4. Operações — Escala V1 (Milestone 4C, section 10) — **next, not yet started**;
+5. after evaluating Escala V1's complexity/quality in practice, likely move into Consulta de Estoque (section 9).
+
+Escala V1 and Consulta de Estoque are **not** implemented by this sequence entry — they remain future/planned scope (section 10 / section 9) until their own milestone is completed.
+
+### Milestone 4A — Links Importantes
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+Scope:
+
+- a second active card on the `/operacoes` hub (alongside Mensagens para WhatsApp, Milestone 4B), navigating to `/operacoes/links-importantes`; the rest of the Operações roadmap (section 10) remains unrepresented on the hub — no disabled placeholder cards;
+- exactly three approved resources, driven by a typed `ImportantResource[]` config module (`src/config/links-importantes.ts`), rendered generically by resource `type` rather than one hardcoded card per resource:
+  - **Canal de Denúncia Segura e Sigilosa** (`external_link`) — an external Google Form (`https://forms.gle/w5UbXZ7BPwkUEzaLA`) opened via `target="_blank" rel="noopener noreferrer"`, with the approved description, supporting sigilo text, and an explicit "O formulário é externo ao Portal Benvisi." note. Portal does not store, receive, or process the complaint content itself — the form is entirely external, matching this project's "trusted doorway to external systems" principle (see also section 12, Sensitive HR issues, under Princípios em Ação);
+  - **YOOBIC ONE** (`mobile_app`) — a primarily-mobile app; the page shows the approved instruction text and two official store links (App Store, Google Play) opened the same safe external way. No deep-link URI was invented and no in-app-open behavior is assumed — V1 is deliberately just instruction + official store links;
+  - **CRM360** (`mobile_app`) — same treatment/pattern as YOOBIC ONE, its own approved store URLs.
+- no Supabase table, no migration, no admin editor — static approved content, matching the same architecture already established for Nossos Princípios (Milestone 3A) and Conhecimento & Cultura generally.
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly. Product-owner browser QA — including the Denúncia form, both app-store link pairs, mobile layout, and `Texto maior` — is complete and **PASS**.
+
+### Milestone 4B — Mensagens para WhatsApp
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+Scope:
+
+- a second active card on the `/operacoes` hub, navigating to `/operacoes/mensagens-whatsapp`;
+- purpose: fast access to approved WhatsApp customer-service message templates, so employees can find, copy, personalize (placeholders), and paste into WhatsApp without searching PDFs/old messages/memory;
+- content lives in a typed static config module, `src/config/mensagens-whatsapp.ts` (`WhatsAppMessageGroup[]`, each holding `WhatsAppMessage[]`), rendered generically by a nested accordion — outer level shows the 6 approved groups (Mensagens iniciais, Responder com informações detalhadas, Sondar interesse em outros produtos, Finalizar a venda, Finalizando a conversa, Sobre a loja), inner level shows each situation; expanding a situation reveals the approved message text and a **Copiar mensagem** action;
+- 6 groups, 17 individually copyable messages in total, reproduced verbatim from the approved Lacoste Manaus WhatsApp guidance document — no rewritten/"improved" Portuguese copy. Placeholders (`XXXXXX`, `PRODUTO`, `TAMANHO`, `COR`, `PREÇO`, `PRODUTO COMPLEMENTAR`) are preserved as-is for the employee to personalize after copying;
+- **Técnica CVB was removed from this milestone during closeout** (originally 7 groups / 21 messages) — those four examples are sales/product training content, not ready-to-send customer message templates, and are retained instead as a FUTURE Conhecimento & Cultura content category (section 12);
+- copy-to-clipboard preserves the approved paragraph/list formatting. The stored content already uses real line-break characters matching the approved source exactly (verified directly, not assumed), and the on-screen `<p>` and the copied clipboard text both render from that same unmodified string (`white-space: pre-line` on screen), so display and clipboard stay aligned by construction rather than by two separately-maintained formatting rules. The clipboard payload additionally normalizes line endings to CRLF (`\r\n`) — a defensive, display-invisible measure for paste targets that expect CRLF for multi-line plain text — since a product-owner QA report described paragraph breaks not surviving a WhatsApp paste despite the source content already being correct;
+- copy uses the browser Clipboard API (`navigator.clipboard.writeText`) inside the button's click handler; success shows a lightweight `sonner` toast ("Mensagem copiada."), failure shows a distinct fallback toast and never crashes — the message text stays visible either way so the employee can select/copy it manually. No copy history is stored, no employee-level copy tracking of any kind;
+- explicitly **not** implemented in this milestone: sending the message, WhatsApp API integration of any kind, automatic placeholder personalization, storing customer conversations, or AI-generated alternative messages;
+- no Supabase table, no migration, no admin editor — content can evolve later through an explicit version/update decision, same as Milestone 4A.
+
+**Content-maintenance note:** "Explicar o processo do envio do link" has approved, correct formatting as of this closeout, but the product owner intends to review/update its wording in a future content pass. This is not a blocker for Milestone 4B completion — do not rewrite this template's copy without that explicit future decision.
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly. Product-owner browser QA — including the Técnica CVB removal, the final 6-group/17-message structure, copy-to-clipboard behavior, paragraph/list formatting preserved on paste (payment-policy list, Frete, simple single-paragraph messages), on-screen/clipboard alignment, `Texto maior`, and mobile layout — is complete and **PASS**.
 
 ## 16.3 Planned Operational Modules
 
