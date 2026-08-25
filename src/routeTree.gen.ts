@@ -14,6 +14,8 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AtendimentoRouteImport } from './routes/atendimento'
 import { Route as AdministrativoRouteImport } from './routes/administrativo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
+import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -40,6 +42,18 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConhecimentoCulturaIndexRoute =
+  ConhecimentoCulturaIndexRouteImport.update({
+    id: '/conhecimento-cultura/',
+    path: '/conhecimento-cultura/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ConhecimentoCulturaPrincipiosRoute =
+  ConhecimentoCulturaPrincipiosRouteImport.update({
+    id: '/conhecimento-cultura/principios',
+    path: '/conhecimento-cultura/principios',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +61,8 @@ export interface FileRoutesByFullPath {
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
+  '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +70,8 @@ export interface FileRoutesByTo {
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
+  '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura': typeof ConhecimentoCulturaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,12 +80,28 @@ export interface FileRoutesById {
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
+  '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/administrativo' | '/atendimento' | '/dashboard' | '/termos'
+  fullPaths:
+    | '/'
+    | '/administrativo'
+    | '/atendimento'
+    | '/dashboard'
+    | '/termos'
+    | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/administrativo' | '/atendimento' | '/dashboard' | '/termos'
+  to:
+    | '/'
+    | '/administrativo'
+    | '/atendimento'
+    | '/dashboard'
+    | '/termos'
+    | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura'
   id:
     | '__root__'
     | '/'
@@ -75,6 +109,8 @@ export interface FileRouteTypes {
     | '/atendimento'
     | '/dashboard'
     | '/termos'
+    | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -83,6 +119,8 @@ export interface RootRouteChildren {
   AtendimentoRoute: typeof AtendimentoRoute
   DashboardRoute: typeof DashboardRoute
   TermosRoute: typeof TermosRoute
+  ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
+  ConhecimentoCulturaIndexRoute: typeof ConhecimentoCulturaIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +160,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conhecimento-cultura/': {
+      id: '/conhecimento-cultura/'
+      path: '/conhecimento-cultura'
+      fullPath: '/conhecimento-cultura/'
+      preLoaderRoute: typeof ConhecimentoCulturaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conhecimento-cultura/principios': {
+      id: '/conhecimento-cultura/principios'
+      path: '/conhecimento-cultura/principios'
+      fullPath: '/conhecimento-cultura/principios'
+      preLoaderRoute: typeof ConhecimentoCulturaPrincipiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -131,6 +183,8 @@ const rootRouteChildren: RootRouteChildren = {
   AtendimentoRoute: AtendimentoRoute,
   DashboardRoute: DashboardRoute,
   TermosRoute: TermosRoute,
+  ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
+  ConhecimentoCulturaIndexRoute: ConhecimentoCulturaIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

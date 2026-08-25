@@ -1343,16 +1343,64 @@ The employee should be able to understand product-family availability within sec
 
 ### PLANNED / PARTIALLY DEFINED
 
-Potential workflows include:
+None of the workflows below are implemented yet. They remain distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 3 near-term sequence, not here.
 
-- stock organization;
-- receiving / movement controls;
-- recurring operational tasks;
-- maintenance coordination;
-- store organization;
-- process checklists.
+**Escala / horários de trabalho**
 
-These workflows remain distinct from the fast read-only Consulta de Estoque experience.
+- V1: employee-readable monthly schedule;
+- V2: shift-swap request + approval + schedule update.
+
+**Organização de estoque**
+
+- sector assignment by employee;
+- employee completion confirmation;
+- future photo evidence.
+
+**Tarefas operacionais recorrentes**
+
+- training opportunities/reminders;
+- CRM-use reminders;
+- checklists/tasks for non-sales roles such as Caixa/Gerente.
+
+**Coordenação de manutenção**
+
+- lightweight maintenance-ticket workflow;
+- form + photo evidence + status/history.
+
+**Organização da loja**
+
+- shop-floor cabinets/drawers/replenishment/organization checks.
+
+**Checklists de processos**
+
+- guided reference/checklists for infrequent/error-prone procedures;
+- includes **Entrada de Mercadoria** — a step-by-step guided reference for executing the Linx Manager merchandise-entry process correctly. This is primarily a procedural reference, not a replacement for Linx. Future Portal content may include NF verification steps, discount-specific checks, import-by-file workflow, discrepancy handling, reconciliation checks, manager escalation/finalization points, and screenshots/examples. Not built yet — this replaces the earlier, vaguer "Recebimento / controles de movimentação" label with this more precise concept;
+- potential future examples such as CNPJ POS sales.
+
+**Limpeza**
+
+- future replacement for the manually-maintained monthly spreadsheet.
+
+**Contagem de sacolas e embalagens**
+
+- submit current quantities;
+- identify/order replenishment need;
+- future admin notification.
+
+**Sugestões**
+
+- replace the current improvement Google Form;
+- operational / marketing / other categories;
+- future voting/upvoting remains a roadmap possibility.
+
+**Links Importantes**
+
+- curated links to external tools/forms Portal should not own yet, e.g. the sensitive anonymous HR Google Form.
+
+**Tarefas / Pendências da Gerência**
+
+- V1: simple shared to-do/check-off list;
+- V2: deadlines/comments/priority/etc.
 
 ---
 
@@ -1368,21 +1416,72 @@ Exact permissions must be defined per capability.
 
 ---
 
-# 12. Training, Knowledge and Company Culture
+# 12. Conhecimento & Cultura
+
+### PLANNED / PARTIALLY IMPLEMENTED
+
+Conhecimento & Cultura is the employee-facing home for company principles, brand/product knowledge, sales knowledge, operational learning, quizzes, training content, and other approved material intended to reinforce knowledge and company culture without creating unnecessary friction during normal sales-floor work.
+
+Intended future content categories:
+
+- Nossos Princípios;
+- Lacoste / brand knowledge;
+- product knowledge;
+- selling / customer-service knowledge;
+- operational training;
+- short knowledge checks / quizzes;
+- AI-generated training material based on approved source content.
+
+**Only Nossos Princípios is implemented, as Epic 3 Milestone 3A** (section 16.2) — the Dashboard tile, the `/conhecimento-cultura` content hub, and the `/conhecimento-cultura/principios` page. Every other category above remains future scope: not implemented, not scaffolded, and not implied as available by the hub page's architecture (which anticipates additional cards later without pre-building disabled placeholders for them now).
+
+Training/knowledge content should avoid excessive friction in the employee's normal sales workflow.
+
+## Princípios em Ação
 
 ### FUTURE
 
-Potential capabilities include:
+Not implemented, not scaffolded, no schema or backend work done in anticipation of it. Documented here as approved product direction for a future milestone under Conhecimento & Cultura.
 
-- training quizzes;
-- short knowledge checks;
-- product training;
-- brand knowledge;
-- operational training;
-- reinforcement of company values/attributes/principles;
-- AI-generated training material based on approved source content.
+**Concept — Reconhecer uma atitude.** Employees would be able to submit examples of company principles (section — the five approved principles above) being demonstrated in practice. A submission would capture: the authenticated observer (derived automatically from the logged-in session — never a manually-entered, self-declared identity); the employee being recognized (an employee may recognize themselves); one or more principles — a single behavior may naturally demonstrate more than one, so this must not be forced to a single choice; a brief comment describing what happened; and a submission timestamp. Example:
 
-Training should avoid excessive friction in the employee's normal sales workflow.
+```text
+Pessoa reconhecida: João
+Princípios: Colaboração · Foco no Cliente
+Comentário: "Percebeu que eu precisava de ajuda com um cliente e veio apoiar sem eu precisar pedir."
+```
+
+**Shared positive feed.** Recognitions may feed a shared employee-facing recognition stream, e.g.:
+
+```text
+Maria reconheceu João
+Colaboração · Foco no Cliente
+"João percebeu que eu precisava de ajuda..."
+```
+
+For self-observation, the wording must make that clear naturally rather than implying someone else submitted it, e.g. "João compartilhou um exemplo próprio." The feed must remain positive, culturally reinforcing, non-competitive, and non-punitive — explicitly **no** scores, rankings, badges, leaderboards, "employee with most principles," or gamified principle points, consistent with section 3.10 (Coaching Over Punishment). Future moderation before public publication may remain a design option; the moderation mechanism itself is not decided or implemented here.
+
+**Concerns — Compartilhar uma preocupação (or similarly neutral/supportive wording).** A negative or corrective observation must never be presented as a public "negative rating" or public principle violation, and must be a separate flow from the public recognition feed above. Potential fields: employee involved; one or more relevant principles; a brief description/context; authenticated submitter identity; timestamp.
+
+**Privacy model for concerns — approved direction, explicit distinction:**
+
+```text
+Public recognition → shared employee feed
+Confidential concern → Admin-only
+```
+
+A concern does not appear in the employee-facing public feed; the employee being discussed does not see the reporter's identity through Portal; only appropriately authorized Administrador users may access the concern content and reporter identity. This must not be described as technically or fully anonymous — it is confidential/restricted-access, a meaningfully different guarantee. A future concern form must clearly tell the submitter, before submission, that the content is confidential and visible only to administration.
+
+**Sensitive HR issues remain out of scope for this flow.** Portal Benvisi should not become the company's homemade anonymous whistleblowing/HR complaint system at this stage. For serious/sensitive matters — harassment, discrimination, serious ethics complaints, other sensitive HR allegations — employees should continue to be directed to the existing external anonymous HR channel/form. A future concern flow may include a prominent link/reminder to that external resource, preserving the product principle that Portal can act as a trusted doorway to external systems without unnecessarily owning sensitive workflows.
+
+**Architecture constraints for whenever this is built** (documentation only — no tables/RPCs designed here, no migration):
+
+- observer identity must come from the authenticated session/server-side identity, never a client-submitted value treated as authoritative (section 5.1);
+- the target employee must be validated server-side;
+- public vs. confidential visibility must be explicit in the data model, not inferred by the frontend;
+- concern data must never leak into the public recognition feed;
+- confidentiality/authorization must not rely on frontend hiding alone — backend permissions must protect confidential concern access (this project's existing "hiding a button is UX, not authorization" principle);
+- both recognition and concern workflows should remain auditable;
+- no punitive scoring may be automatically derived from concern submissions.
 
 ---
 
@@ -1570,13 +1669,13 @@ Implementation agents should also run relevant build, typecheck, lint, and autom
 - shared placeholder module dialog;
 - Git/GitHub feature-branch workflow.
 
-## 16.2 Current Epic
+## 16.2 Epics
 
-### Epic 2 — IMPLEMENTED / QA COMPLETE / READY TO MERGE
+### Epic 2 — IMPLEMENTED / MERGED TO MAIN
 
 **Epic 2 — Atendimento**
 
-Development complete for the approved scope; product-owner practical QA (section-by-section, see the Epic 2 Stabilization subsection below) is complete; the `feature/epic-2-atendimento` branch is ready to merge into `main`. This marks the branch ready to merge, not the system as operational production — see section 4.4, Environments — Test/Demo Data vs Production.
+Development complete for the approved scope; product-owner practical QA (section-by-section, see the Epic 2 Stabilization subsection below) is complete; `feature/epic-2-atendimento` has been merged into `main`. This marks the code as stable and part of `main`, not the system as operational production — see section 4.4, Environments — Test/Demo Data vs Production.
 
 ### Milestone 1 — Lista da Vez + Atendimento Foundation
 
@@ -2245,6 +2344,42 @@ A batch of targeted corrections found during practical Epic 2 regression testing
 **Migrations (additive, not yet applied — apply in order):** `supabase/migrations/20260823_001_add_checklist_v2_item2_guidance.sql`, `supabase/migrations/20260823_002_restrict_gerente_admin_lista_auto_join.sql`, `supabase/migrations/20260824_001_restrict_lista_vez_auto_join_to_vendedor.sql`. None modifies an already-applied migration file. No PostgREST schema reload is required for any of them — every changed function (`registrar_turno_presenca`, `entrar_lista_da_vez`) keeps its exact existing signature (`CREATE OR REPLACE` in place), and the checklist migration is pure data (no function changes at all).
 
 Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly. Product-owner browser regression testing for this entire batch — plus the Dashboard accessibility Aa-trigger interaction (section 14.5) and the previous-day-recovery duration QA-fixture investigation (section 8.14) — is complete and **PASS**.
+
+### Epic 3 — Conhecimento & Cultura
+
+**Status:** IN DEVELOPMENT
+
+**Epic 3 — Conhecimento & Cultura.** See section 12 for the module's purpose and full future content-category list. This epic is the employee-facing broadening of Portal Benvisi beyond Atendimento — starting with a small, demo-quality first slice rather than the whole module at once.
+
+**Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
+
+1. Conhecimento & Cultura — Nossos Princípios (Milestone 3A, below);
+2. Operações — Links Importantes (section 10);
+3. Operações — Escala V1 (section 10);
+4. after evaluating Escala V1's complexity/quality in practice, likely move into Consulta de Estoque (section 9).
+
+Links Importantes, Escala, and Consulta de Estoque are **not** implemented by this sequence entry — they remain future/planned scope (section 10 / section 9) until their own milestone is completed.
+
+### Milestone 3A — Module Foundation + Nossos Princípios
+
+**Status:** IMPLEMENTED IN CODE / PENDING FINAL VISUAL QA
+
+Scope:
+
+- a new Dashboard tile, **Conhecimento & Cultura**, visible to all normal employee-facing roles (not Administrador-only — no compelling reason exists to restrict it, unlike Administrativo);
+- a new content hub page, `/conhecimento-cultura` — establishes the module's architecture for future knowledge/culture content; shows a single available content card (**Nossos Princípios**) rather than several disabled placeholders, per this project's "keep the first version clean and intentional" direction;
+- a new native page, `/conhecimento-cultura/principios` (**Nossos Princípios**), translating the approved principles poster into an interactive, responsive Portal experience rather than displaying the poster image directly — five principles as accordion rows (one open at a time), each expanding to reveal **Atributos pessoais** and **Valores culturais**. Accordion was chosen over a dedicated detail page or a dialog/sheet: all five principles stay visible as a scannable list at all times, expansion needs no navigation or back-stack entry, and it works identically on touch and desktop (no hover-only interaction);
+- content lives in a dedicated typed config module, `src/config/principios.ts` (a `Principio[]` array — `id`, `titulo`, `icon`, `atributosPessoais`, `valoresCulturais`), rendered generically by the accordion rather than one hardcoded card per principle — adding or editing a principle later means editing this array, not duplicating markup;
+- the five principles and their exact approved attributes/values (Integridade, Foco no Cliente, Colaboração, Transparência, Qualidade) are reproduced verbatim from the approved source content — no reinterpretation, no added/removed values;
+- visual language reuses existing Portal Benvisi tokens/components (`ModuleCard`, `Card`-style rounded/bordered containers, the `--brand` dark-green accent, existing `Accordion` primitive) — not a new disconnected design system, and not a pixel-for-pixel poster recreation;
+- `Texto maior` requires no new code — every string renders through ordinary Tailwind `text-*` utilities, so the existing typography-scale override already covers this page automatically;
+- no Supabase table, no migration, no admin content editor, no runtime AI — this is static application content for Milestone 3A, matching the project's "no unnecessary backend complexity for static content" principle.
+
+**Not implemented in Milestone 3A** (future content categories under Conhecimento & Cultura, section 12): Lacoste/brand knowledge, product knowledge, selling/customer-service knowledge, operational training, knowledge-check quizzes, AI-generated training material. The hub page's architecture anticipates these as additional cards later; none are scaffolded or implied as already available. See "Princípios em Ação" below (section 12) for an additional future capability documented, but not implemented, during this milestone's closeout.
+
+**QA status:** Dashboard tile presence, the Conhecimento & Cultura hub, the Nossos Princípios card, all five principles/content, the accordion interaction, back navigation, mobile layout, `Texto maior`, and desktop layout — all **PASS**. Two final polish items followed that QA pass and are captured here: the Dashboard tile was moved to the last normal employee-facing position (after Atendimento, Estoque, Operações — before the Administrador-only Administrativo tile) and its subtitle was shortened to "Princípios, produtos e formas de trabalhar." **Re-verify tile order and subtitle in the browser before marking this milestone fully IMPLEMENTED** — every other QA area above already passed and does not need to be re-run.
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
 
 ## 16.3 Planned Operational Modules
 
