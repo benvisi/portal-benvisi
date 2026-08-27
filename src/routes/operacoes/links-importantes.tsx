@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, Link2, Smartphone } from "lucide-react";
 
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -114,6 +115,8 @@ function LinksImportantesPage() {
           ))}
         </div>
       </div>
+
+      <AuthUtilityBar />
     </main>
   );
 }

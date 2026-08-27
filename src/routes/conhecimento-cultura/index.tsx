@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Compass } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import {
   CONHECIMENTO_CULTURA_PAGE_SUBTITLE,
@@ -63,6 +64,8 @@ function ConhecimentoCulturaPage() {
           />
         </div>
       </div>
+
+      <AuthUtilityBar />
     </main>
   );
 }

@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
 
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
+
 import {
   Accordion,
   AccordionContent,
@@ -127,6 +129,8 @@ function MensagensWhatsAppPage() {
           ))}
         </Accordion>
       </div>
+
+      <AuthUtilityBar />
     </main>
   );
 }

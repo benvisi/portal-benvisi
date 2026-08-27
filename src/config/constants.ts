@@ -303,6 +303,49 @@ export const MENSAGEM_COPIADA_LABEL = "Mensagem copiada.";
 export const MENSAGEM_COPIA_ERRO_MESSAGE =
   "Não foi possível copiar automaticamente. Selecione o texto acima para copiar manualmente.";
 
+// Milestone 4C.1: Escala V1 (Hoje / Semana / Mês).
+export const ESCALA_TITLE = "Escala";
+export const ESCALA_CARD_DESCRIPTION = "Confira os horários da equipe e a sua escala pessoal.";
+export const ESCALA_PAGE_SUBTITLE =
+  "Horários da equipe, sempre a partir da última escala publicada.";
+
+// The "Dia" tab shows one selected day (any date, not just today) — the
+// separate "Hoje" quick-jump button (ESCALA_HOJE_LABEL) returns to today.
+export const ESCALA_TAB_DIA_LABEL = "Dia";
+export const ESCALA_TAB_SEMANA_LABEL = "Semana";
+export const ESCALA_TAB_MES_LABEL = "Mês";
+
+export const ESCALA_SECAO_LABELS: Record<
+  "manha" | "intermediario" | "tarde" | "folga" | "ferias" | "a_confirmar",
+  string
+> = {
+  manha: "Manhã",
+  intermediario: "Intermediário",
+  tarde: "Tarde",
+  folga: "Folga",
+  ferias: "Férias",
+  a_confirmar: "A confirmar",
+};
+
+export const ESCALA_A_CONFIRMAR_SUPPORT_TEXT = "Verifique com a administração.";
+export const ESCALA_VOCE_LABEL = "Você";
+
+export const ESCALA_DIA_ANTERIOR_LABEL = "Dia anterior";
+export const ESCALA_PROXIMO_DIA_LABEL = "Próximo dia";
+export const ESCALA_HOJE_LABEL = "Hoje";
+export const ESCALA_MES_ANTERIOR_LABEL = "Mês anterior";
+export const ESCALA_PROXIMO_MES_LABEL = "Próximo mês";
+
+export const MINHA_ESCALA_TITLE = "Minha Escala";
+
+export const ESCALA_CARREGANDO_MESSAGE = "Carregando escala...";
+export const ESCALA_ERRO_MESSAGE = "Não foi possível carregar a escala. Tente novamente.";
+export const ESCALA_MES_NAO_DISPONIVEL_MESSAGE = "Este mês ainda não foi publicado.";
+// Milestone 4C.2 QA fix: distinct from ESCALA_ERRO_MESSAGE — a month with no
+// active publication is not a technical failure, so Hoje/Semana must never
+// show the "Tente novamente" error copy for it.
+export const ESCALA_NAO_PUBLICADA_MESSAGE = "Esta escala ainda não foi publicada.";
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";

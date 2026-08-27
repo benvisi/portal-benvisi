@@ -2,7 +2,10 @@ import { LOCALE_PT_BR, MANAUS_TIMEZONE, SESSION_STORAGE_KEY } from "@/config/con
 
 export interface AuthSessionData {
   funcionario_id: string;
+  /** Full/legal name. */
   nome: string;
+  /** Employee-facing informal identity — what the UI greets/labels the user with. */
+  apelido: string;
   cargo: string;
   timestamp_login: string;
   session_token: string;
@@ -20,6 +23,8 @@ function isAuthSessionData(value: unknown): value is AuthSessionData {
     candidate.funcionario_id.length > 0 &&
     typeof candidate.nome === "string" &&
     candidate.nome.length > 0 &&
+    typeof candidate.apelido === "string" &&
+    candidate.apelido.length > 0 &&
     typeof candidate.cargo === "string" &&
     candidate.cargo.length > 0 &&
     typeof candidate.timestamp_login === "string" &&

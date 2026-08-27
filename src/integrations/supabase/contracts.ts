@@ -6,7 +6,10 @@ export interface Employee {
 export interface VerifyPinSuccess {
   success: true;
   funcionario_id: string;
+  /** Full/legal name (funcionarios.nome). */
   nome: string;
+  /** Employee-facing informal identity (funcionarios.apelido), falls back to nome server-side. */
+  apelido: string;
   cargo: string;
   error_code: null;
   session_token: string;
@@ -16,6 +19,7 @@ export interface VerifyPinFailure {
   success: false;
   funcionario_id: string | null;
   nome: string | null;
+  apelido: string | null;
   cargo: string | null;
   error_code: "INVALID_INPUT" | "INVALID_CREDENTIALS";
   session_token: null;
@@ -42,6 +46,8 @@ export function isVerifyPinSuccess(value: unknown): value is VerifyPinSuccess {
     candidate.funcionario_id.length > 0 &&
     typeof candidate.nome === "string" &&
     candidate.nome.length > 0 &&
+    typeof candidate.apelido === "string" &&
+    candidate.apelido.length > 0 &&
     typeof candidate.cargo === "string" &&
     candidate.cargo.length > 0 &&
     typeof candidate.session_token === "string" &&
@@ -224,4 +230,94 @@ const CHECKLIST_POLICIES: readonly ChecklistPolicy[] = [
 
 export function isChecklistPolicy(value: unknown): value is ChecklistPolicy {
   return typeof value === "string" && CHECKLIST_POLICIES.includes(value as ChecklistPolicy);
+}
+
+// Milestone 4C.1: matches escala_classificar_turno's output plus the two
+// non-shift statuses and the "missing data" fallback — see
+// 20260825_003_add_escala_schema.sql / 20260825_004_add_escala_read_rpcs.sql.
+// Milestone 4C.2 (browser QA): the dedicated "gestao" section was dropped —
+// gerência employees are now classified into the normal shift buckets
+// (20260826_002_bucket_gestao_into_normal_sections.sql). Their hours come
+// back null from the RPC, so their rows render name-only.
+export type EscalaSecao = "manha" | "intermediario" | "tarde" | "folga" | "ferias" | "a_confirmar";
+
+const ESCALA_SECOES: readonly EscalaSecao[] = [
+  "manha",
+  "intermediario",
+  "tarde",
+  "folga",
+  "ferias",
+  "a_confirmar",
+];
+
+export type FeriadoAbrangencia = "nacional" | "estadual" | "municipal";
+
+const FERIADO_ABRANGENCIAS: readonly FeriadoAbrangencia[] = ["nacional", "estadual", "municipal"];
+
+export interface EscalaEntradaPeriodo {
+  data: string;
+  id_funcionario: string;
+  nome: string;
+  apelido: string;
+  secao: EscalaSecao;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  feriado_nome: string | null;
+  feriado_abrangencia: FeriadoAbrangencia | null;
+}
+
+export function isEscalaEntradaPeriodo(value: unknown): value is EscalaEntradaPeriodo {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.data === "string" &&
+    typeof candidate.id_funcionario === "string" &&
+    candidate.id_funcionario.length > 0 &&
+    typeof candidate.nome === "string" &&
+    typeof candidate.apelido === "string" &&
+    typeof candidate.secao === "string" &&
+    ESCALA_SECOES.includes(candidate.secao as EscalaSecao) &&
+    (candidate.hora_inicio === null || typeof candidate.hora_inicio === "string") &&
+    (candidate.hora_fim === null || typeof candidate.hora_fim === "string") &&
+    (candidate.feriado_nome === null || typeof candidate.feriado_nome === "string") &&
+    (candidate.feriado_abrangencia === null ||
+      (typeof candidate.feriado_abrangencia === "string" &&
+        FERIADO_ABRANGENCIAS.includes(candidate.feriado_abrangencia as FeriadoAbrangencia)))
+  );
+}
+
+export interface EscalaEntradaMes {
+  data: string;
+  secao: EscalaSecao;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  feriado_nome: string | null;
+  feriado_abrangencia: FeriadoAbrangencia | null;
+}
+
+export function isEscalaEntradaMes(value: unknown): value is EscalaEntradaMes {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.data === "string" &&
+    typeof candidate.secao === "string" &&
+    ESCALA_SECOES.includes(candidate.secao as EscalaSecao) &&
+    (candidate.hora_inicio === null || typeof candidate.hora_inicio === "string") &&
+    (candidate.hora_fim === null || typeof candidate.hora_fim === "string") &&
+    (candidate.feriado_nome === null || typeof candidate.feriado_nome === "string") &&
+    (candidate.feriado_abrangencia === null ||
+      (typeof candidate.feriado_abrangencia === "string" &&
+        FERIADO_ABRANGENCIAS.includes(candidate.feriado_abrangencia as FeriadoAbrangencia)))
+  );
+}
+
+export interface EscalaMesPublicado {
+  mes_referencia: string;
+  publicado_em: string;
+}
+
+export function isEscalaMesPublicado(value: unknown): value is EscalaMesPublicado {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.mes_referencia === "string" && typeof candidate.publicado_em === "string";
 }

@@ -27,6 +27,7 @@ function completeSession(result: VerifyPinSuccess): void {
   AuthSession.save({
     funcionario_id: result.funcionario_id,
     nome: result.nome,
+    apelido: result.apelido,
     cargo: result.cargo,
     timestamp_login: new Date().toISOString(),
     session_token: result.session_token,

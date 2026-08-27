@@ -6,6 +6,7 @@ import { AtendimentoAtivoCard } from "@/components/atendimento/AtendimentoAtivoC
 import { EmAtendimentoRow } from "@/components/atendimento/EmAtendimentoRow";
 import { FechamentoAtendimento } from "@/components/atendimento/FechamentoAtendimento";
 import { UnsavedDataConfirmDialog } from "@/components/atendimento/UnsavedDataConfirmDialog";
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -663,6 +664,8 @@ function AtendimentoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AuthUtilityBar />
     </main>
   );
 }

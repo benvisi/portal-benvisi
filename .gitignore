@@ -36,3 +36,6 @@ dist-ssr
 .env.production
 .env.development
 *.env
+
+# Local scratch / provisional source material (e.g. Escala workbook)
+tmp/
