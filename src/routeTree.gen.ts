@@ -19,6 +19,7 @@ import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecime
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
+import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
 
 const TermosRoute = TermosRouteImport.update({
@@ -74,6 +75,12 @@ const OperacoesEscalaRoute = OperacoesEscalaRouteImport.update({
   path: '/operacoes/escala',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperacoesContagemEmbalagensRoute =
+  OperacoesContagemEmbalagensRouteImport.update({
+    id: '/operacoes/contagem-embalagens',
+    path: '/operacoes/contagem-embalagens',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ConhecimentoCulturaPrincipiosRoute =
   ConhecimentoCulturaPrincipiosRouteImport.update({
     id: '/conhecimento-cultura/principios',
@@ -88,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -156,6 +168,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/termos'
     | '/conhecimento-cultura/principios'
+    | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -170,6 +183,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   TermosRoute: typeof TermosRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
+  OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
@@ -249,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesEscalaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operacoes/contagem-embalagens': {
+      id: '/operacoes/contagem-embalagens'
+      path: '/operacoes/contagem-embalagens'
+      fullPath: '/operacoes/contagem-embalagens'
+      preLoaderRoute: typeof OperacoesContagemEmbalagensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/conhecimento-cultura/principios': {
       id: '/conhecimento-cultura/principios'
       path: '/conhecimento-cultura/principios'
@@ -266,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   TermosRoute: TermosRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
+  OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,

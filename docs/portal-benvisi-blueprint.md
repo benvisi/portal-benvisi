@@ -1341,11 +1341,11 @@ The employee should be able to understand product-family availability within sec
 
 # 10. Operações / Logística & Tarefas
 
-### PLANNED / PARTIALLY DEFINED — THREE RESOURCES IMPLEMENTED
+### PLANNED / PARTIALLY DEFINED — FOUR RESOURCES IMPLEMENTED
 
-**Links Importantes**, **Mensagens para WhatsApp**, and **Escala V1** are implemented and QA-passed — see Epic 4, Milestones 4A, 4B, and 4C (section 16.2) for their full scope. Every other workflow below remains unimplemented future/planned scope, distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 4 near-term sequence, not here.
+**Links Importantes**, **Mensagens para WhatsApp**, and **Escala V1** are implemented and QA-passed, and **Contagem de Embalagens V1** is implemented in code pending browser QA — see Epic 4, Milestones 4A, 4B, 4C, and 4D (section 16.2) for their full scope. Every other workflow below remains unimplemented future/planned scope, distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 4 near-term sequence, not here.
 
-**Operações hub tile order.** Reordered in the Milestone 4C.3 polish tranche, per explicit product-owner approval, to **Escala, Mensagens para WhatsApp, Links Importantes** (previously Links, Mensagens, Escala — where Escala had simply been appended). See Milestone 4C.3 (section 16.2).
+**Operações hub tile order.** Current order (Milestone 4D QA polish, product-owner approved): **Escala, Mensagens para WhatsApp, Contagem de Embalagens, Links Importantes**. History: 4C.3 set it to Escala / Mensagens / Links (from the earlier Links / Mensagens / Escala); 4D first appended Contagem last, then moved it above Links in the QA-polish tranche. Still not a hub redesign — just the ordering of the real modules; the submenu/category question remains deliberately deferred (section 18). See Milestones 4C.3 and 4D (section 16.2).
 
 **Escala / horários de trabalho — IMPLEMENTED / QA COMPLETE (Milestone 4C, section 16.2)**
 
@@ -1383,11 +1383,13 @@ The employee should be able to understand product-family availability within sec
 
 - future replacement for the manually-maintained monthly spreadsheet.
 
-**Contagem de sacolas e embalagens**
+**Contagem de Embalagens — IMPLEMENTED / QA COMPLETE (Milestone 4D, section 16.2)**
 
-- submit current quantities;
-- identify/order replenishment need;
-- future admin notification.
+- V1 replaces **only** the paper packaging-count ticket: an employee counts packaging inventory (pacotes fechados + unidades avulsas per configured item), optionally adds an observação, and submits; Portal records the authenticated submitter and timestamp automatically. Route `/operacoes/contagem-embalagens`, reached from a fourth card on the `/operacoes` hub. Live per-item totals (`pacotes × unidades_por_pacote + unidades_avulsas`); native mobile numeric keypad; required `pacotes fechados` for every active item (zero is a valid informed value; blank is never treated as zero, validated on submit with a concise "N itens ainda precisam ser informados." summary that flags only the missing rows);
+- submissions are historically preserved — nothing overwrites a prior count, and multiple counts in the same month are valid. Status `pendente_revisao` on submit, `revisada` once an Administrador has seen/accepted it (for later purchasing analysis — **not** a purchase order, **not** an approved purchase);
+- Admin view (Administrador only, enforced server-side): tabs **Nova contagem · Pendentes · Histórico** — pending cards show date/time + "Preenchido por {apelido}" + item count ("14 itens contados") + status; opening one shows the full item table (item, pacotes, avulsas, per-item total) plus observação/submitter/timestamp, and a **Marcar como revisada** action that moves it to Histórico. No cross-category aggregate total is calculated or shown anywhere — summing heterogeneous packaging items is not operationally meaningful;
+- configurable catalog in the DB table `contagem_embalagem_itens` — package sizes are data, not code: a pack-size change or (de)activation is a row update. `ativo_para_contagem` is deliberately independent of "actively being purchased" (an item discontinued for purchase may still hold inventory to count);
+- **not** in V1 (future): Reposição Inteligente / purchasing recommendations; email notification on submit (Admin pending-review UI is the V1 notification mechanism); recurrence / monthly required tasks / reminders / overdue logic.
 
 **Sugestões**
 
@@ -2383,7 +2385,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 **Status:** IN DEVELOPMENT
 
-**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), and 4C (Escala V1) are complete and QA-passed — more Operações features (next likely Consulta de Estoque) are still planned.
+**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), 4C (Escala V1), and 4D (Contagem de Embalagens V1) are all complete and QA-passed — more Operações features (next likely Consulta de Estoque) are still planned.
 
 **Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
 
@@ -2391,9 +2393,10 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 2. Operações — Links Importantes (Milestone 4A, below) — **complete, QA passed**;
 3. Operações — Mensagens para WhatsApp (Milestone 4B, below) — **complete, QA passed**;
 4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI; the real Excel publish/import flow remains future V1.1 scope);
-5. after evaluating Escala V1's complexity/quality in practice, likely move into Consulta de Estoque (section 9).
+5. Operações — Contagem de Embalagens V1 (Milestone 4D, below) — **complete, QA passed**;
+6. after evaluating Escala V1 and Contagem de Embalagens in practice, likely move into Consulta de Estoque (section 9).
 
-Escala V1 and Consulta de Estoque are **not** implemented by this sequence entry — they remain future/planned scope (section 10 / section 9) until their own milestone is completed.
+Consulta de Estoque is **not** implemented by this sequence entry — it remains future/planned scope (section 9) until its own milestone is completed.
 
 ### Milestone 4A — Links Importantes
 
@@ -2584,6 +2587,89 @@ Validated: `npm run typecheck`, `npm run lint` (0 errors; 6 pre-existing `react-
 
 **OPEN / FUTURE — Gestão consistency on Escala.** The current V1 Gestão behavior is **accepted as-is**: gerência members are bucketed into the normal shift sections by their stored hours, their individual hours are withheld (name-only rows), and non-privileged callers receive no gerência row at all. The product owner may later refine *how consistently* Gestão/Favacho should appear on Escala when there is **no explicit schedule entry** for a given day (e.g. whether a manager with no entry should still surface as "present", or how Favacho's currently-blank days — which fall through to A CONFIRMAR — should read). This is a presentation/product refinement, **not a current bug or blocker**, and nothing should be implemented for it now.
 
+### Milestone 4D — Contagem de Embalagens
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+Replaces **only** the paper packaging-count ticket with a structured submission + Admin review history. Does **not** implement purchasing recommendations (Reposição Inteligente — see the FUTURE entry below), email notification, or any recurrence/reminder/overdue logic.
+
+**Employee counting flow.** `Dashboard → Operações → Contagem de Embalagens` (`/operacoes/contagem-embalagens`, a fourth card appended to the `/operacoes` hub — no navigation redesign, section 18). The employee opens the form, enters counts for every configured item, optionally adds an observação, and submits. Portal records the authenticated employee and the submission timestamp automatically — the form never asks for name/date/time.
+
+**Counting input model.** For each active catalog item: **Pacotes fechados** (required), **Unidades avulsas** (optional), and a **Total** computed live as `pacotes_fechados × unidades_por_pacote + unidades_avulsas` (e.g. Sacola Boutique P with 4 pacotes + 17 avulsas → 217 un.). Items are grouped under family headings (Sacola Boutique, Envelope, Seda, Etiqueta, De/Para, Outlet — `Boutique` and `Outlet` are packaging/quality types, **not** locations; everything is counted in one store).
+
+**Numeric keypad.** All count fields use `type="text"` + `inputMode="numeric"` + `pattern="[0-9]*"` and accept only nonnegative whole integers (input is sanitized to digits, leading zeros stripped) — native mobile numeric keypad, no custom Portal keypad.
+
+**Validation UX.** Untouched fields stay visually neutral while the employee works. On submit, all required `Pacotes fechados` are validated; if any is blank the submission is blocked with a concise summary (`"3 itens ainda precisam ser informados."`) and only the missing rows are flagged — the flag clears live as each is filled. `0` is a valid informed value; blank is **never** treated as `0` (enforced client-side, and the `submeter_contagem` RPC independently rejects an incomplete or tampered payload). Optional free-text **Observação** at the bottom. After a successful submit the form shows a clear confirmation ("Contagem enviada — Registrada em nome de {apelido} em {data/hora}. A administração fará a revisão.") and a **Nova contagem** button to start another.
+
+**Configured package catalog (V1 — DB table `contagem_embalagem_itens`, seeded by migration `20260827_001`).** Package sizes are **data, not code** — a pack-size change or (de)activation is a row update, no frontend change. `ativo_para_contagem` is deliberately independent of any future "actively being purchased" flag: an item discontinued for purchase may still hold inventory to count.
+
+| Item | Família | Tamanho | Unidades por pacote |
+| --- | --- | --- | --- |
+| Sacola Boutique PP | `sacola_boutique` | PP | 100 |
+| Sacola Boutique P | `sacola_boutique` | P | 50 |
+| Sacola Boutique M | `sacola_boutique` | M | 50 |
+| Sacola Boutique G | `sacola_boutique` | G | 50 |
+| Envelope PP | `envelope` | PP | 100 |
+| Envelope P | `envelope` | P | 50 |
+| Envelope M | `envelope` | M | 50 |
+| Envelope GG | `envelope` | GG | 50 |
+| Seda | `seda` | TU | 500 |
+| Etiqueta | `etiqueta` | TU | 500 |
+| De/Para | `de_para` | TU | 500 |
+| Outlet P | `outlet` | P | 100 |
+| Outlet M | `outlet` | M | 100 |
+| Outlet G | `outlet` | G | 50 |
+
+The source purchasing spreadsheet names the first family simply "Sacola"; Portal uses "Sacola Boutique" as the employee-facing label to distinguish it from Outlet. All 14 quantities were confirmed by the product owner (2026-08-27).
+
+**Submission / history model.** `contagens` (header: `submetido_por`, `submetido_em`, `status`, `observacao`, `revisada_por`, `revisada_em`) + `contagem_itens` (one row per item: `pacotes_fechados`, `unidades_avulsas`; `unique (id_contagem, id_item)`). The **per-item** `total_unidades` is **not stored** — derived in `get_contagem_detalhe`, so a later catalog pack-size correction leaves no stale totals. No cross-category aggregate total is stored, derived, or displayed — heterogeneous packaging items are not summed into one number (`get_contagens_pendentes` / `get_contagem_historico` return only an item count). Nothing overwrites a prior count; multiple counts in the same month are valid and all preserved.
+
+**Status / Admin review.** V1 status is `pendente_revisao` on submit, `revisada` once an Administrador has seen/accepted the count. **`revisada` means "Admin has seen/accepted the count for purchasing analysis" — it is not an approved purchase and creates no purchase order.**
+
+**Admin screen.** For Administrador only (enforced server-side), the module shows tabs **Nova contagem · Pendentes · Histórico**. A pending card shows `dd/mm/aaaa · HH:MM`, "Preenchido por {apelido}" (apelido-first, fall back to nome), a plain item count ("14 itens contados"), and the status pill. Opening it shows the item table (item, pacotes, avulsas, per-item total — no grand total), the observação if present, and the submitter/timestamp; **Marcar como revisada** stamps `revisada_por`/`revisada_em` and moves the submission to Histórico. A regular employee sees only **Nova contagem** and none of the review/history surface.
+
+**Identity / security.** Session-token architecture, unchanged. The submitter is resolved server-side inside `submeter_contagem` — `funcionario_id` is never accepted from the client. The Admin-only RPCs (`get_contagens_pendentes`, `get_contagem_historico`, `get_contagem_detalhe`, `marcar_contagem_revisada`) enforce `cargo = 'Administrador'` server-side (same line drawn by `set_checklist_policy`), not by hidden buttons. Every new table follows the established RLS-enabled / zero-policies / SECURITY-DEFINER-RPC-only pattern.
+
+**Schema.** Migration `20260827_001_add_contagem_embalagens.sql` (tables `contagem_embalagem_itens`, `contagens`, `contagem_itens` + all six RPCs) and the additive follow-up `20260827_002_drop_contagem_total_geral.sql` (redefines `get_contagens_pendentes` / `get_contagem_historico` to drop the aggregate `total_geral_unidades` column per the product correction — `20260827_001` was already applied and is left untouched). Both applied via Supabase MCP `apply_migration`, verified via MCP, immutable thereafter. RPCs (all SECURITY DEFINER, session-authenticated): `get_contagem_catalogo`, `submeter_contagem(p_session_token, p_itens jsonb, p_observacao text)`, `get_contagens_pendentes`, `get_contagem_historico`, `get_contagem_detalhe(p_session_token, p_id)`, `marcar_contagem_revisada(p_session_token, p_id)`.
+
+**Global UX preserved.** Shared `AuthUtilityBar` (Texto maior + Sair) at the bottom of the page; apelido-first identity; mobile-first, comfortable touch targets, no horizontal overflow (the detail table scrolls inside its own container). Works under `Padrão` and `Texto maior`.
+
+Validated: `npm run typecheck` (clean), `npm run lint` (0 errors; the same 6 pre-existing `react-refresh` warnings in `src/components/ui/*`, no new ones), `npm run build` (clean). Backend behavior was smoke-tested directly against the database (full submit → derived totals → mark reviewed → moves to histórico, plus the incomplete-submission, non-admin, and double-review rejections) inside rolled-back transactions, leaving no test data.
+
+**QA polish tranche (applied after the first browser pass, then re-confirmed in the final pass):**
+
+- **`Unidades avulsas` field relabelled `Unidades avulsas (opcional)`** on the counting form — behaviour unchanged (blank = 0, no validation requirement, numeric keypad, live total);
+- **`Pendente de revisão` pill** switched from the quiet outline treatment to the established lightweight amber attention treatment (`border-warning/40 bg-warning/15 text-warning`, the same family used by the Lista da Vez "fora" card, `PendingChecklistIndicator`, `EmAtendimentoRow`) — draws the eye without reading as an error. `Revisada` stays on the calmer neutral `secondary` treatment, still clearly distinct;
+- **Admin detail table** alternating row treatment: iterated over the final browser pass from `even:bg-muted/30` → `even:bg-muted` → **`even:bg-border`** (the `--border` design token as a fill — one clear step darker than `bg-muted` on the neutral ramp, still a light grey with no hue, no brand/status colour, visible at rest without hover). Borders, spacing, columns, table structure, and internal `overflow-x-auto` scrolling unchanged; odd rows keep the card background; still no grand total;
+- **Operações hub order** changed to Escala → Mensagens para WhatsApp → Contagem de Embalagens → Links Importantes (see section 10).
+
+**Browser QA (product owner): PASS.** Confirmed in full, including the final `even:bg-border` zebra-row contrast:
+
+| Area | Result |
+| --- | --- |
+| Employee counting flow (open form, enter counts, submit) | PASS |
+| 14-item catalog (exact items, grouping) | PASS |
+| Package sizes (per-item `unidades_por_pacote`) | PASS |
+| Native mobile numeric keypad on all count fields | PASS |
+| Zero accepted as a valid informed value / blank Pacotes fechados blocked on submit | PASS |
+| Optional `Unidades avulsas` (blank = 0) | PASS |
+| Live per-item total (`pacotes × unidades_por_pacote + avulsas`) | PASS |
+| Optional Observação | PASS |
+| Authenticated submitter + timestamp recorded automatically | PASS |
+| Admin Pendentes / Histórico views | PASS |
+| Marcar como revisada → moves to Histórico | PASS |
+| Amber `Pendente de revisão` pill | PASS |
+| Alternating detail-row contrast (after final `even:bg-border`) | PASS |
+| Operações hub card order | PASS |
+| `Texto maior` + mobile layout, no horizontal overflow | PASS |
+| Owner Admin identity update (Joshua Neman / Josh / josh@benvisi.com.br, same UUID, PIN + history preserved) | PASS |
+
+Milestone 4D — Contagem de Embalagens V1 is closed as **IMPLEMENTED / QA COMPLETE**. Everything below remains explicitly FUTURE / OPEN and none of it blocks this closeout.
+
+**FUTURE — Reposição Inteligente.** Not implemented, not scaffolded, no schema or logic built toward it. Goal: use the current physical count plus historical consumption, supplier pack sizes, open purchases / goods in transit, safety stock, demand horizon, supplier order multiples, seasonality, sale periods, substitution logic (e.g. Outlet vs Boutique), and Admin judgment/override to generate **recommended purchase quantities** for Admin review. Architectural principle: this must begin as **transparent, deterministic, explainable business logic / analytics**, not a black-box AI purchasing decision; future AI/agent assistance may explain exceptions or help analyse unusual behaviour, but the Administrador retains the final decision. Do not implement now.
+
+**FUTURE — Operações navigation review (unchanged).** As with Milestones 4A–4C, Contagem de Embalagens takes a place in the existing Operações grid (its exact position was adjusted in the QA polish tranche) rather than triggering a menu redesign. The product owner intentionally wants more real content in Operações before deciding whether the menu eventually needs submenus, categories, a different grid, or separate Dashboard-level modules. Preserved as a future UX review point (section 18).
+
 ### Future — Minha Conta / Alterar PIN
 
 **Status:** FUTURE — documented now per Milestone 4C.1, not implemented
@@ -2605,7 +2691,7 @@ Do not implement this without a dedicated milestone; do not modify `verify_pin` 
 **Status:** FUTURE — captured for the roadmap, none of it approved for implementation now. Each item below needs its own decision/milestone.
 
 - **Terms stay version-driven; optional annual reaffirmation later.** The current model (`termos_aceite` unique on `(id_funcionario, versao_termo)`; `check_termo_acceptance` is existence-by-version; bumping the `TERMS_VERSION` constant re-prompts everyone and keeps prior acceptances as history) is sufficient and is the accepted approach. A later refinement *may* add a server-side source of truth for the current version (e.g. a `termos_versoes` table with an effective date) and/or an age-based reaffirmation rule (re-prompt when the latest acceptance is older than ~12 months). Not needed for rollout.
-- **Real Admin account — convert in place, do not duplicate.** The existing `Administrador` fixture (`Admin Teste`) is already referenced by preserved data (it is `escala_publicacoes.publicado_por` for the September publication, plus `checklist_config.atualizado_por` and other non-cascading references). When a real Admin identity is needed, rename/re-point that row in place (keep its UUID) and set a real strong PIN — do **not** create a second Administrador row and retire the first.
+- **Real Admin account — convert in place, do not duplicate. — EXECUTED (2026-08-27).** The existing `Administrador` fixture row (UUID `9e317cb7-1c61-4a29-be95-db110219e49f`, referenced by preserved data — `escala_publicacoes.publicado_por` for the September publication, `checklist_config.atualizado_por`, and other non-cascading references) was updated in place via the Supabase MCP data-update workflow: `nome` `Admin Teste` → `Joshua Neman`, `apelido` `joshua` → `Josh`, `email` `joshua@benvisi.com.br` (incorrect / non-existent) → `josh@benvisi.com.br`. Unchanged: the UUID, `token_pin` (`1234` — still the provisional plaintext PIN; hashing/rotation remains the Minha Conta / Alterar PIN milestone), `cargo = 'Administrador'`, `is_active = true`, and all historical references/activity. No second Administrador row was created; no history was cleared. `list_active_employees` and `verify_pin` were verified to return the new identity. **A browser session that was already logged in keeps the old cached name until logout + login** (the client caches `nome`/`apelido` in `sessionStorage` at login; the session row itself stores no name, and RPC-sourced display names — Escala, Lista da Vez, Contagem cards — already read live and update immediately). A real strong PIN is still owed and belongs to that dedicated PIN milestone, not this data fix.
 - **Observador / non-employee access — separate principal, not `funcionarios`.** Read-only non-employee accounts must be modelled as their own principal + explicit read-only capability allow-list (a parallel session-context function), never as a `funcionarios` row and never via `cargo = 'Administrador'`. Because every employee-facing surface (login picker, Escala, Lista da Vez, Atendimento) filters on `funcionarios`, a non-`funcionarios` principal is excluded from all of them by construction, and admin RPCs fail closed for it. Do not widen the `funcionarios.cargo` CHECK to add an observer role.
 - **Login UX — picker + PIN stays primary.** Keep the employee picker + PIN as the main path. A type-to-filter/search affordance on the picker and a separate, unlisted access path for non-employee principals *may* be added later; email + PIN is only worth revisiting if real employee emails are collected and the roster outgrows a scannable list. Tie any change to the Minha Conta / Alterar PIN + PIN-hashing milestone above.
 - **Real-employee test-history cleanup happens at rollout preparation, not now.** Several real/named employees carry small amounts of pre-launch test activity (`termos_aceite`, `sessoes_funcionario`, `turno_presenca`, `lista_vez_fila`, one `atendimentos` row). A single ordered `DELETE` transaction restores a clean first-login experience while preserving all `funcionarios` rows and the provisional September Escala (`escala_publicacoes` / `escala_entradas`). This is deferred to the rollout window and must not be executed as part of Escala closeout.

@@ -10,6 +10,7 @@ export const ROUTES = {
   OPERACOES_LINKS_IMPORTANTES: "/operacoes/links-importantes",
   OPERACOES_MENSAGENS_WHATSAPP: "/operacoes/mensagens-whatsapp",
   OPERACOES_ESCALA: "/operacoes/escala",
+  OPERACOES_CONTAGEM_EMBALAGENS: "/operacoes/contagem-embalagens",
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

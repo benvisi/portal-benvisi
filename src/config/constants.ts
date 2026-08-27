@@ -346,6 +346,83 @@ export const ESCALA_MES_NAO_DISPONIVEL_MESSAGE = "Este mês ainda não foi publi
 // show the "Tente novamente" error copy for it.
 export const ESCALA_NAO_PUBLICADA_MESSAGE = "Esta escala ainda não foi publicada.";
 
+// Epic 4, Milestone 4D: Operações → Contagem de Embalagens V1.
+export const CONTAGEM_EMBALAGENS_TITLE = "Contagem de Embalagens";
+export const CONTAGEM_EMBALAGENS_CARD_DESCRIPTION =
+  "Registre a contagem física de sacolas e embalagens da loja.";
+export const CONTAGEM_EMBALAGENS_PAGE_SUBTITLE =
+  "Conte os pacotes fechados e as unidades avulsas de cada item e envie para a administração.";
+
+export const CONTAGEM_TAB_NOVA_LABEL = "Nova contagem";
+export const CONTAGEM_TAB_PENDENTES_LABEL = "Pendentes";
+export const CONTAGEM_TAB_HISTORICO_LABEL = "Histórico";
+
+export const CONTAGEM_PACOTES_FECHADOS_LABEL = "Pacotes fechados";
+export const CONTAGEM_UNIDADES_AVULSAS_LABEL = "Unidades avulsas (opcional)";
+export const CONTAGEM_TOTAL_LABEL = "Total";
+export const CONTAGEM_OBSERVACAO_LABEL = "Observação";
+export const CONTAGEM_OBSERVACAO_PLACEHOLDER =
+  "Opcional. Ex.: pacote já estava aberto; contei 23 unidades.";
+export const CONTAGEM_OBSERVACAO_HINT = "Opcional.";
+export const CONTAGEM_SUBMIT_LABEL = "Enviar contagem";
+export const CONTAGEM_ENVIANDO_LABEL = "Enviando...";
+export const CONTAGEM_NOVA_CONTAGEM_LABEL = "Nova contagem";
+
+export const CONTAGEM_CARREGANDO_MESSAGE = "Carregando itens...";
+export const CONTAGEM_CATALOGO_ERRO_MESSAGE =
+  "Não foi possível carregar os itens da contagem. Tente novamente.";
+export const CONTAGEM_ENVIO_ERRO_MESSAGE = "Não foi possível enviar a contagem. Tente novamente.";
+
+// Unit suffix for the live and recorded totals ("217 un.").
+export const CONTAGEM_UNIDADE_SUFFIX = "un.";
+
+// Shown after a submit attempt with missing required package fields. The
+// count is filled in by the caller; only the missing rows are then
+// visually flagged (never aggressive red while the employee is still
+// working through the form).
+export function getContagemItensFaltandoMessage(count: number): string {
+  return count === 1
+    ? "1 item ainda precisa ser informado."
+    : `${count} itens ainda precisam ser informados.`;
+}
+
+export const CONTAGEM_ENVIADA_TITLE = "Contagem enviada";
+export function getContagemEnviadaDescription(apelido: string, dataHora: string): string {
+  return `Registrada em nome de ${apelido} em ${dataHora}. A administração fará a revisão.`;
+}
+
+export const CONTAGEM_STATUS_PENDENTE_LABEL = "Pendente de revisão";
+export const CONTAGEM_STATUS_REVISADA_LABEL = "Revisada";
+export const CONTAGEM_PREENCHIDO_POR_PREFIX = "Preenchido por";
+export const CONTAGEM_REVISADO_POR_PREFIX = "Revisada por";
+
+export const CONTAGEM_PENDENTES_VAZIO_MESSAGE = "Nenhuma contagem pendente de revisão.";
+export const CONTAGEM_HISTORICO_VAZIO_MESSAGE = "Nenhuma contagem revisada ainda.";
+export const CONTAGEM_LISTA_ERRO_MESSAGE =
+  "Não foi possível carregar as contagens. Tente novamente.";
+export const CONTAGEM_DETALHE_ERRO_MESSAGE =
+  "Não foi possível carregar os detalhes desta contagem. Tente novamente.";
+
+export const CONTAGEM_ABRIR_DETALHE_LABEL = "Ver detalhes da contagem";
+export const CONTAGEM_VOLTAR_LISTA_LABEL = "Voltar à lista";
+export const CONTAGEM_MARCAR_REVISADA_LABEL = "Marcar como revisada";
+export const CONTAGEM_MARCANDO_REVISADA_LABEL = "Marcando...";
+export const CONTAGEM_MARCAR_REVISADA_ERRO_MESSAGE =
+  "Não foi possível marcar como revisada. Tente novamente.";
+export const CONTAGEM_JA_REVISADA_MESSAGE = "Esta contagem já foi revisada.";
+
+export const CONTAGEM_COL_ITEM_LABEL = "Item";
+export const CONTAGEM_COL_PACOTES_LABEL = "Pacotes";
+export const CONTAGEM_COL_AVULSAS_LABEL = "Avulsas";
+export const CONTAGEM_COL_TOTAL_LABEL = "Total";
+
+// Plain item count for the pending/history cards — deliberately NOT a
+// cross-category unit total (summing heterogeneous packaging items is not
+// operationally meaningful). Per-item totals are kept in the detail view.
+export function getContagemItensContadosLabel(count: number): string {
+  return count === 1 ? "1 item contado" : `${count} itens contados`;
+}
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";

@@ -321,3 +321,130 @@ export function isEscalaMesPublicado(value: unknown): value is EscalaMesPublicad
   const candidate = value as Record<string, unknown>;
   return typeof candidate.mes_referencia === "string" && typeof candidate.publicado_em === "string";
 }
+
+// =============================================================================
+// Milestone 4D — Contagem de Embalagens V1. Matches the RPCs in
+// 20260827_001_add_contagem_embalagens.sql. All numeric totals are returned
+// by Postgres as `bigint`/`int` casts, which PostgREST serializes as JSON
+// numbers — hence `number`, not `string`, in the guards below.
+// =============================================================================
+
+export type ContagemStatus = "pendente_revisao" | "revisada";
+
+const CONTAGEM_STATUSES: readonly ContagemStatus[] = ["pendente_revisao", "revisada"];
+
+export interface ContagemCatalogoItem {
+  id: string;
+  familia: string;
+  tamanho: string;
+  rotulo: string;
+  unidades_por_pacote: number;
+  ordem_exibicao: number;
+}
+
+export function isContagemCatalogoItem(value: unknown): value is ContagemCatalogoItem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.familia === "string" &&
+    typeof candidate.tamanho === "string" &&
+    typeof candidate.rotulo === "string" &&
+    candidate.rotulo.length > 0 &&
+    typeof candidate.unidades_por_pacote === "number" &&
+    candidate.unidades_por_pacote > 0 &&
+    typeof candidate.ordem_exibicao === "number"
+  );
+}
+
+export interface ContagemPendente {
+  id: string;
+  submetido_por_nome: string;
+  submetido_em: string;
+  observacao: string | null;
+  total_itens: number;
+}
+
+export function isContagemPendente(value: unknown): value is ContagemPendente {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.submetido_por_nome === "string" &&
+    typeof candidate.submetido_em === "string" &&
+    (candidate.observacao === null || typeof candidate.observacao === "string") &&
+    typeof candidate.total_itens === "number"
+  );
+}
+
+export interface ContagemHistoricoRegistro {
+  id: string;
+  submetido_por_nome: string;
+  submetido_em: string;
+  observacao: string | null;
+  revisada_por_nome: string | null;
+  revisada_em: string | null;
+  total_itens: number;
+}
+
+export function isContagemHistoricoRegistro(value: unknown): value is ContagemHistoricoRegistro {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.submetido_por_nome === "string" &&
+    typeof candidate.submetido_em === "string" &&
+    (candidate.observacao === null || typeof candidate.observacao === "string") &&
+    (candidate.revisada_por_nome === null || typeof candidate.revisada_por_nome === "string") &&
+    (candidate.revisada_em === null || typeof candidate.revisada_em === "string") &&
+    typeof candidate.total_itens === "number"
+  );
+}
+
+// get_contagem_detalhe returns one row per item, each carrying the
+// submission-header columns (repeated) so the client renders header + table
+// from one payload — same idiom as get_escala_periodo's feriado columns.
+export interface ContagemDetalheLinha {
+  id_contagem: string;
+  submetido_por_nome: string;
+  submetido_em: string;
+  status: ContagemStatus;
+  observacao: string | null;
+  revisada_por_nome: string | null;
+  revisada_em: string | null;
+  id_item: string;
+  rotulo: string;
+  familia: string;
+  tamanho: string;
+  unidades_por_pacote: number;
+  pacotes_fechados: number;
+  unidades_avulsas: number;
+  total_unidades: number;
+}
+
+export function isContagemDetalheLinha(value: unknown): value is ContagemDetalheLinha {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_contagem === "string" &&
+    candidate.id_contagem.length > 0 &&
+    typeof candidate.submetido_por_nome === "string" &&
+    typeof candidate.submetido_em === "string" &&
+    typeof candidate.status === "string" &&
+    CONTAGEM_STATUSES.includes(candidate.status as ContagemStatus) &&
+    (candidate.observacao === null || typeof candidate.observacao === "string") &&
+    (candidate.revisada_por_nome === null || typeof candidate.revisada_por_nome === "string") &&
+    (candidate.revisada_em === null || typeof candidate.revisada_em === "string") &&
+    typeof candidate.id_item === "string" &&
+    typeof candidate.rotulo === "string" &&
+    typeof candidate.familia === "string" &&
+    typeof candidate.tamanho === "string" &&
+    typeof candidate.unidades_por_pacote === "number" &&
+    typeof candidate.pacotes_fechados === "number" &&
+    typeof candidate.unidades_avulsas === "number" &&
+    typeof candidate.total_unidades === "number"
+  );
+}
