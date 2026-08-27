@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -203,6 +205,8 @@ function AdministrativoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AuthUtilityBar />
     </main>
   );
 }

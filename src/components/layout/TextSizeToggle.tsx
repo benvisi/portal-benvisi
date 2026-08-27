@@ -13,8 +13,9 @@ import type { TextSizePreference } from "@/lib/text-size";
 
 /**
  * Small accessibility MVP (Blueprint section 14.5): the "Texto maior"
- * preference control. Lives in the Dashboard's bottom utility area as a
- * subtle "Aa" trigger — the Padrão / Texto maior options stay hidden until
+ * preference control. Rendered by AuthUtilityBar, so it appears in the same
+ * bottom utility area on every authenticated route (Milestone 4C.3 polish) —
+ * a subtle "Aa" trigger whose Padrão / Texto maior options stay hidden until
  * tapped, keeping the row visually quiet rather than permanently showing
  * both option labels.
  */

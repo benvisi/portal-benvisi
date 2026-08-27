@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Link2, MessageCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, Link2, MessageCircle } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import {
+  ESCALA_CARD_DESCRIPTION,
+  ESCALA_TITLE,
   LINKS_IMPORTANTES_CARD_DESCRIPTION,
   LINKS_IMPORTANTES_TITLE,
   MENSAGENS_WHATSAPP_CARD_DESCRIPTION,
@@ -22,7 +25,7 @@ export const Route = createFileRoute("/operacoes/")({
   component: OperacoesPage,
 });
 
-// Milestone 4A/4B: content hub for Operações. Only currently-implemented
+// Milestone 4A/4B/4C.1: content hub for Operações. Only currently-implemented
 // resources are shown as active cards — the rest of the Operações roadmap
 // (Blueprint section 10) remains future scope and is deliberately not
 // rendered here as disabled placeholders.
@@ -51,13 +54,17 @@ function OperacoesPage() {
 
         <p className="text-sm text-muted-foreground">{OPERACOES_PAGE_SUBTITLE}</p>
 
+        {/*
+          Card order approved by the product owner (Milestone 4C.3 polish):
+          Escala, then Mensagens para WhatsApp, then Links Importantes.
+        */}
         <div className="flex flex-col gap-4">
           <ModuleCard
-            icon={Link2}
-            title={LINKS_IMPORTANTES_TITLE}
-            description={LINKS_IMPORTANTES_CARD_DESCRIPTION}
+            icon={CalendarDays}
+            title={ESCALA_TITLE}
+            description={ESCALA_CARD_DESCRIPTION}
             variant="brand"
-            onClick={() => void navigate({ to: ROUTES.OPERACOES_LINKS_IMPORTANTES })}
+            onClick={() => void navigate({ to: ROUTES.OPERACOES_ESCALA })}
           />
           <ModuleCard
             icon={MessageCircle}
@@ -66,8 +73,17 @@ function OperacoesPage() {
             variant="brand"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_MENSAGENS_WHATSAPP })}
           />
+          <ModuleCard
+            icon={Link2}
+            title={LINKS_IMPORTANTES_TITLE}
+            description={LINKS_IMPORTANTES_CARD_DESCRIPTION}
+            variant="brand"
+            onClick={() => void navigate({ to: ROUTES.OPERACOES_LINKS_IMPORTANTES })}
+          />
         </div>
       </div>
+
+      <AuthUtilityBar />
     </main>
   );
 }

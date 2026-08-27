@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import {
   ATRIBUTOS_PESSOAIS_LABEL,
@@ -102,6 +103,8 @@ function PrincipiosPage() {
           ))}
         </Accordion>
       </div>
+
+      <AuthUtilityBar />
     </main>
   );
 }

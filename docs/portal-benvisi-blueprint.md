@@ -1341,13 +1341,15 @@ The employee should be able to understand product-family availability within sec
 
 # 10. Operações / Logística & Tarefas
 
-### PLANNED / PARTIALLY DEFINED — TWO RESOURCES IMPLEMENTED
+### PLANNED / PARTIALLY DEFINED — THREE RESOURCES IMPLEMENTED
 
-**Links Importantes** and **Mensagens para WhatsApp** are implemented — see Epic 4, Milestones 4A and 4B (section 16.2) for their full scope. Every other workflow below remains unimplemented future/planned scope, distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 4 near-term sequence, not here.
+**Links Importantes**, **Mensagens para WhatsApp**, and **Escala V1** are implemented and QA-passed — see Epic 4, Milestones 4A, 4B, and 4C (section 16.2) for their full scope. Every other workflow below remains unimplemented future/planned scope, distinct from the fast read-only Consulta de Estoque experience (section 9). Sequencing/priority among them is tracked in section 16.2's Epic 4 near-term sequence, not here.
 
-**Escala / horários de trabalho**
+**Operações hub tile order.** Reordered in the Milestone 4C.3 polish tranche, per explicit product-owner approval, to **Escala, Mensagens para WhatsApp, Links Importantes** (previously Links, Mensagens, Escala — where Escala had simply been appended). See Milestone 4C.3 (section 16.2).
 
-- V1: employee-readable monthly schedule;
+**Escala / horários de trabalho — IMPLEMENTED / QA COMPLETE (Milestone 4C, section 16.2)**
+
+- V1: employee-readable schedule — **Dia** (default, whole-team single-date view, sections shown only when applicable: MANHÃ / INTERMEDIÁRIO / TARDE / FOLGA / FÉRIAS / A CONFIRMAR — colour-coded), **Semana** (7 stacked day cards), **Mês** (personal "Minha Escala", each day tappable through to Dia) — all implemented at `/operacoes/escala` (Milestones 4C.2/4C.3), on top of the applied data model/RPCs (Milestone 4C.1). Browser QA is complete and **PASS**. Provisional September 2026 data has been imported to the (production) Supabase project as test data and will be replaced by the real workbook before rollout. Still not done: the real Excel-based publish/import flow (V1.1) — see 16.2 for the full scope boundary;
 - V2: shift-swap request + approval + schedule update.
 
 **Organização de estoque**
@@ -1590,11 +1592,11 @@ The absence of a completed Design System document should **not** block implement
 
 A deliberately small, first accessibility capability: a user-controlled **Texto maior** (larger text) preference, offered alongside the default **Padrão** sizing. This is not a full accessibility overhaul — it is scoped to readability only.
 
-**QA status:** toggle behavior, persistence, Login/PIN mobile layout, notice/indicator layouts, the reinforcement toast, desktop, and the final Aa-trigger interaction (Padrão/Texto maior hidden until tapped) — all **PASS**. The ~13% increase is confirmed intentional and kept as-is (not increased on a subjective "feels subtle" observation alone — pending real employee feedback). Placement and presentation went through three polish rounds: first collapsed into the header on mobile only; then moved out of the header entirely into a Dashboard utility area near the bottom, using the same placement and interaction model on mobile, tablet, and desktop (no per-device placement rules); then, per final product direction, the always-visible Padrão/Texto maior options within that area were tucked behind a compact **Aa** trigger to keep the row subtle. All three rounds are now browser-verified.
+**QA status:** toggle behavior, persistence, Login/PIN mobile layout, notice/indicator layouts, the reinforcement toast, desktop, and the final Aa-trigger interaction (Padrão/Texto maior hidden until tapped) — all **PASS**. The ~13% increase is confirmed intentional and kept as-is (not increased on a subjective "feels subtle" observation alone — pending real employee feedback). Placement and presentation went through three polish rounds: first collapsed into the header on mobile only; then moved out of the header entirely into a Dashboard utility area near the bottom, using the same placement and interaction model on mobile, tablet, and desktop (no per-device placement rules); then, per final product direction, the always-visible Padrão/Texto maior options within that area were tucked behind a compact **Aa** trigger to keep the row subtle. All three rounds are now browser-verified. In the Milestone 4C.3 polish tranche this utility area was extracted into a shared `AuthUtilityBar` component and now renders in the same bottom position on **every** authenticated employee-facing route, not only the Dashboard (Termos shows only the Aa control there — it has its own accept/decline pair).
 
 **What it is:**
 
-- the bottom utility area contains a compact **Aa** accessibility trigger that opens the Padrão / Texto maior options, alongside the always-visible **Sair** action — the same location and interaction model on every viewport (normal document flow, not fixed/sticky/overlay), separated from the header and from the operational modules by a subtle divider; Sair always shows its text label, never icon-only;
+- the bottom utility area (shared `AuthUtilityBar`, present on every authenticated route) contains a compact **Aa** accessibility trigger that opens the Padrão / Texto maior options, alongside the always-visible **Sair** action — the same location and interaction model on every viewport (normal document flow, not fixed/sticky/overlay), separated from the header and from the operational modules by a subtle divider; Sair always shows its text label, never icon-only;
 - a device/browser presentation preference, stored in `localStorage` under a Portal-Benvisi-namespaced key — **never** sent to Supabase, never employee-account data, never read by any backend RPC;
 - applied by toggling a `data-text-size` attribute on `<html>`, which a small, unlayered CSS rule uses to override Tailwind's own `--text-*` typography-scale custom properties by approximately 13% (within the approved 12–15% range) — every component already using Tailwind's ordinary `text-*` utilities picks up the larger scale automatically, with no per-component `if (larger) ... else ...` branching anywhere;
 - deliberately scoped to typography only — spacing, padding, gaps, widths, icon sizes, and touch targets are untouched, so this cannot become an accidental "zoom the whole interface." Line-heights are not separately overridden either: Tailwind's line-height values are unitless ratios that already scale proportionally with whatever font-size is applied;
@@ -2381,14 +2383,14 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 **Status:** IN DEVELOPMENT
 
-**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with two small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though 4A/4B are complete — more Operações features (starting with Escala V1) are still planned.
+**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), and 4C (Escala V1) are complete and QA-passed — more Operações features (next likely Consulta de Estoque) are still planned.
 
 **Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
 
 1. Conhecimento & Cultura — Nossos Princípios (Milestone 3A) — **complete**;
 2. Operações — Links Importantes (Milestone 4A, below) — **complete, QA passed**;
 3. Operações — Mensagens para WhatsApp (Milestone 4B, below) — **complete, QA passed**;
-4. Operações — Escala V1 (Milestone 4C, section 10) — **next, not yet started**;
+4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI; the real Excel publish/import flow remains future V1.1 scope);
 5. after evaluating Escala V1's complexity/quality in practice, likely move into Consulta de Estoque (section 9).
 
 Escala V1 and Consulta de Estoque are **not** implemented by this sequence entry — they remain future/planned scope (section 10 / section 9) until their own milestone is completed.
@@ -2427,6 +2429,186 @@ Scope:
 **Content-maintenance note:** "Explicar o processo do envio do link" has approved, correct formatting as of this closeout, but the product owner intends to review/update its wording in a future content pass. This is not a blocker for Milestone 4B completion — do not rewrite this template's copy without that explicit future decision.
 
 Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly. Product-owner browser QA — including the Técnica CVB removal, the final 6-group/17-message structure, copy-to-clipboard behavior, paragraph/list formatting preserved on paste (payment-policy list, Frete, simple single-paragraph messages), on-screen/clipboard alignment, `Texto maior`, and mobile layout — is complete and **PASS**.
+
+### Milestone 4C — Escala V1
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+4C.1 (foundation) + 4C.2 (employee-facing Dia / Semana / Mês UI) + 4C.3 (provisional data import, Gestão model change, QA revisions + polish) are all implemented and applied. Product-owner browser QA is complete and **PASS** — covering the 4C.2 rounds (normal weekday, Sunday/single-shift, Intermediário, Folga/Férias, Gestão visibility) and the 4C.3 revisions (colour-coded sections, section-hours-in-heading, section reorder, Gestão bucketing + withheld manager hours, `Dia` rename, Mês→Dia navigation, apelido-first identity, shared `AuthUtilityBar`, `/operacoes` tile reorder). Provisional September 2026 data is loaded into the production Supabase project as test data.
+
+**Carried FUTURE / OPEN items (none are blockers for closing this milestone; do not implement as part of it):**
+
+- replace the provisional September 2026 workbook data with the real published workbook before real rollout;
+- Gestão / Favacho consistency refinement — how consistently a gerência member should appear on Escala when no explicit schedule entry exists (accepted as-is for V1; see the OPEN / FUTURE note under Milestone 4C.3);
+- real employee `email` addresses (still `NULL` for all eight — never invented);
+- the real Excel → structured-data UUID / technical-column mapping and publish flow (V1.1 — see below);
+- a maintained `feriados` (holiday) dataset + Admin holiday-management UI;
+- PIN security / Minha Conta roadmap (see Future — Minha Conta / Alterar PIN);
+- real Admin account converted/renamed **in place** during rollout prep, not duplicated (see Future — Rollout Preparation & Access Architecture);
+- Observador / non-employee read-only access as a separate principal + capability model (same section);
+- rollout-time cleanup of real-employee pre-launch test history (same section);
+- optional future annual Terms reaffirmation on top of the existing version-driven model (same section);
+- "Celebrações de hoje" (birthdays / work anniversaries) — deferred, needs a new RPC (see 4C.2 Known Gaps);
+- Supabase CLI / `supabase db push` adoption remains unverified future work (see Milestone 4C.3's migration-workflow note).
+
+**Approved V1 architecture:** Excel remains the schedule-authoring tool (the current copy-previous-month / owner-assigns-shifts-via-dropdowns workflow works adequately and is not being replaced). Portal is initially a **publishing/consumption layer**, not a schedule editor:
+
+```text
+Excel (authoring, unchanged)
+        ↓
+structured publish/import step (future sub-milestone)
+        ↓
+Supabase (this milestone's schema)
+        ↓
+native mobile-friendly Portal Escala (future sub-milestone)
+```
+
+**Approved V1 views** (implemented — see Milestones 4C.2/4C.3 below): **Dia** (default; whole-team schedule for one date; sections shown only when applicable — MANHÃ, INTERMEDIÁRIO, TARDE, FOLGA, FÉRIAS, A CONFIRMAR; the separate GESTÃO section was removed in 4C.3 — gerência employees are bucketed normally), **Semana** (7 stacked day cards, mobile-first), **Mês** (personal "Minha Escala" for the authenticated employee). Also implemented: subtle highlighting of the authenticated employee; previous/next date navigation; America/Manaus as the default current date; previous/current month access, future month access only if explicitly published; holiday name/context on the relevant date. **Not yet implemented:** a "Celebrações de hoje" area for birthdays/work anniversaries — the funcionarios metadata exists, but exposing it safely requires a new RPC (no anon-facing query currently returns `aniversario_dia`/`aniversario_mes`/`data_admissao` for the whole team) — deferred rather than built around the existing schema; see Milestone 4C.2's Known Gaps.
+
+**Employee function display:** normal day/week rows show only name + time (e.g. "Amanda — 10:00–16:00"), never cargo — the team is small enough that it would be visual noise. `cargo` is retained in the data model since it may become useful later; richer role/function display is FUTURE, not approved for now.
+
+**V1.1 (future):** a proper Admin → Importar Escala workflow — workbook upload, preview, validation, publish — replacing the deliberately lightweight V1 approach (Excel → deterministic local conversion → validation/preview → structured data → publish into Supabase, without an in-Portal upload screen).
+
+**Further future (not approved for implementation now):** richer role/function display, if ever genuinely useful; Admin holiday management UI; schedule authoring inside Portal (replacing Excel as the authoring tool); shift-swap requests/approvals; notifications; audit/history browsing UI; Minha Conta / Alterar PIN and PIN-security modernization (own entry below).
+
+### Milestone 4C.1 — Escala Foundation
+
+**Status:** IMPLEMENTED — migrations `20260825_001`–`20260825_005` have been applied by the product owner via the Supabase SQL Editor.
+
+Establishes the employee data, backend schema, publishing rules, and domain logic the future read-only Escala UI and future Excel publish/import flow will both build on. **No employee-facing Escala UI, no Excel upload/import tooling, and no real September (or any other month's) schedule data are part of this milestone** — those are explicitly deferred to their own sub-milestones once this foundation is reviewed/applied.
+
+**funcionarios metadata additions** (migration `20260825_001`):
+
+- `aniversario_dia smallint`, `aniversario_mes smallint` — birthday celebrations. Day/month only, **no birth year stored anywhere** (not even inside a fabricated date) — the product requirement explicitly excludes age/birth year from Portal's data model. Both-or-neither and day-valid-for-month are enforced by a CHECK constraint (Feb capped at 29, since a birth year is never known and Feb 29 without a year cannot be fully validated either way);
+- `data_admissao date` — work-anniversary celebrations ("X anos de Benvisi") are always derived from this date at read time, never stored redundantly as a separate "years of service" number;
+- `escala_grupo_gestao boolean not null default false` — Gestão schedule-block **membership** (documented decision, in full in the migration's header comment): deliberately separate from `cargo`, because a future Gestão group may include more than one employee, possibly under a different cargo than 'Gerente' — coupling membership to a specific job title would break the moment that stops being 1:1. **Visibility** (who may *view* the Gestão block) is the separate, never-stored, server-side rule `cargo = 'Administrador' OR escala_grupo_gestao = true`, computed at query time inside the read RPCs — Administrador can view the block without being a scheduled Gestão member itself (mirrors the existing precedent that Administrador never personally participates in Lista da Vez/Atendimento);
+- `cargo` widened from an unconstrained column (confirmed once again, dynamically, that no CHECK constraint existed under any name — the same gap 20260824_001 had already flagged) to an explicit `CHECK (cargo in ('Vendedor','Caixa','Gerente','Administrador'))`, adding the new **Caixa** cargo the real roster requires. A future new cargo needs its own additive migration widening this same constraint.
+
+**Real employee roster** (migration `20260825_002`, corrected by `20260825_005`): inserts the 8 real active employees supplied by the product owner. Existing development/test employees are left completely untouched — this migration only adds rows. `email` is `NULL` for all eight (not yet supplied — never invented). `token_pin` is seeded as the approved provisional `'1111'`, matching this project's *current* plaintext-PIN architecture exactly (no PIN-security change is made here — see the Future — Minha Conta / Alterar PIN entry below). DAYANNA MOTA CAVALVANTE is inserted as `cargo = 'Vendedor'` per explicit product-owner instruction, not the historical workbook's operator/cashier labeling. Employee sex, present in the source spreadsheet, is **not** stored — no approved Portal feature needs it.
+
+**Correction — `20260825_005`:** applying `20260825_002` initially failed — `funcionarios.email` carried a `NOT NULL` constraint invisible anywhere in tracked migration history (the same untracked-legacy-constraint gap already seen with `cargo`), and since real emails were not available, `NULL` (the only correct value here) was rejected. Because the failed `INSERT` rolled back entirely (Postgres never partially applies a failed statement), `20260825_002` needed no changes — `20260825_005` (`ALTER TABLE funcionarios ALTER COLUMN email DROP NOT NULL`) was applied first as a new additive corrective migration, then `20260825_002` was re-run successfully. `20260825_001`–`20260825_004` were never edited.
+
+**Escala core schema** (migration `20260825_003`):
+
+- `loja_horario_padrao` (7 rows, one per weekday) + `loja_horario_excecao` (special-date overrides, e.g. holiday hours or a full closure) — resolved for any date by the internal `loja_horario_do_dia(date)` helper, avoiding per-calendar-day duplication;
+- `feriados` (date, nome, abrangencia: nacional/estadual/municipal) — foundation only; no Admin management UI/RPC yet (future, Admin-only when built — employees only ever see holiday context contextually on the relevant Escala day, never a configuration screen);
+- `escala_classificar_turno(hora_inicio, hora_fim, abertura, fechamento)` — the approved MANHÃ/TARDE/INTERMEDIÁRIO derivation, pure backend domain logic (no stored labels): MANHÃ starts at opening and leaves before closing; TARDE starts after opening and stays until closing; INTERMEDIÁRIO is neither; a single shift spanning the entire operating window (Sunday/holiday reduced-hours case) is force-classified TARDE rather than falling through to neither bucket;
+- `escala_publicacoes` (one row per publish event; `mes_referencia` always the 1st of the month) with a **partial unique index** enforcing at most one `ativa = true` row per month — this is what makes "publishing a revised month replaces the previous published version" true structurally, while every prior publication remains as `ativa = false` history (no version-management UI, but audit/history is not precluded);
+- `escala_entradas` (one row per employee per day per publication; `status` in `trabalho`/`folga`/`ferias`; `hora_inicio`/`hora_fim` required iff `trabalho`). **A missing (employee, date) row — not a row with a placeholder status — is the only representation of "A confirmar."** This is enforced by construction: nothing in this schema ever writes a null-status row, so a blank can never be silently read back as FOLGA;
+- every new table follows the exact RLS pattern already established for `funcionarios`/`sessoes_funcionario`: RLS enabled, zero policies, all access through SECURITY DEFINER RPCs only.
+
+**Read RPCs** (migration `20260825_004`), all session-authenticated and SECURITY DEFINER, matching this project's established RPC pattern exactly:
+
+- `get_escala_periodo(session_token, data_inicio, data_fim)` — team schedule for a date range (capped at 31 days), powering both the future Hoje (1-day range) and Semana (7-day range) views with one RPC. Gestão rows are never included in the payload for a caller who isn't Administrador or a Gestão member — enforced server-side, not filtered client-side;
+- `get_minha_escala_mes(session_token, mes)` — the caller's own schedule for one calendar month, powering the future Mês/Minha Escala view; no Gestão check needed since it only ever returns the caller's own data;
+- `list_escala_meses_publicados(session_token)` — which months currently have an active publication and when, so a future UI can decide which months are navigable without duplicating that logic per navigation control.
+
+No write/publish RPC exists yet — the atomic "insert new publication + deactivate the previous one" operation is intentionally left to the next sub-milestone (the structured Excel → Supabase publish step), once that conversion/validation flow is designed. This migration only guarantees the schema cannot end up with two simultaneously-active publications for the same month, however that future insert happens.
+
+**Validation foundation:** the schema does not prevent a future publish-time check for "which active roster members are missing an entry for the dates in this publication" (a straightforward anti-join between the active-roster set and `escala_entradas` for the target `id_publicacao`) — that check itself belongs to the future publish/import sub-milestone, not this one.
+
+**Not implemented in 4C.1** (deferred to 4C.2 or later): the Escala employee-facing UI (now built — see Milestone 4C.2); the Excel → structured-data conversion and publish RPC; Admin holiday management UI; the provisional September 2026 schedule import; celebrations UI/RPC; any schedule editor, shift-swap, approval, notification, staffing-optimization, or payroll/time-clock logic — all remain future/out-of-scope per this milestone's approved boundary.
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly (no frontend code was part of this milestone). All five migrations have been applied by the product owner via the Supabase SQL Editor.
+
+### Milestone 4C.2 — Escala UI (Hoje / Semana / Mês)
+
+**Status:** IMPLEMENTED / QA COMPLETE
+
+Builds the first usable Escala experience on top of 4C.1's applied schema/RPCs. New route `/operacoes/escala`, reached via a third card on the `/operacoes` hub (Dashboard → Operações → Escala).
+
+**Page structure:** a single route with three tabs — **Hoje** (default), **Semana**, **Mês** — sharing one selected reference date (switching from Hoje to Semana keeps the same date) and, separately, one selected month for Mês. No separate routes per view, consistent with "do not introduce duplicate navigation concepts."
+
+**Hoje:** PT-BR date header ("Terça-feira, 15 de setembro", no year), prev/today/next-day navigation, holiday name surfaced under the header when `get_escala_periodo` returns one for that date. Team entries grouped into MANHÃ / INTERMEDIÁRIO / TARDE / FOLGA / FÉRIAS / A CONFIRMAR / GESTÃO, in that display order, with empty sections omitted entirely — including an empty MANHÃ on Sundays/single-shift dates, since the backend's `escala_classificar_turno` already resolves those to TARDE. Within each section, employees are sorted alphabetically by `apelido` (their display name — job title/cargo is never shown, per the approved "Amanda — 10:00–16:00" format). The authenticated employee's own row gets a subtle border/tint plus an explicit "(Você)" text label — never color alone. If the viewed date's month has no active publication, Hoje shows one calm "Esta escala ainda não foi publicada." message instead of the grouped listing — distinct from `ESCALA_ERRO_MESSAGE`, which only appears for a genuine query error (see QA Round 1 fixes below).
+
+**Semana:** seven stacked day cards starting from the currently-selected reference date (a rolling 7-day window, not calendar-week-aligned — chosen to avoid an unspecified Sunday-vs-Monday boundary decision and to carry over naturally from Hoje). Each card is a compact version of Hoje's grouping (same component, `compact` mode only suppresses the "A confirmar" support line) — no Excel-matrix reproduction, no horizontal scrolling. Since a 7-day window can span two calendar months, each card independently checks its own month's publication state and shows the same calm "not published" message rather than assuming the whole week shares one answer.
+
+**Mês / Minha Escala:** the authenticated employee's own schedule for the selected month, one row per day, showing time range or Folga/Férias/A confirmar plus holiday context. Month navigation is prev/current always enabled; the next-month arrow is disabled unless `list_escala_meses_publicados` includes that month — satisfying "previous month; current month; a future month only if explicitly published" without an extra ad hoc check per control. If the *currently viewed* month has no active publication, the view shows one clear "Este mês ainda não foi publicado." message instead of 28–31 repeated "A confirmar" rows (the RPC always returns one row per calendar day, so an unpublished month would otherwise read as noisy repetition rather than a clear explanation).
+
+**Gestão visibility:** purely a consequence of what `get_escala_periodo` returns — a regular employee's payload simply never contains any gerência row, so the caller cannot see gerência people at all; no client-side hiding exists to bypass. `get_minha_escala_mes` needs no such check since it only ever returns the caller's own data. (4C.2 rendered gerência people in a dedicated GESTÃO section; 4C.3 removed that section but kept this visibility rule and additionally withholds the manager's hours.)
+
+**Data/contracts:** `src/integrations/supabase/contracts.ts` gained `EscalaEntradaPeriodo`/`EscalaEntradaMes`/`EscalaMesPublicado` types + type guards, matching this project's existing runtime-validation convention exactly (e.g. `isListaVezEntry`). Three new hooks (`useEscalaPeriodo`, `useMinhaEscalaMes`, `useEscalaMesesPublicados`) follow the established `useQuery` + `useSessionErrorHandler` pattern — no polling, since a published schedule does not change during a session. A new `src/lib/escala.ts` holds pure date/grouping helpers (calendar-date arithmetic pinned to UTC to avoid local-timezone drift; PT-BR header formatting; alphabetical section grouping).
+
+**Known Gaps (explicitly not done in 4C.2, not silently skipped):**
+
+- **Celebrações de hoje (birthdays/work anniversaries) — not implemented.** No RPC currently exposes `aniversario_dia`/`aniversario_mes`/`data_admissao` for the whole team (both are protected by RLS with no policies, like every other Escala table, and neither `get_escala_periodo` nor `get_minha_escala_mes` returns them). Implementing this would require a new RPC — per the approved instruction to stop and report rather than build around an unapplied migration, this was not attempted. A small additive migration (e.g. `get_celebracoes_do_dia(session_token, data)`) can be proposed in a follow-up round if wanted.
+- **Provisional September 2026 import — DONE in Milestone 4C.3** (workbook `tmp/ESCALA DE TRABALHO.xlsx`, sheet `setembro 2026`). Superseded — see 4C.3 below.
+- **Supabase MCP execution — now available and used** from Milestone 4C.3 onward. Superseded.
+- **Nearby-date strip on Dia** (mentioned as optional — "if it remains clean on mobile") was not built; prev/today/next arrows were judged sufficient for V1 and simpler to keep accessible.
+
+**QA Round 1 fixes (this round):**
+
+- **Desktop segmented-control alignment.** Root cause: `TabsList`'s base style fixes `h-9` (36px), while each `TabsTrigger` was given `min-touch` (`min-height: 44px`) — taller than its own fixed-height parent, so the active segment protruded above/below the gray container instead of sitting inside it. Fixed by making the list's height intrinsic (`h-auto`) and applying the touch-target sizing to the triggers themselves (`min-h-11`), so the container grows to contain all three segments cleanly on both desktop and mobile.
+- **Unpublished vs. technical-error distinction.** Code audit found no path where "no publication exists" would cause `get_escala_periodo` to throw — an unpublished month is a normal, successful response (every active employee returned as `a_confirmar`), so `query.isError` should never have been true for that case alone; the exact trigger behind the specific QA report could not be reproduced without live session/browser access this round. Regardless of that specific root cause, Hoje and Semana now explicitly check `list_escala_meses_publicados` (the same source Mês already used) and show a calm "Esta escala ainda não foi publicada." message whenever the viewed date's month has no active publication, reserving `ESCALA_ERRO_MESSAGE` ("Não foi possível carregar a escala. Tente novamente.") strictly for a genuine query error. A publication that exists but is missing a few specific entries still renders those correctly under A CONFIRMAR — only a fully unpublished month is replaced by the calm message.
+
+Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
+
+**Browser QA (product owner): PASS** for all of QA1–QA5 (normal weekday, Sunday/single-shift, Intermediário, Folga/Férias, Gestão visibility). Follow-up UI/logic requests from that pass are implemented in Milestone 4C.3 below.
+
+### Milestone 4C.3 — Escala: provisional data import, Gestão model change, QA revisions + polish
+
+**Status:** IMPLEMENTED / QA COMPLETE — implemented in code, applied to Supabase, and browser QA of the revisions is complete and **PASS**.
+
+Supabase MCP became available this milestone and was used directly (project `ugfogsseikupsfqqznzi` — the org's only project, `main` branch labelled PRODUCTION; there is no separate development project). All prior migrations `20260720_001`…`20260825_005` had been applied by hand via the SQL Editor and were never tracked; `supabase_migrations.schema_migrations` was backfilled once so all 26 files are recorded as applied (version + name only — the 26 backfilled rows carry no statement body; `20260826_001`…`003` were then applied through MCP `apply_migration`).
+
+**Migration workflow — current approved process.** `supabase db push` / the Supabase CLI are **not** in use and are **not** confirmed safe against this repo yet. The repo's `YYYYMMDD_NNN_name.sql` filename convention does not match the CLI's expected `<digits>_<name>` parse (it would read the version as the 8-digit date only, colliding across the several files that share a date), and the backfilled ledger stores 11-digit `YYYYMMDDNNN` versions, so a stock `db push` could try to re-apply or reject the existing history. Until that convention is normalized and the CLI round-trip is verified, the approved process is:
+
+1. write the change as a tracked local migration file under `supabase/migrations/` (keep the existing `YYYYMMDD_NNN_name.sql` naming for now — do **not** rename historical files);
+2. apply it via Supabase MCP `apply_migration` (preferred) or manually in the SQL Editor;
+3. verify the applied objects/data directly (MCP `execute_sql` / advisors);
+4. treat the applied migration as immutable history — never edit or re-run it; corrections go in a new additive migration.
+
+CLI / `db push` adoption is deferred future work, gated on (a) deciding whether to rename historical files to 14-digit timestamps and re-backfill the ledger to match, and (b) verifying a full `supabase migration list` / `db push` round-trip against the remote.
+
+**Root-cause fix — `get_escala_periodo` (migration `20260826_001`).** The RPC declared `RETURNS TABLE(… nome text, apelido text …)` but `funcionarios.apelido` is `citext`. PL/pgSQL `RETURN QUERY` enforces exact type equality and raised `42804 … Returned type citext does not match expected type text` on **every** call — so Hoje/Semana always showed `ESCALA_ERRO_MESSAGE`, regardless of publication state (Mês/`list_escala_meses_publicados` were unaffected — they don't select `apelido`). Fix: `f.apelido::text` / `f.nome::text` casts; nothing else changed. This was the real backend error the earlier "unpublished vs technical error" QA note had been chasing without live DB access.
+
+**Gestão model change — dedicated GESTÃO section removed (migration `20260826_002`).** Per browser-QA decision: an employee with `escala_grupo_gestao = true` is now classified into the normal buckets (MANHÃ / INTERMEDIÁRIO / TARDE / FOLGA / FÉRIAS / A CONFIRMAR) via `escala_classificar_turno`, exactly like everyone else. Two things are preserved: (1) **visibility is unchanged** — a caller who is neither Administrador nor a Gestão member still receives no row at all for a gerência employee (same WHERE clause); (2) **the manager's individual hours are still withheld** — `get_escala_periodo` and `get_minha_escala_mes` return `hora_inicio`/`hora_fim` as `NULL` for a gerência `trabalho` row (the real stored times are still used to pick the section, just not displayed), so their row renders name-only. The `EscalaSecao` type, `ESCALA_SECAO_LABELS`, `ESCALA_SECAO_ORDEM`, and `isSecaoComHorario` all dropped `'gestao'`.
+
+**Employee-facing identity — prefer `apelido`, fall back to `nome` (migration `20260826_003`).** Approved product rule: everywhere the UI greets or labels an employee informally it now shows `funcionarios.apelido`, degrading to `nome` only when apelido is NULL/blank (`coalesce(nullif(btrim(apelido::text), ''), nome::text)` — defensive only, since apelido is currently NOT NULL and populated for every row). Scope, all additive / behavioural with no data changes: `verify_pin` gains an `apelido` output column (DROP + CREATE, its only signature change — nothing depends on it beyond the PostgREST RPC call); `get_lista_vez_estado`'s existing `nome` display column and `get_atendimento_ativo`'s `iniciado_por_nome` column both become apelido-first with no signature change. The formal name is untouched in `funcionarios.nome` and in `list_active_employees` (the login picker still shows full legal names). Frontend: `VerifyPinSuccess`/`AuthSessionData` carry `apelido` (with runtime guards), `useLogin` persists it into the session, and the Dashboard greeting renders `session.apelido || session.nome`. Escala already displayed `apelido` and is unchanged.
+
+**Provisional September 2026 import.** Source: `tmp/ESCALA DE TRABALHO.xlsx`, sheet `setembro 2026`. Normalised to 231 `escala_entradas` rows under one active `escala_publicacoes` row (`mes_referencia = 2026-09-01`, `publicado_por` = the Administrador fixture). 8 employees mapped to existing `funcionarios.id` (Amanda, Graça, Renan, Elisieth, Vitor, Dayanna, Sara, Favacho). Excluded, by construction: the staffing-analysis rows (`Vendedor/Caixa diurno/noturno`), the `Folgas` tally column, all Férias/Folga note columns, free-text notes, Aug-30/31 + Oct spillover columns, and `MONICA` (no `funcionarios` row, and no schedule cells anyway). `FAVACHO`'s weekday cells read `MANHÃ`/`TARDE` (no times) — mapped to the workbook's two canonical windows (`10:00–16:00` / `16:00–22:00`) purely to drive section classification; his displayed hours are withheld anyway. He has entries for only 21 of 30 days (the sheet leaves the rest blank → A CONFIRMAR). Verified: publication active; 231 rows = 166 trabalho + 36 folga + 29 férias; 0 duplicate `(id_funcionario, data)`; 0 rows for test/admin employees; 0 rows outside Sep 1–30; Gestão visibility holds when replaying the RPC's filter for each caller type. This is provisional test data and will be replaced when the real workbook is available.
+
+**UI revisions (browser QA complete, PASS):**
+
+- **Colour-coded sections** (`src/config/escala-sections.ts`, light-theme oklch tints applied inline): MANHÃ amber/"sunrise", TARDE light blue, INTERMEDIÁRIO soft lavender (the Mixed-Atendimento family), FOLGA green (matches the legacy Excel), FÉRIAS near-neutral grey, A CONFIRMAR soft red. Each section is a colour-bounded block with its rows tinted a step stronger; the "(Você)" row keeps its primary border/tint override. Carried into Semana's day cards and Mês's day rows.
+- **Section hours in the heading, not per row.** When every working member that has hours shares one start/end window, it is shown once next to the section label (`MANHÃ · 10:00–16:00`) and omitted from the rows. Gerência members (withheld hours) are ignored for this test — they never contribute a time in the heading or on their row, and their presence does not force the section back to per-row times. Only genuinely differing windows fall back to per-row times.
+- **Section order** (`ESCALA_SECAO_ORDEM`): MANHÃ → INTERMEDIÁRIO → TARDE → FOLGA → FÉRIAS → A CONFIRMAR (each shown only when populated).
+- **`Hoje` tab renamed `Dia`** — the tab shows any single day, not only today; the separate "Hoje" quick-jump button keeps its name. The route's tab state is now controlled.
+- **Mês → Dia navigation:** each day row in Minha Escala is a button that switches to the Dia tab focused on that date (Semana intentionally not made navigable this way).
+- **Shared bottom utility bar (`src/components/layout/AuthUtilityBar.tsx`).** The "Texto maior" (Aa) control + "Sair", previously assembled inline only on the Dashboard, are extracted into one component rendered as the last child of every authenticated route's `<main>` (Dashboard, Operações hub + all three Operações pages, Conhecimento & Cultura hub + Princípios, Atendimento, Administrativo) and on Termos (`showSignOut={false}` there — Termos has its own accept/decline pair). Same normal-document-flow placement and interaction model as before, now consistent across the whole authenticated surface. `TextSizeToggle` moved from `src/components/dashboard/` to `src/components/layout/` with no behavioural change. Deliberately a per-route component, not a router layout route — the routes share no layout wrapper today; a future layout route could host it.
+- **`/operacoes` hub tile reorder** (product-owner approved): Escala → Mensagens para WhatsApp → Links Importantes (see section 10's Operações note).
+
+Validated: `npm run typecheck`, `npm run lint` (0 errors; 6 pre-existing `react-refresh` warnings in `src/components/ui/*`), and `npm run build` all pass cleanly. (One prettier stray-blank-line error in `src/routes/dashboard.tsx`, left by the utility-bar extraction, was the point the prior validation run was interrupted at — fixed.)
+
+**Browser QA (product owner): PASS.** Escala V1 (Milestone 4C in full) is closed as IMPLEMENTED / QA COMPLETE. Remaining scope is tracked as FUTURE / OPEN under Milestone 4C's status and the Future — Rollout Preparation & Access Architecture entry; none of it blocks closing this milestone.
+
+**OPEN / FUTURE — Gestão consistency on Escala.** The current V1 Gestão behavior is **accepted as-is**: gerência members are bucketed into the normal shift sections by their stored hours, their individual hours are withheld (name-only rows), and non-privileged callers receive no gerência row at all. The product owner may later refine *how consistently* Gestão/Favacho should appear on Escala when there is **no explicit schedule entry** for a given day (e.g. whether a manager with no entry should still surface as "present", or how Favacho's currently-blank days — which fall through to A CONFIRMAR — should read). This is a presentation/product refinement, **not a current bug or blocker**, and nothing should be implemented for it now.
+
+### Future — Minha Conta / Alterar PIN
+
+**Status:** FUTURE — documented now per Milestone 4C.1, not implemented
+
+Prompted by seeding provisional `'1111'` PINs for the new real employee roster (acceptable for now, matching the *current* plaintext-PIN architecture exactly — no PIN-related code was changed in Milestone 4C.1). A dedicated future account/security milestone should eventually provide:
+
+- employee authenticated first, then may change their own PIN;
+- voluntary PIN change requires the current PIN;
+- a newly-created employee may be required to change a temporary PIN on first login;
+- Admin can reset an employee's PIN but can never retrieve their chosen PIN;
+- PIN stored as a secure hash rather than plaintext (a real migration of `funcionarios.token_pin` and `verify_pin`'s comparison logic — not attempted in 4C.1, and not to be attempted opportunistically inside any other milestone);
+- possible supporting fields such as `pin_must_change` / `pin_updated_at`;
+- no elaborate self-service password recovery needed for this small internal team — Admin reset is sufficient initially.
+
+Do not implement this without a dedicated milestone; do not modify `verify_pin` opportunistically elsewhere.
+
+### Future — Rollout Preparation & Access Architecture
+
+**Status:** FUTURE — captured for the roadmap, none of it approved for implementation now. Each item below needs its own decision/milestone.
+
+- **Terms stay version-driven; optional annual reaffirmation later.** The current model (`termos_aceite` unique on `(id_funcionario, versao_termo)`; `check_termo_acceptance` is existence-by-version; bumping the `TERMS_VERSION` constant re-prompts everyone and keeps prior acceptances as history) is sufficient and is the accepted approach. A later refinement *may* add a server-side source of truth for the current version (e.g. a `termos_versoes` table with an effective date) and/or an age-based reaffirmation rule (re-prompt when the latest acceptance is older than ~12 months). Not needed for rollout.
+- **Real Admin account — convert in place, do not duplicate.** The existing `Administrador` fixture (`Admin Teste`) is already referenced by preserved data (it is `escala_publicacoes.publicado_por` for the September publication, plus `checklist_config.atualizado_por` and other non-cascading references). When a real Admin identity is needed, rename/re-point that row in place (keep its UUID) and set a real strong PIN — do **not** create a second Administrador row and retire the first.
+- **Observador / non-employee access — separate principal, not `funcionarios`.** Read-only non-employee accounts must be modelled as their own principal + explicit read-only capability allow-list (a parallel session-context function), never as a `funcionarios` row and never via `cargo = 'Administrador'`. Because every employee-facing surface (login picker, Escala, Lista da Vez, Atendimento) filters on `funcionarios`, a non-`funcionarios` principal is excluded from all of them by construction, and admin RPCs fail closed for it. Do not widen the `funcionarios.cargo` CHECK to add an observer role.
+- **Login UX — picker + PIN stays primary.** Keep the employee picker + PIN as the main path. A type-to-filter/search affordance on the picker and a separate, unlisted access path for non-employee principals *may* be added later; email + PIN is only worth revisiting if real employee emails are collected and the roster outgrows a scannable list. Tie any change to the Minha Conta / Alterar PIN + PIN-hashing milestone above.
+- **Real-employee test-history cleanup happens at rollout preparation, not now.** Several real/named employees carry small amounts of pre-launch test activity (`termos_aceite`, `sessoes_funcionario`, `turno_presenca`, `lista_vez_fila`, one `atendimentos` row). A single ordered `DELETE` transaction restores a clean first-login experience while preserving all `funcionarios` rows and the provisional September Escala (`escala_publicacoes` / `escala_entradas`). This is deferred to the rollout window and must not be executed as part of Escala closeout.
 
 ## 16.3 Planned Operational Modules
 

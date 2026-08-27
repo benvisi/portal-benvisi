@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookOpen, ClipboardCheck, Loader2, LogOut, Package, Settings, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, Loader2, Package, Settings, Users } from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { ModuleInProgressDialog } from "@/components/dashboard/ModuleInProgressDialog";
 import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
-import { TextSizeToggle } from "@/components/dashboard/TextSizeToggle";
 import {
   ADMINISTRATOR_CARGO,
   CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
@@ -15,14 +15,12 @@ import {
   DASHBOARD_WELCOME_MESSAGE,
   OPERACOES_DASHBOARD_SUBTITLE,
   OPERACOES_TITLE,
-  SIGN_OUT_BUTTON_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { getManausGreeting } from "@/lib/datetime";
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useTermoStatus } from "@/hooks/useTermoStatus";
-import { useSignOut } from "@/hooks/useSignOut";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -34,7 +32,6 @@ export const Route = createFileRoute("/dashboard")({
 function DashboardPage() {
   const navigate = useNavigate();
   const { session, ready } = useRequireSession();
-  const signOut = useSignOut();
   const funcionarioId = session?.funcionario_id ?? null;
   const sessionToken = session?.session_token ?? null;
   const termoStatus = useTermoStatus(funcionarioId, sessionToken);
@@ -118,7 +115,8 @@ function DashboardPage() {
             Benvisi
           </span>
           <h1 className="text-2xl font-semibold text-foreground">
-            {getManausGreeting()}, {session.nome}!
+            {/* Employee-facing informal identity (apelido); nome is the server-side fallback. */}
+            {getManausGreeting()}, {session.apelido || session.nome}!
           </h1>
           <p className="text-sm text-muted-foreground">{DASHBOARD_WELCOME_MESSAGE}</p>
         </header>
@@ -172,29 +170,13 @@ function DashboardPage() {
             />
           )}
         </div>
-
-        {/*
-          Dashboard utility area — deliberately separate from the header
-          (kept focused on greeting/identity) and from the operational
-          modules above. Same location and layout on every viewport: normal
-          document flow (no fixed/sticky/overlay), a subtle top divider,
-          and flex-wrap so Texto maior and Sair stack gracefully rather than
-          losing their labels on narrow widths.
-        */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <TextSizeToggle />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="min-touch gap-2 text-muted-foreground hover:text-foreground"
-            onClick={() => void signOut()}
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            {SIGN_OUT_BUTTON_LABEL}
-          </Button>
-        </div>
       </div>
+
+      {/*
+        Shared authenticated utility area (Texto maior + Sair) — same
+        component, same bottom placement on every authenticated route.
+      */}
+      <AuthUtilityBar />
 
       <ModuleInProgressDialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen} />
     </main>

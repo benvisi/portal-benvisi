@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 
+import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,7 +55,7 @@ function TermsPage() {
   if (!terms.showTerms) return null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <Card className="flex w-full max-w-lg flex-col gap-6 p-8 shadow-card">
         <div className="flex flex-col gap-4">
           <h1 className="text-xl font-semibold text-foreground">{TERMS_TITLE}</h1>
@@ -110,6 +111,9 @@ function TermsPage() {
           </Button>
         </div>
       </Card>
+
+      {/* Terms provides its own accept/decline (Sair) pair — only the text-size control here. */}
+      <AuthUtilityBar showSignOut={false} />
     </main>
   );
 }
