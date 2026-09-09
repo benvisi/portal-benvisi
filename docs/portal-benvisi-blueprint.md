@@ -1349,7 +1349,7 @@ The employee should be able to understand product-family availability within sec
 
 **Escala / horários de trabalho — IMPLEMENTED / QA COMPLETE (Milestone 4C, section 16.2)**
 
-- V1: employee-readable schedule — **Dia** (default, whole-team single-date view, sections shown only when applicable: MANHÃ / INTERMEDIÁRIO / TARDE / FOLGA / FÉRIAS / A CONFIRMAR — colour-coded), **Semana** (7 stacked day cards), **Mês** (personal "Minha Escala", each day tappable through to Dia) — all implemented at `/operacoes/escala` (Milestones 4C.2/4C.3), on top of the applied data model/RPCs (Milestone 4C.1). Browser QA is complete and **PASS**. Provisional September 2026 data has been imported to the (production) Supabase project as test data and will be replaced by the real workbook before rollout. Still not done: the real Excel-based publish/import flow (V1.1) — see 16.2 for the full scope boundary;
+- V1: employee-readable schedule — **Dia** (default, whole-team single-date view, sections shown only when applicable: MANHÃ / INTERMEDIÁRIO / TARDE / FOLGA / FÉRIAS / A CONFIRMAR — colour-coded), **Semana** (7 stacked day cards), **Mês** (personal "Minha Escala", each day tappable through to Dia) — all implemented at `/operacoes/escala` (Milestones 4C.2/4C.3), on top of the applied data model/RPCs (Milestone 4C.1). Browser QA is complete and **PASS**. The **final** September 2026 schedule (workbook `ESCALA DE TRABALHO set 2026 final.xlsx`, sheet `setembro 2026`) is published to the production Supabase project and visually QA-passed on Dia / Semana / Mês — see Milestone 4C.4 (section 16.2). Still not done: the real Excel-based publish/import flow (V1.1) — see 16.2 for the full scope boundary;
 - V2: shift-swap request + approval + schedule update.
 
 **Organização de estoque**
@@ -2392,7 +2392,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 1. Conhecimento & Cultura — Nossos Princípios (Milestone 3A) — **complete**;
 2. Operações — Links Importantes (Milestone 4A, below) — **complete, QA passed**;
 3. Operações — Mensagens para WhatsApp (Milestone 4B, below) — **complete, QA passed**;
-4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI; the real Excel publish/import flow remains future V1.1 scope);
+4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI + 4C.4 final September 2026 publication; the real Excel publish/import flow remains future V1.1 scope);
 5. Operações — Contagem de Embalagens V1 (Milestone 4D, below) — **complete, QA passed**;
 6. after evaluating Escala V1 and Contagem de Embalagens in practice, likely move into Consulta de Estoque (section 9).
 
@@ -2437,11 +2437,13 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 **Status:** IMPLEMENTED / QA COMPLETE
 
-4C.1 (foundation) + 4C.2 (employee-facing Dia / Semana / Mês UI) + 4C.3 (provisional data import, Gestão model change, QA revisions + polish) are all implemented and applied. Product-owner browser QA is complete and **PASS** — covering the 4C.2 rounds (normal weekday, Sunday/single-shift, Intermediário, Folga/Férias, Gestão visibility) and the 4C.3 revisions (colour-coded sections, section-hours-in-heading, section reorder, Gestão bucketing + withheld manager hours, `Dia` rename, Mês→Dia navigation, apelido-first identity, shared `AuthUtilityBar`, `/operacoes` tile reorder). Provisional September 2026 data is loaded into the production Supabase project as test data.
+4C.1 (foundation) + 4C.2 (employee-facing Dia / Semana / Mês UI) + 4C.3 (provisional data import, Gestão model change, QA revisions + polish) + 4C.4 (final September 2026 publication) are all implemented and applied. Product-owner browser QA is complete and **PASS** — covering the 4C.2 rounds (normal weekday, Sunday/single-shift, Intermediário, Folga/Férias, Gestão visibility), the 4C.3 revisions (colour-coded sections, section-hours-in-heading, section reorder, Gestão bucketing + withheld manager hours, `Dia` rename, Mês→Dia navigation, apelido-first identity, shared `AuthUtilityBar`, `/operacoes` tile reorder), and the 4C.4 final-workbook publication (Dia / Semana / Mês). The **final** September 2026 schedule is published to the production Supabase project as the single active publication for `2026-09-01`; the earlier provisional publication is retained as inactive history.
 
 **Carried FUTURE / OPEN items (none are blockers for closing this milestone; do not implement as part of it):**
 
-- replace the provisional September 2026 workbook data with the real published workbook before real rollout;
+- ~~replace the provisional September 2026 workbook data with the real published workbook before real rollout~~ — **DONE, Milestone 4C.4** (final workbook published, reconciled 230/230, visual QA PASS);
+- **motivo da folga** — when a schedule is published/sent, record the reason/type of each `FOLGA` (e.g. regular weekly folga vs. an additional compensatory folga for having worked a holiday). Concept only — the final categories and business rules are **not** defined yet and are deferred to later design;
+- **swipe between days on `Dia`** — on mobile/touch devices, let the user swipe left/right in the day-level view to move to the next/previous day, keeping the existing day selector / prev-next navigation as a visible fallback. UX design deferred; do not implement now;
 - Gestão / Favacho consistency refinement — how consistently a gerência member should appear on Escala when no explicit schedule entry exists (accepted as-is for V1; see the OPEN / FUTURE note under Milestone 4C.3);
 - real employee `email` addresses (still `NULL` for all eight — never invented);
 - the real Excel → structured-data UUID / technical-column mapping and publish flow (V1.1 — see below);
@@ -2470,7 +2472,14 @@ native mobile-friendly Portal Escala (future sub-milestone)
 
 **Employee function display:** normal day/week rows show only name + time (e.g. "Amanda — 10:00–16:00"), never cargo — the team is small enough that it would be visual noise. `cargo` is retained in the data model since it may become useful later; richer role/function display is FUTURE, not approved for now.
 
-**V1.1 (future):** a proper Admin → Importar Escala workflow — workbook upload, preview, validation, publish — replacing the deliberately lightweight V1 approach (Excel → deterministic local conversion → validation/preview → structured data → publish into Supabase, without an in-Portal upload screen).
+**V1.1 (future) — Admin Escala spreadsheet uploader.** A proper `Admin → Importar Escala` workflow, replacing the deliberately lightweight V1 approach (which today is: Excel → deterministic local conversion → manual validation → structured data → publish into Supabase, with no in-Portal upload screen). Concept captured, workflow/details to be designed later:
+
+- Excel / Google Sheets stays the authoring tool — the uploader does not become a schedule editor;
+- upload an `.xlsx` in Portal;
+- parse, normalize, and validate the target month's sheet server-side (same normalization rules as V1: explicit time ranges, `FOLGA`, `FÉRIAS`, `MANHÃ`/`TARDE`, blank → A CONFIRMAR, staffing-count rows ignored, dates from the sheet's own headers);
+- preview before publishing: employee name → `funcionarios` UUID mappings, unmapped/ambiguous rows, validation errors, and a diff against the currently active publication for that month;
+- publish atomically as a new monthly version (new active `escala_publicacoes` row, previous one flipped to inactive history — the V1 model);
+- support quick mid-month republishing of a revised workbook for the same month via the same flow.
 
 **Further future (not approved for implementation now):** richer role/function display, if ever genuinely useful; Admin holiday management UI; schedule authoring inside Portal (replacing Excel as the authoring tool); shift-swap requests/approvals; notifications; audit/history browsing UI; Minha Conta / Alterar PIN and PIN-security modernization (own entry below).
 
@@ -2535,7 +2544,7 @@ Builds the first usable Escala experience on top of 4C.1's applied schema/RPCs. 
 **Known Gaps (explicitly not done in 4C.2, not silently skipped):**
 
 - **Celebrações de hoje (birthdays/work anniversaries) — not implemented.** No RPC currently exposes `aniversario_dia`/`aniversario_mes`/`data_admissao` for the whole team (both are protected by RLS with no policies, like every other Escala table, and neither `get_escala_periodo` nor `get_minha_escala_mes` returns them). Implementing this would require a new RPC — per the approved instruction to stop and report rather than build around an unapplied migration, this was not attempted. A small additive migration (e.g. `get_celebracoes_do_dia(session_token, data)`) can be proposed in a follow-up round if wanted.
-- **Provisional September 2026 import — DONE in Milestone 4C.3** (workbook `tmp/ESCALA DE TRABALHO.xlsx`, sheet `setembro 2026`). Superseded — see 4C.3 below.
+- **September 2026 import — DONE** (provisional in Milestone 4C.3 from `tmp/ESCALA DE TRABALHO.xlsx`; **final** in Milestone 4C.4 from `ESCALA DE TRABALHO set 2026 final.xlsx`). Superseded — see 4C.3 / 4C.4 below.
 - **Supabase MCP execution — now available and used** from Milestone 4C.3 onward. Superseded.
 - **Nearby-date strip on Dia** (mentioned as optional — "if it remains clean on mobile") was not built; prev/today/next arrows were judged sufficient for V1 and simpler to keep accessible.
 
@@ -2569,7 +2578,7 @@ CLI / `db push` adoption is deferred future work, gated on (a) deciding whether 
 
 **Employee-facing identity — prefer `apelido`, fall back to `nome` (migration `20260826_003`).** Approved product rule: everywhere the UI greets or labels an employee informally it now shows `funcionarios.apelido`, degrading to `nome` only when apelido is NULL/blank (`coalesce(nullif(btrim(apelido::text), ''), nome::text)` — defensive only, since apelido is currently NOT NULL and populated for every row). Scope, all additive / behavioural with no data changes: `verify_pin` gains an `apelido` output column (DROP + CREATE, its only signature change — nothing depends on it beyond the PostgREST RPC call); `get_lista_vez_estado`'s existing `nome` display column and `get_atendimento_ativo`'s `iniciado_por_nome` column both become apelido-first with no signature change. The formal name is untouched in `funcionarios.nome` and in `list_active_employees` (the login picker still shows full legal names). Frontend: `VerifyPinSuccess`/`AuthSessionData` carry `apelido` (with runtime guards), `useLogin` persists it into the session, and the Dashboard greeting renders `session.apelido || session.nome`. Escala already displayed `apelido` and is unchanged.
 
-**Provisional September 2026 import.** Source: `tmp/ESCALA DE TRABALHO.xlsx`, sheet `setembro 2026`. Normalised to 231 `escala_entradas` rows under one active `escala_publicacoes` row (`mes_referencia = 2026-09-01`, `publicado_por` = the Administrador fixture). 8 employees mapped to existing `funcionarios.id` (Amanda, Graça, Renan, Elisieth, Vitor, Dayanna, Sara, Favacho). Excluded, by construction: the staffing-analysis rows (`Vendedor/Caixa diurno/noturno`), the `Folgas` tally column, all Férias/Folga note columns, free-text notes, Aug-30/31 + Oct spillover columns, and `MONICA` (no `funcionarios` row, and no schedule cells anyway). `FAVACHO`'s weekday cells read `MANHÃ`/`TARDE` (no times) — mapped to the workbook's two canonical windows (`10:00–16:00` / `16:00–22:00`) purely to drive section classification; his displayed hours are withheld anyway. He has entries for only 21 of 30 days (the sheet leaves the rest blank → A CONFIRMAR). Verified: publication active; 231 rows = 166 trabalho + 36 folga + 29 férias; 0 duplicate `(id_funcionario, data)`; 0 rows for test/admin employees; 0 rows outside Sep 1–30; Gestão visibility holds when replaying the RPC's filter for each caller type. This is provisional test data and will be replaced when the real workbook is available.
+**Provisional September 2026 import.** Source: `tmp/ESCALA DE TRABALHO.xlsx`, sheet `setembro 2026`. Normalised to 231 `escala_entradas` rows under one active `escala_publicacoes` row (`mes_referencia = 2026-09-01`, `publicado_por` = the Administrador fixture). 8 employees mapped to existing `funcionarios.id` (Amanda, Graça, Renan, Elisieth, Vitor, Dayanna, Sara, Favacho). Excluded, by construction: the staffing-analysis rows (`Vendedor/Caixa diurno/noturno`), the `Folgas` tally column, all Férias/Folga note columns, free-text notes, Aug-30/31 + Oct spillover columns, and `MONICA` (no `funcionarios` row, and no schedule cells anyway). `FAVACHO`'s weekday cells read `MANHÃ`/`TARDE` (no times) — mapped to the workbook's two canonical windows (`10:00–16:00` / `16:00–22:00`) purely to drive section classification; his displayed hours are withheld anyway. He has entries for only 21 of 30 days (the sheet leaves the rest blank → A CONFIRMAR). Verified: publication active; 231 rows = 166 trabalho + 36 folga + 29 férias; 0 duplicate `(id_funcionario, data)`; 0 rows for test/admin employees; 0 rows outside Sep 1–30; Gestão visibility holds when replaying the RPC's filter for each caller type. **Superseded by Milestone 4C.4** — this provisional publication was deactivated (retained as inactive history) and replaced by the final workbook.
 
 **UI revisions (browser QA complete, PASS):**
 
@@ -2586,6 +2595,28 @@ Validated: `npm run typecheck`, `npm run lint` (0 errors; 6 pre-existing `react-
 **Browser QA (product owner): PASS.** Escala V1 (Milestone 4C in full) is closed as IMPLEMENTED / QA COMPLETE. Remaining scope is tracked as FUTURE / OPEN under Milestone 4C's status and the Future — Rollout Preparation & Access Architecture entry; none of it blocks closing this milestone.
 
 **OPEN / FUTURE — Gestão consistency on Escala.** The current V1 Gestão behavior is **accepted as-is**: gerência members are bucketed into the normal shift sections by their stored hours, their individual hours are withheld (name-only rows), and non-privileged callers receive no gerência row at all. The product owner may later refine *how consistently* Gestão/Favacho should appear on Escala when there is **no explicit schedule entry** for a given day (e.g. whether a manager with no entry should still surface as "present", or how Favacho's currently-blank days — which fall through to A CONFIRMAR — should read). This is a presentation/product refinement, **not a current bug or blocker**, and nothing should be implemented for it now.
+
+### Milestone 4C.4 — Escala: final September 2026 publication
+
+**Status:** COMPLETE / QA PASS — **data-only**; no product code, schema, or migration changes.
+
+The provisional September 2026 schedule was replaced by the **final** workbook. Source of truth: `ESCALA DE TRABALHO set 2026 final.xlsx`, worksheet `setembro 2026` only (all other sheets ignored); dates read from the sheet's own weekly header rows, restricted to 2026-09-01…2026-09-30 (Aug 30–31 and Oct spillover columns dropped); staffing-count rows (`Vendedor/Caixa diurno/noturno`) and free-text notes ignored.
+
+**Publication (production project `ugfogsseikupsfqqznzi`, data only, via Supabase MCP `execute_sql`):**
+
+- new active `escala_publicacoes` row (`f8386de2-…`) for `mes_referencia = 2026-09-01` (`ativa = true`, `publicado_por` = the Administrador fixture);
+- **230** `escala_entradas` rows = 167 trabalho + 35 folga + 28 férias (Amanda 14 + Sara 14), across all 30 days, 8 mapped employees;
+- the prior provisional publication (`0883783f-…`) was flipped to `ativa = false` and **retained as inactive history with its 231 rows** — matching the V1 "new version replaces previous, previous kept as history" model;
+- one atomic `DO` block with pre-commit guards (exactly one active publication for `2026-09-01`; exactly 230 entries; no duplicate `(id_funcionario, data)`; every date within Sep 1–30);
+- normalization unchanged from V1: explicit ranges (`10:00-16:00`, `14:00-20:00`, `14:00-21:00`, `16:00-22:00`), `FOLGA`, `FÉRIAS`, and Favacho's `MANHÃ`/`TARDE` → canonical `10:00–16:00` / `16:00–22:00` (classification only; the RPCs still return his displayed hours as `NULL`). Blank cells → **no row** (A CONFIRMAR), never folga — Favacho has 10 such blank days.
+
+**Employee mapping (workbook name → `funcionarios.id`):** AMANDA `92c23daf-…`, GRAÇA `cb1e9cd7-…`, RENAN `f66f45ff-…`, ELISIETH `40780628-…`, VITOR `9579c710-…`, DAYANNA `f39c9e45-…`, SARA `e8a635d2-…`, FAVACHO `b172a143-…` (`escala_grupo_gestao = true`). **MONICA** is deliberately ignored — no `funcionarios` row exists and her September cells are all blank; **no employee was created**. `Colaborador Teste` / `Teste 2` / `Gerente Teste` are inactive and never appear; the Administrador is excluded from the roster by the RPC. No `cargo` values were changed.
+
+**Reconciliation:** every applied row was diffed field-by-field (`(funcionario, data) → status, hora_inicio, hora_fim`) against the workbook-parsed set — **230/230 match, 0 missing, 0 extra, 0 mismatched**. (One transcription error introduced during the load — Renan Sep 16–17 hours — was caught by this reconciliation and corrected with a guarded `UPDATE`; the row-count/date/duplicate guards do not catch a swapped value, so the field-level diff is now the mandatory closing step for any schedule publish.)
+
+**Validation:** date coverage (Sep 1–30, 30 distinct days) — PASS; no dates outside September — PASS; no duplicate employee/date rows — PASS; FOLGA/FÉRIAS counts preserved from the workbook — PASS; explicit time ranges match the workbook — PASS; Favacho MANHÃ/TARDE classification with hours withheld — PASS; blank cells not turned into shifts — PASS; no unmapped employee silently dropped — PASS; Gestão privacy — PASS (real `get_escala_periodo` / `get_minha_escala_mes` / `list_escala_meses_publicados` replayed end-to-end with throwaway sessions for a regular employee, a Gestão member, and the Administrador: a regular employee receives zero gerência rows; Gestão member and Administrador see gerência rows with hours withheld; the Administrador is not in the roster). `typecheck` / `lint` / `build` all clean (lint: the same 6 pre-existing `react-refresh` warnings, no new ones).
+
+**Browser QA (product owner): PASS** — Dia / Semana / Mês verified visually in Portal. Milestone 4C (Escala V1) remains closed; the FUTURE / OPEN items under Milestone 4C's status still apply (minus the now-completed final-workbook replacement).
 
 ### Milestone 4D — Contagem de Embalagens
 
