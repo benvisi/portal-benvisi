@@ -1122,13 +1122,19 @@ Do not add it to the MVP unless specifically approved.
 
 ## 9.1 Status
 
-### APPROVED / PLANNED MODULE
+### APPROVED — BACKEND V1 IMPLEMENTED, EMPLOYEE UI IS THE NEXT MILESTONE
 
 **Consulta de Estoque** is a dedicated employee-facing module.
 
 It is distinct from inventory organization, stock-room management, receiving, and other operational/logistics workflows.
 
 Its purpose is fast product availability lookup while the employee remains focused on serving the customer.
+
+**Implementation status (Milestone 4E — Inventory Backend V1):**
+
+- **Implemented and validated:** the Supabase inventory schema (`estoque_sync_execucoes`, `estoque_snapshot`, `estoque_cores_mapeamento`), the 419-row curated colour dictionary, the employee-facing read RPCs (`buscar_produtos_estoque`, `get_produto_estoque_detalhe`, `get_estoque_freshness`), and the manual Linx → Supabase sync script (`scripts/sync-estoque/`). **A real Linx → Supabase publish has run** (corrected applicable-grade snapshot, 2026-09-10: ~15.5k rows across 1 371 produto/cores, `status = sucesso`, 100 % colour-map coverage). See section 9.8 for the locked architecture and Milestone 4E (section 16.2).
+- **Not built:** the Consulta de Estoque **frontend** — product search screen, colour/size matrix, freshness banner, availability treatments (sections 9.3–9.11). That is the next milestone.
+- **Still deferred from the Sep 16 critical path:** barcode / SKU scanning and lookup (section 9.4) — no barcode work in Backend V1; `PRODUTOS_BARRA` is intentionally not joined by the sync.
 
 ---
 
@@ -1262,25 +1268,77 @@ The product requirement is the ability to understand available **colors and size
 
 ## 9.8 Data Source
 
-### APPROVED
+### APPROVED — SCHEMA LOCKED (Milestone 4E)
 
-Primary Portal Benvisi inventory source:
+Primary Portal Benvisi inventory source: the `estoque_*` tables in Supabase,
+populated by a manual (for now) synchronization from Linx (Microsoft SQL
+Server, on-prem). Linx / the ERP remains the transactional system of record;
+these tables are a periodically-refreshed read model.
 
-`estoque_snapshot`
+**Tables** (all RLS-enabled, zero direct policies — reached only through the
+SECURITY DEFINER read RPCs, same pattern as every other Portal module):
 
-This table is populated through periodic synchronization from the main ERP/POS environment.
+- **`estoque_sync_execucoes`** — one row per sync run (`executando` →
+  `sucesso` | `erro`, with `iniciado_em` / `concluido_em` /
+  `linhas_extraidas` / `linhas_publicadas` / `erro`). Portal inventory
+  freshness is defined **only** by the most recent `status = 'sucesso'` row.
+  An in-progress or failed run is never visible, and a failed run never
+  invalidates the previous successful snapshot (prior successful snapshots
+  are retained — no aggressive cleanup yet).
+- **`estoque_snapshot`** — one row per `sync_id + produto + cor_codigo +
+  tamanho_key` (unique) — **one row per qualifying produto + cor + applicable
+  labelled size position**. Fields: `produto`, `desc_produto`, `tipo_produto`,
+  `linha`, `grade`, `cor_codigo`, `cor_descricao_linx`, `tamanho_key`,
+  `tamanho_venda`, `quantidade_estoque`. A product/colour qualifies for a
+  sync when Linx has `FILIAL = 'LACOSTE SHOPPING  MANAUS'` and `ESTOQUE > 0`.
+  Linx physically exposes up to 48 size/stock positions (`ES1..ES48` /
+  `TAMANHO_1..48`); the extraction reads **all 48** and then keeps only the
+  positions whose `PRODUTOS_TAMANHOS` label (via `GRADE`) is non-null /
+  non-blank — the real grade. Applicable positions are kept even at
+  `quantidade_estoque = 0`; unused/unlabelled padding positions are
+  discarded (they are always `0` — 0 positive, 0 negative — so no stock
+  information is lost). `tamanho_venda` is therefore always populated;
+  `tamanho_key` (1..48) is retained purely as internal deterministic
+  ordering metadata and is **never** an employee-facing value. There is no
+  hard-coded Portal maximum grade size — current merchandise happens to top
+  out at `tamanho_key = 20` (30 grades in use, 323 valid positions across
+  them), but a future grade using positions 21–48 flows through unchanged.
+  `custo_medio`, `colecao`, and barcode are out of scope for V1.
+- **`estoque_cores_mapeamento`** — curated colour dictionary, key
+  `(cor_codigo, cor_descricao_linx)`, columns `cor_nome_portal` +
+  `cor_familia`. Seeded with 419 reviewed mappings (tracked migration, not an
+  ad hoc import). `cor_descricao_linx` is internal Linx source metadata used
+  only for this join — it is **never** returned to the employee UI; the
+  employee-facing colour identity is always `cor_codigo + cor_nome_portal`
+  (e.g. `166 · Azul-marinho`). A stock colour with no mapping returns
+  `cor_nome_portal = null`, never the Linx source description.
 
-The snapshot should contain or make it possible to derive the data necessary to group products by:
+**Read contract** (SECURITY DEFINER, session-token-validated, `anon`-granted —
+all read only from the latest successful sync):
 
-- reference;
-- color;
-- size;
-- SKU;
-- barcode;
-- product description/name;
-- available quantity.
+- `buscar_produtos_estoque(session, termo)` — primary: case-insensitive
+  **prefix** match on `produto` (`PH4` → `PH4012`, `PH4014`, …, never
+  `PH5522`); secondary: `desc_produto` contains. One row per `produto`. No
+  fuzzy / trigram infrastructure yet.
+- `get_produto_estoque_detalhe(session, produto)` — for an exact `produto`,
+  every current colour and its real dynamic size grade (labelled positions,
+  ordered by `tamanho_key`, zero-stock sizes retained) from the latest
+  successful snapshot, plus `sync_concluido_em`. Never returns
+  `cor_descricao_linx`. `tamanho_key` is present as ordering metadata only —
+  the UI renders `tamanho_venda` labels, never storage-position numbers.
+- `get_estoque_freshness(session)` — `concluido_em` of the latest successful
+  sync, for the "Estoque atualizado em DD/MM/YYYY às HH:mm" indicator.
 
-The exact synchronization schema will be defined when this module is implemented.
+**Sync** — `scripts/sync-estoque/` (Node, run manually from the on-prem PC;
+no Task Scheduler yet). Connects to Linx `aplserver` / `Lacoste_60420`
+(dedicated read-only login), opens an `executando` row, runs the canonical
+`CROSS APPLY VALUES` extraction (`ESTOQUE_PRODUTOS` `ES1..48` per qualifying
+`(produto, cor)`, `LEFT JOIN` the size labels from `PRODUTOS_TAMANHOS` via
+`PRODUTOS.GRADE`; `PRODUTO_CORES` for the colour code/description),
+validates locally (row count, canonical-key uniqueness, integer quantities,
+**stops** on any size-level negative), bulk-publishes (1 000-row chunks,
+`service_role`) tagged with the new `sync_id`, verifies the Supabase count,
+then marks `sucesso`. Credentials come only from a gitignored `.env`.
 
 ---
 
@@ -2385,7 +2443,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 **Status:** IN DEVELOPMENT
 
-**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), 4C (Escala V1), and 4D (Contagem de Embalagens V1) are all complete and QA-passed — more Operações features (next likely Consulta de Estoque) are still planned.
+**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), 4C (Escala V1), and 4D (Contagem de Embalagens V1) are all complete and QA-passed, and Milestone 4E (Consulta de Estoque — Inventory Backend V1) has its backend implemented and validated — the Consulta de Estoque employee UI and more Operações features are still planned.
 
 **Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
 
@@ -2394,9 +2452,9 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 3. Operações — Mensagens para WhatsApp (Milestone 4B, below) — **complete, QA passed**;
 4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI + 4C.4 final September 2026 publication; the real Excel publish/import flow remains future V1.1 scope);
 5. Operações — Contagem de Embalagens V1 (Milestone 4D, below) — **complete, QA passed**;
-6. after evaluating Escala V1 and Contagem de Embalagens in practice, likely move into Consulta de Estoque (section 9).
+6. Operações — Consulta de Estoque — Inventory Backend V1 (Milestone 4E, below) — **backend implemented and validated, real Linx → Supabase publish done** (corrected applicable-grade snapshot, 2026-09-10); only the Consulta employee UI remains.
 
-Consulta de Estoque is **not** implemented by this sequence entry — it remains future/planned scope (section 9) until its own milestone is completed.
+The Consulta de Estoque **frontend** is **not** implemented — it remains the next milestone (section 9). Barcode / SKU scanning stays deferred from the Sep 16 critical path.
 
 ### Milestone 4A — Links Importantes
 
@@ -2727,6 +2785,26 @@ Do not implement this without a dedicated milestone; do not modify `verify_pin` 
 - **Login UX — picker + PIN stays primary.** Keep the employee picker + PIN as the main path. A type-to-filter/search affordance on the picker and a separate, unlisted access path for non-employee principals *may* be added later; email + PIN is only worth revisiting if real employee emails are collected and the roster outgrows a scannable list. Tie any change to the Minha Conta / Alterar PIN + PIN-hashing milestone above.
 - **Real-employee test-history cleanup happens at rollout preparation, not now.** Several real/named employees carry small amounts of pre-launch test activity (`termos_aceite`, `sessoes_funcionario`, `turno_presenca`, `lista_vez_fila`, one `atendimentos` row). A single ordered `DELETE` transaction restores a clean first-login experience while preserving all `funcionarios` rows and the provisional September Escala (`escala_publicacoes` / `escala_entradas`). This is deferred to the rollout window and must not be executed as part of Escala closeout.
 
+### Milestone 4E — Consulta de Estoque — Inventory Backend V1
+
+**Status:** BACKEND IMPLEMENTED, REAL SYNC DONE & VALIDATED (corrected applicable-grade snapshot, 2026-09-10). Employee UI is the next milestone.
+
+Bounded backend milestone for Consulta de Estoque (section 9). No Consulta frontend, no barcode work.
+
+Scope delivered:
+
+- **Migrations** (tracked, additive, applied to prod): `20260909_001` replaces the obsolete, untracked, empty barcode-centric `estoque_snapshot` prototype with the locked schema — `estoque_sync_execucoes`, `estoque_snapshot` (unique `sync_id, produto, cor_codigo, tamanho_key`), `estoque_cores_mapeamento` (unique `cor_codigo, cor_descricao_linx`); all RLS-enabled, zero policies. `20260909_002` seeds 419 curated colour mappings from `cores_portal_final.csv` (idempotent, reproducible for a future separate dev/prod environment). `20260909_003` adds the read RPCs. `20260909_004` filters `get_produto_estoque_detalhe` to labelled grade positions (defensive — the corrected extraction already stores only those). `20260909_005` grants `service_role` the minimal DML (`insert`/`select` on the snapshot tables, `+update` on the execution ledger) the on-prem sync needs — this project does not carry the blanket Supabase table grants; it does not add a policy, weaken RLS, or expose anything to `anon` / `authenticated` / the frontend.
+- **Read RPCs** (SECURITY DEFINER, session-validated, `anon`-granted; read only the latest `status = 'sucesso'` sync): `buscar_produtos_estoque` (prefix on `produto`, min 2 chars, secondary `desc_produto` contains), `get_produto_estoque_detalhe` (exact `produto` → all colours + full dynamic size grade + `sync_concluido_em`; `cor_descricao_linx` never returned; unmapped colour → `cor_nome_portal = null`), `get_estoque_freshness`.
+- **Manual sync** — `scripts/sync-estoque/` (Node ESM, run by hand from the on-prem PC; `--dry-run` supported). Connects to Linx `aplserver` / `Lacoste_60420` (dedicated read-only SQL login `portal_benvisi_estoque`), runs the canonical `CROSS APPLY VALUES` extraction — reads all 48 `ESTOQUE_PRODUTOS` `ES*` positions per qualifying `(produto, cor)`, `JOIN`s the dynamic size labels from `PRODUTOS_TAMANHOS` via `PRODUTOS.GRADE` so **only labelled grade positions survive** (`PRODUTO_CORES` for the colour code/description; `PRODUTOS_BARRA` not joined), filter `FILIAL = 'LACOSTE SHOPPING  MANAUS' AND ESTOQUE > 0`. Opens an `executando` row, validates locally (count, canonical-key uniqueness, `tamanho_venda` non-blank on every row, integer quantities, **stops** on any size-level negative), bulk-publishes (1 000-row chunks, `service_role`) tagged with the new `sync_id`, verifies the Supabase count, marks `sucesso`; any failure marks `erro` and leaves the previous successful snapshot intact.
+
+**Snapshot grain (locked).** One row per qualifying **produto + cor + applicable labelled size position** (`sync_id, produto, cor_codigo, tamanho_key`). Linx physically stores up to 48 positions (`ES1..48` / `TAMANHO_1..48`); the extraction reads all 48 and keeps a position only when its `PRODUTOS_TAMANHOS` label is non-null/non-blank — the real grade, including its zero-stock sizes. Unused/unlabelled padding positions are discarded; a 2026-09 diagnostic confirmed all 50 302 padding rows in the raw fixed-48 rectangle carry `quantidade_estoque = 0` (0 positive, 0 negative), so nothing is lost. `tamanho_key` is retained purely for deterministic ordering and is never shown to employees; the UI renders `tamanho_venda`. No hard-coded Portal maximum grade size — 30 grades in use, 323 valid positions, highest currently-used `tamanho_key = 20`, positions 21–48 flow through unchanged if a future grade needs them.
+
+**Real syncs.** First run `sync_id a9402199-54a4-4392-abdb-5d132aa5752d` (2026-09-09) published the raw fixed-48 rectangle (65 808 rows) before the grain was corrected — retained as history, no longer visible. Corrected run **`sync_id e009b5aa-d1f5-4d01-a5b7-0c782cd27a06`** (2026-09-10): 15 506 rows extracted = 15 506 published, `status = sucesso`, and now authoritative via `estoque_sync_atual()`. Reconciliation vs the 2026-09-09 applicable-grade inspection (drift-tolerant): produto_cores 1 371 = 1 371; applicable rows ≈ 15 506; sizes > 0 3 705; applicable sizes = 0 11 801; sizes < 0 **0**; 578 distinct `produto`.
+
+**Validation** (corrected snapshot): latest execution `sucesso`, `linhas_extraidas = linhas_publicadas = 15 506`, Supabase row count matches; 0 duplicate `(sync_id, produto, cor_codigo, tamanho_key)`; **0 rows with a null/blank `tamanho_venda`** (no padding in the visible snapshot); every qualifying produto/cor represented; **colour-map coverage 100 %** (419 distinct `(cor_codigo, cor_descricao_linx)` pairs, all 419 mapped, 0 unmapped); prefix search `L1212` → only `L1212-21/23`, `PH` → 50 hits all `PH*`; `get_produto_estoque_detalhe` returns every colour with its labelled grade ordered by `tamanho_key` (zeros retained), `cor_nome_portal`/`cor_familia` populated, no `cor_descricao_linx`, single `sync_concluido_em`; a newer `erro`/`executando` execution does not change visibility or freshness; invalid session raises `INVALID_SESSION`. `npm run typecheck`, `npm run lint`, `npm run build` all pass.
+
+Not in scope / next milestone: the Consulta de Estoque employee frontend (search screen, colour × size matrix, freshness banner, availability treatments); barcode / SKU lookup (still deferred from the Sep 16 critical path); Task Scheduler automation; snapshot cleanup/retention policy.
+
 ## 16.3 Planned Operational Modules
 
 ### APPROVED / PLANNED
@@ -2934,6 +3012,32 @@ This supersedes the originally-implemented Milestone 2A model, which excluded al
 
 ---
 
+## ADR-022 — Inventory Freshness Is the Latest Successful Sync, Never a Partial One
+
+**Status:** APPROVED — implemented in Milestone 4E
+
+Portal inventory (`estoque_snapshot`) is a periodically-refreshed read model of Linx, not a live view. Each refresh is one `estoque_sync_execucoes` row (`executando` → `sucesso` | `erro`).
+
+The employee-visible snapshot is defined **only** by the most recent execution with `status = 'sucesso'` and a non-null `concluido_em`. An in-progress or failed run is never visible, and a failed run never invalidates the previous successful snapshot — its rows simply stay attached to the older `sync_id`. Prior successful snapshots are retained for now (no aggressive cleanup).
+
+Employee-facing colour identity is always `cor_codigo + cor_nome_portal` from the curated `estoque_cores_mapeamento` dictionary. The Linx source description (`cor_descricao_linx`) is join metadata only and is never returned by a read RPC; an unmapped colour returns `cor_nome_portal = null` rather than falling back to the source description.
+
+---
+
+## ADR-023 — Snapshot Grain Is Applicable/Labelled Grade Positions, Not the Linx 48-Slot Rectangle
+
+**Status:** APPROVED — implemented in Milestone 4E (2026-09-10 correction)
+
+Linx physically stores each product/colour's stock across up to 48 fixed columns (`ESTOQUE_PRODUTOS.ES1..ES48`), with the size labels for a grade in `PRODUTOS_TAMANHOS.TAMANHO_1..48`. Most grades use far fewer than 48 positions.
+
+The canonical `estoque_snapshot` grain is **one row per qualifying `produto` + `cor_codigo` + applicable/labelled size position** — every real size in the product's grade, including applicable sizes whose quantity is `0`. Unused positions (those whose `TAMANHO_<n>` is null/blank for that grade) are **not** persisted, even though Linx physically has a column for them. A 2026-09 diagnostic confirmed every unlabelled padding position across current inventory is quantity `0` (0 positive, 0 negative), so discarding them loses no stock information.
+
+The extraction still reads all 48 physical positions and discards a position only for being unlabelled — never by a `tamanho_key` threshold. There is no hard-coded Portal maximum grade size; a future grade using positions 21–48 flows through unchanged.
+
+`tamanho_key` (1..48, the source column index) is retained solely as deterministic grade-ordering metadata. It is never an employee-facing value — the UI renders only the `tamanho_venda` labels applicable to that product's grade, ordered by `tamanho_key`.
+
+---
+
 # 18. Open Decisions
 
 There are currently no unresolved product-level decisions that block implementation of Epic 2 — Atendimento.
@@ -2995,7 +3099,15 @@ Dedicated read-only employee module for fast inventory lookup.
 
 ## `estoque_snapshot`
 
-Portal-side inventory snapshot synchronized periodically from the ERP/POS environment.
+Portal-side inventory read model, refreshed from Linx by a manual sync (Milestone 4E). One row per qualifying **produto + cor + applicable labelled size position** (`sync_id + produto + cor_codigo + tamanho_key`); unused/unlabelled Linx size-array padding positions are not stored. Only the rows attached to the latest `estoque_sync_execucoes` row with `status = 'sucesso'` are ever surfaced to employees. `tamanho_key` is internal ordering metadata; employees see only `tamanho_venda`.
+
+## `estoque_sync_execucoes`
+
+Ledger of inventory sync runs. Defines Portal inventory freshness: the visible snapshot is the newest row with `status = 'sucesso'` and a non-null `concluido_em`. `executando` / `erro` runs are never visible and never invalidate the previous successful snapshot.
+
+## `estoque_cores_mapeamento`
+
+Curated colour dictionary keyed by `(cor_codigo, cor_descricao_linx)`, mapping the Linx source colour to the employee-facing `cor_nome_portal` (shown as `cor_codigo · cor_nome_portal`) plus `cor_familia`. `cor_descricao_linx` is internal and is never shown to employees.
 
 ---
 
