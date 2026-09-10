@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { BookOpen, ClipboardCheck, Loader2, Package, Settings, Users } from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
 import { Button } from "@/components/ui/button";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
-import { ModuleInProgressDialog } from "@/components/dashboard/ModuleInProgressDialog";
 import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
 import {
   ADMINISTRATOR_CARGO,
@@ -45,7 +44,6 @@ function DashboardPage() {
   // that.
   const ativoQuery = useAtendimentoAtivo(accepted ? funcionarioId : null, sessionToken);
   const hasPendingRecovery = ativoQuery.data?.status === "pendente_fechamento";
-  const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
 
   useEffect(() => {
     if (ready && termoStatus.isSuccess && !accepted) {
@@ -143,7 +141,7 @@ function DashboardPage() {
             title="Estoque"
             description="Consulte a disponibilidade de produtos e tamanhos."
             variant="brand"
-            onClick={() => setModuleDialogOpen(true)}
+            onClick={() => void navigate({ to: ROUTES.ESTOQUE })}
           />
           <ModuleCard
             icon={ClipboardCheck}
@@ -177,8 +175,6 @@ function DashboardPage() {
         component, same bottom placement on every authenticated route.
       */}
       <AuthUtilityBar />
-
-      <ModuleInProgressDialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen} />
     </main>
   );
 }

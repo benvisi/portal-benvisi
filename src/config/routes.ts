@@ -3,6 +3,7 @@ export const ROUTES = {
   TERMS: "/termos",
   DASHBOARD: "/dashboard",
   ATENDIMENTO: "/atendimento",
+  ESTOQUE: "/estoque",
   ADMINISTRATIVO: "/administrativo",
   CONHECIMENTO_CULTURA: "/conhecimento-cultura",
   CONHECIMENTO_CULTURA_PRINCIPIOS: "/conhecimento-cultura/principios",

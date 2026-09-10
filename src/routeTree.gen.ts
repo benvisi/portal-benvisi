@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AtendimentoRouteImport } from './routes/atendimento'
 import { Route as AdministrativoRouteImport } from './routes/administrativo'
@@ -25,6 +26,11 @@ import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conh
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/administrativo'
     | '/atendimento'
     | '/dashboard'
+    | '/estoque'
     | '/termos'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/administrativo'
     | '/atendimento'
     | '/dashboard'
+    | '/estoque'
     | '/termos'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/administrativo'
     | '/atendimento'
     | '/dashboard'
+    | '/estoque'
     | '/termos'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   AdministrativoRoute: typeof AdministrativoRoute
   AtendimentoRoute: typeof AtendimentoRoute
   DashboardRoute: typeof DashboardRoute
+  EstoqueRoute: typeof EstoqueRoute
   TermosRoute: typeof TermosRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdministrativoRoute: AdministrativoRoute,
   AtendimentoRoute: AtendimentoRoute,
   DashboardRoute: DashboardRoute,
+  EstoqueRoute: EstoqueRoute,
   TermosRoute: TermosRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,

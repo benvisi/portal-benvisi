@@ -1334,11 +1334,20 @@ no Task Scheduler yet). Connects to Linx `aplserver` / `Lacoste_60420`
 (dedicated read-only login), opens an `executando` row, runs the canonical
 `CROSS APPLY VALUES` extraction (`ESTOQUE_PRODUTOS` `ES1..48` per qualifying
 `(produto, cor)`, `LEFT JOIN` the size labels from `PRODUTOS_TAMANHOS` via
-`PRODUTOS.GRADE`; `PRODUTO_CORES` for the colour code/description),
-validates locally (row count, canonical-key uniqueness, integer quantities,
-**stops** on any size-level negative), bulk-publishes (1 000-row chunks,
-`service_role`) tagged with the new `sync_id`, verifies the Supabase count,
-then marks `sucesso`. Credentials come only from a gitignored `.env`.
+`PRODUTOS.GRADE`; `PRODUTO_CORES` for the colour code/description), then a
+**normalization pass** (`normalizeExtraction()`): reverses mechanically
+reversible double-encoding on `desc_produto` / `tipo_produto` / `linha` (not
+`cor_descricao_linx` — §9.12 item 1); drops dash-only (`/^-+$/`) zero-stock
+placeholder positions from the canonical snapshot, but **keeps** a dash-only
+position that unexpectedly has non-zero stock and records a non-fatal
+**warning** for it (§9.12 item 3). Then validates locally (row count,
+canonical-key uniqueness, integer quantities, **stops** on any size-level
+negative), bulk-publishes (1 000-row chunks, `service_role`) tagged with the
+new `sync_id`, verifies the Supabase count, then marks `sucesso`. A run may
+finish `sucesso` **with warnings** — warnings never force `erro` and never
+touch the previous successful snapshot. `linhas_extraidas` / `linhas_publicadas`
+record the canonical (post-normalization) count; the raw Linx count and the
+exclusions are in the run log. Credentials come only from a gitignored `.env`.
 
 ---
 
@@ -1355,6 +1364,18 @@ Example:
 > Estoque atualizado às 14:32
 
 The freshness indicator should inform the employee without creating visual clutter.
+
+**Locked wording (Consulta de Estoque V1).** The freshness line shows the full
+Manaus date and time of the latest successful complete sync:
+
+> Estoque atualizado em DD/MM/YYYY às HH:mm
+
+A single secondary reminder sits below it — deliberately just the
+physical-check advice, since the freshness line already conveys that inventory
+is periodically synchronised (an earlier draft that repeated
+"Estoque sincronizado periodicamente." was shortened):
+
+> Para quantidades baixas, confirme a disponibilidade física.
 
 ---
 
@@ -1394,6 +1415,114 @@ The interface may use semantic status treatments such as:
 Where quantity information is reliable, actual quantity should also be displayed.
 
 The employee should be able to understand product-family availability within seconds.
+
+---
+
+## 9.12 Known Data-Quality Limitations & FUTURE Enrichment
+
+### FUTURE — captured during Consulta de Estoque UI V1 QA (2026-09-10)
+
+The V1 matrix renders the Linx snapshot faithfully. Real inventory data
+surfaced several source-quality gaps. Each is recorded here as **FUTURE**
+work; none is solved by hiding data in V1.
+
+**1. Source text double-encoding (partly fixed).** A few Linx `PRODUTOS` text
+values arrive mojibake'd in Linx itself — UTF-8 bytes once decoded as
+Windows-1252 and re-encoded as UTF-8, so one accented char becomes two
+(`linha` "BONÃ‰S" for "BONÉS", "PARKAS & BLUSÃ•ES" for "PARKAS & BLUSÕES").
+The extraction/sync/Supabase/RPC/React path is faithful — clean values in the
+same columns ("CALÇA", "ACESSÓRIOS", "BLUSÃO") prove it. Fixed permanently in
+the **extraction** only: `sync-estoque.mjs` reverses the double-encoding at
+ingestion for the employee-facing product text fields (`desc_produto`,
+`tipo_produto`, `linha`) — conservative: applied only when the mojibake
+signature is present, the WIN1252→UTF-8 round trip is valid, and the result
+has fewer non-ASCII chars. `cor_descricao_linx` is **not** touched — it is
+internal source metadata in the curated mapping key `(cor_codigo,
+cor_descricao_linx)` and is stored exactly as Linx supplies it (it is never
+shown to employees and is currently clean). The corrected snapshot becomes
+authoritative by running a normal successful sync; prior successful snapshots
+are left untouched as history (no retroactive mutation of a published
+snapshot). **Not fixed:** a few older-season `desc_produto` values are *lossy*
+at the source (`CALÇA` stored as `CALÃA` — a byte was dropped), which cannot
+be reconstructed mechanically; these need a curated override and are left
+as-is for now.
+
+**2. Portal commercial/display grade vs Linx applicable grade.** Linx's
+labelled grade can include positions that are not part of the locally carried
+assortment — e.g. `PH4012-23` currently exposes sizes `1`, `10`, `11`, which
+the store does not believe it carries. V1 shows the full labelled grade (an
+all-zero column is NOT hidden — a legitimate size can simply be sold out). A
+future design should distinguish the source/applicable Linx grade from a
+Portal commercial/display grade, via product/grade-level size-visibility
+overrides or another evidence-based rule. TBD.
+
+**3. Placeholder size labels `-` / `--` / `---` — RESOLVED in the sync
+normalization layer (2026-09-10).** Diagnostic (snapshot `3967de3f`): `-` →
+126 rows / 74 produtos / 7 grades, `--` → 41 / 28 / 4, `---` → 19 / 18 / 2;
+**every one `quantidade_estoque = 0`** (0 positive, 0 negative). Outside one
+broken grade, all 57 affected produtos place them strictly before the first
+real size. Handled in `sync-estoque.mjs` `normalizeExtraction()`, content-based
+only (no hard-coded `tamanho_key` / produto / grade list):
+
+- trimmed `tamanho_venda` matches `/^-+$/` **and** `quantidade_estoque === 0`
+  → row is dropped from the canonical snapshot (never reaches the matrix).
+- trimmed `tamanho_venda` matches `/^-+$/` **and** `quantidade_estoque !== 0`
+  → row is **kept** (stock is never silently lost) and a prominent sync
+  **warning** is emitted (produto, cor_codigo, tamanho_key, tamanho_venda,
+  quantidade_estoque). This does **not** set the run to `erro` or block the
+  feed — resilience over blocking the whole stock feed for one source anomaly.
+- everything else is untouched: legitimate labelled sizes (including
+  zero-stock ones — a sold-out `S` still shows) and any label containing a
+  non-dash char (`9,5`, `3-4`, `ONE,` …) all pass through. A position that
+  later receives a real label appears automatically, no code change.
+
+`,` is a legitimate size character elsewhere — half sizes `9,5`, `8,5`, `3,5`
+carry real stock — so the rule keys on dashes only, never the comma.
+
+Grade `U00` (17 PERFUME `LC*` products) is separately corrupt at the source:
+only position 1 (`ONE`, 85 units) is real; positions 2–9 are noise (`-`, `--`,
+`---`, `ONE,`, `,ONE,`, `ONE,,`, `----,`, `---,,`). The dash-only rule cleans
+its `-/--/---` positions; the `ONE,`-style junk needs a Linx source fix or a
+curated grade override — **FUTURE** (item 2 territory). No broad
+punctuation/comma normalisation.
+
+**4. Footwear sizes shown in UK, not BR.** `52SMA0038` and similar footwear
+display what appear to be UK shoe sizes; Brazilian consumer sizes would be
+more useful on the sales floor. Future research must first establish whether
+Linx already stores a BR/local or alternate consumer-size label or mapping.
+If no authoritative source exists, a curated size-display mapping layer. No
+UK→BR conversion is to be invented.
+
+**5. Curated product enrichment + enhanced search.** Linx `desc_produto` is
+often generic ("T-SHIRT FEMININO TF553823 T-SHIRT & GOLA ALTA") and misses
+terms staff actually use — "Canelada", "Regata canelada", collection/line
+names like "Commuter". A future enrichment model keyed by `produto`
+(conceptually `descricao_adicional`, `termos_busca` aliases, timestamps,
+possible Admin maintenance) should feed both the employee-facing description
+and Consulta search. Not built now.
+
+**6. Row/column totals in the matrix.** Not valuable enough for V1 to justify
+the added width/clutter. Captured only as a possible future UX enhancement;
+no implementation.
+
+**7. Product images in Consulta.** A future enhancement: an optional product
+image near the stock matrix, preferably behind an on-demand control (e.g.
+"Ver imagem") so Consulta stays fast. Scope to define later: source (the
+Lacoste website may be used only under Joshua's written authorisation and its
+guideline rules), a scrape/import workflow, image metadata keyed by `produto`,
+refresh/update rules, caching/performance. Supabase Storage is the likely
+default/simple store; external object storage (S3) remains an alternative if
+requirements justify it. Not implemented.
+
+**8. Automated sync alerts (FUTURE).** The manual sync already distinguishes
+**warnings** (e.g. a non-zero dash-only size label — item 3) from **fatal
+errors**: a run can finish `sucesso` and publish while still reporting
+warnings, and the latest-successful-snapshot architecture is unchanged. When
+the sync becomes scheduled/automatic, add proactive handling on top of that:
+notify on the first occurrence of a warning, do not re-notify for the same
+unchanged warning every run, optionally notify on recovery when it clears, and
+consider an Admin-visible stale-sync indicator. Notification *delivery* is not
+built now.
 
 ---
 

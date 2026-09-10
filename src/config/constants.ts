@@ -423,6 +423,53 @@ export function getContagemItensContadosLabel(count: number): string {
   return count === 1 ? "1 item contado" : `${count} itens contados`;
 }
 
+// Epic 4, Milestone 4E: Consulta de Estoque UI V1 — a dedicated Dashboard
+// module (not part of Operações), available to every authenticated active
+// employee (no "Iniciar atividades" gate).
+export const CONSULTA_ESTOQUE_TITLE = "Consulta de Estoque";
+export const CONSULTA_ESTOQUE_DASHBOARD_DESCRIPTION =
+  "Consulte a disponibilidade de produtos e tamanhos.";
+export const CONSULTA_ESTOQUE_PAGE_SUBTITLE =
+  "Busque pelo código do produto para ver as cores e os tamanhos disponíveis no estoque atual.";
+
+export const ESTOQUE_BUSCA_PLACEHOLDER = "Buscar produto (ex.: PH4012)...";
+export const ESTOQUE_BUSCA_MIN_CHARS = 2;
+export const ESTOQUE_BUSCA_DEBOUNCE_MS = 250;
+export const ESTOQUE_BUSCA_MAX_SUGESTOES = 8;
+
+export const ESTOQUE_BUSCA_CARREGANDO_MESSAGE = "Buscando produtos...";
+export const ESTOQUE_BUSCA_VAZIO_MESSAGE = "Nenhum produto encontrado.";
+export const ESTOQUE_BUSCA_ERRO_MESSAGE = "Não foi possível buscar agora. Tente novamente.";
+export const ESTOQUE_BUSCA_DICA_MESSAGE = "Digite ao menos 2 caracteres para buscar.";
+
+export function getEstoqueCoresDisponiveisLabel(total: number): string {
+  return total === 1 ? "1 cor" : `${total} cores`;
+}
+
+export const ESTOQUE_PRODUTO_CARREGANDO_MESSAGE = "Carregando produto...";
+export const ESTOQUE_PRODUTO_ERRO_MESSAGE =
+  "Não foi possível carregar este produto. Tente novamente.";
+export const ESTOQUE_PRODUTO_NAO_ENCONTRADO_MESSAGE = "Produto não encontrado no estoque atual.";
+export const ESTOQUE_SEM_SNAPSHOT_MESSAGE =
+  "O estoque ainda não foi sincronizado. Tente novamente mais tarde.";
+export const ESTOQUE_FRESHNESS_ERRO_MESSAGE =
+  "Não foi possível verificar o estoque agora. Tente novamente.";
+
+export const ESTOQUE_COR_COLUNA_LABEL = "Cor";
+export const ESTOQUE_COR_NAO_MAPEADA_LABEL = "Cor não mapeada";
+
+// "Estoque atualizado em DD/MM/YYYY às HH:mm" — full Manaus date + time of
+// the latest successful complete inventory sync.
+export function getEstoqueAtualizadoLabel(dataHora: string): string {
+  return `Estoque atualizado em ${dataHora}`;
+}
+// The separate freshness line ("Estoque atualizado em DD/MM/YYYY às HH:mm")
+// already communicates that inventory is periodically synced, so this
+// reminder is intentionally just the physical-check advice (locked wording,
+// Consulta de Estoque V1).
+export const ESTOQUE_LEMBRETE_OPERACIONAL_MESSAGE =
+  "Para quantidades baixas, confirme a disponibilidade física.";
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";
