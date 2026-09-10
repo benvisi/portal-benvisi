@@ -34,6 +34,12 @@
        non-blank (NULLIF(LTRIM(RTRIM(tamanho_venda)),'') IS NOT NULL). A
        position is discarded because it is unlabelled for that grade, never
        because its key exceeds some number.
+     * dash-only placeholder labels ("-", "--", "---") are handled in the
+       normalization layer of sync-estoque.mjs, NOT here: dropped when their
+       quantidade_estoque is 0; kept (with a sync warning) when non-zero, so
+       stock is never silently lost. The rule is content-based (/^-+$/) — no
+       hard-coded key/produto/grade list — so a position that later receives a
+       real label flows through automatically.
      * keep applicable positions even when quantidade_estoque = 0
      * retain tamanho_key for deterministic grade ordering
      * do NOT join PRODUTOS_BARRA in this milestone

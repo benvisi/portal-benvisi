@@ -448,3 +448,90 @@ export function isContagemDetalheLinha(value: unknown): value is ContagemDetalhe
     typeof candidate.total_unidades === "number"
   );
 }
+
+// =============================================================================
+// Milestone 4E — Consulta de Estoque UI V1. Matches the read RPCs in
+// 20260909_003_add_consulta_estoque_read_rpcs.sql (and the labelled-grade
+// filter in 20260909_004). Every RPC resolves the session server-side and
+// reads only from the latest successful sync. cor_descricao_linx is NEVER
+// returned; when a snapshot colour has no dictionary entry, cor_nome_portal /
+// cor_familia come back null and cor_codigo is preserved.
+// =============================================================================
+
+// buscar_produtos_estoque: one row per produto. Prefix hits on produto rank
+// first, partial desc_produto matches second. cores_disponiveis / unidades_total
+// are Postgres integer/bigint casts, serialized as JSON numbers.
+export interface EstoqueProdutoBusca {
+  produto: string;
+  desc_produto: string | null;
+  tipo_produto: string | null;
+  linha: string | null;
+  cores_disponiveis: number;
+  unidades_total: number;
+}
+
+export function isEstoqueProdutoBusca(value: unknown): value is EstoqueProdutoBusca {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.produto === "string" &&
+    candidate.produto.length > 0 &&
+    (candidate.desc_produto === null || typeof candidate.desc_produto === "string") &&
+    (candidate.tipo_produto === null || typeof candidate.tipo_produto === "string") &&
+    (candidate.linha === null || typeof candidate.linha === "string") &&
+    typeof candidate.cores_disponiveis === "number" &&
+    typeof candidate.unidades_total === "number"
+  );
+}
+
+// get_produto_estoque_detalhe: one row per (cor_codigo, tamanho_key) for one
+// exact produto, restricted to the labelled grade (tamanho_venda is never
+// null here). Zero-quantity sizes are included — the UI renders them blank.
+// tamanho_key is internal ordering metadata only and is never shown.
+export interface EstoqueProdutoDetalheLinha {
+  produto: string;
+  desc_produto: string | null;
+  tipo_produto: string | null;
+  linha: string | null;
+  cor_codigo: string;
+  cor_nome_portal: string | null;
+  cor_familia: string | null;
+  tamanho_key: number;
+  tamanho_venda: string;
+  quantidade_estoque: number;
+  sync_concluido_em: string;
+}
+
+export function isEstoqueProdutoDetalheLinha(value: unknown): value is EstoqueProdutoDetalheLinha {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.produto === "string" &&
+    candidate.produto.length > 0 &&
+    (candidate.desc_produto === null || typeof candidate.desc_produto === "string") &&
+    (candidate.tipo_produto === null || typeof candidate.tipo_produto === "string") &&
+    (candidate.linha === null || typeof candidate.linha === "string") &&
+    typeof candidate.cor_codigo === "string" &&
+    candidate.cor_codigo.length > 0 &&
+    (candidate.cor_nome_portal === null || typeof candidate.cor_nome_portal === "string") &&
+    (candidate.cor_familia === null || typeof candidate.cor_familia === "string") &&
+    typeof candidate.tamanho_key === "number" &&
+    typeof candidate.tamanho_venda === "string" &&
+    candidate.tamanho_venda.length > 0 &&
+    typeof candidate.quantidade_estoque === "number" &&
+    typeof candidate.sync_concluido_em === "string"
+  );
+}
+
+// get_estoque_freshness: zero or one row. The timestamp is the completion of
+// the latest successful complete inventory sync (a failed/in-progress
+// execution is invisible to this RPC by construction).
+export interface EstoqueFreshness {
+  sync_concluido_em: string;
+}
+
+export function isEstoqueFreshness(value: unknown): value is EstoqueFreshness {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.sync_concluido_em === "string" && candidate.sync_concluido_em.length > 0;
+}
