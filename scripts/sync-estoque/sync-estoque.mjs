@@ -5,14 +5,11 @@
 //   node scripts/sync-estoque/sync-estoque.mjs                    # real sync
 //   node scripts/sync-estoque/sync-estoque.mjs --dry-run          # preview only, no writes
 //   node scripts/sync-estoque/sync-estoque.mjs --allow-large-removal [--override-reason "..."]
-//   node scripts/sync-estoque/sync-estoque.mjs --bootstrap-v2-from-v1   # one-time, see below
 //
 // V2 flow (see the Estoque Sync V2 architecture memo for the full design):
 //   1. claim a run (estoque_claim_sync) — DB-enforced, at most one active
 //      execution at a time; a second run gets BUSY and exits cleanly.
-//   2. FULL extraction — from Linx normally, or from the latest successful
-//      V1 estoque_snapshot when --bootstrap-v2-from-v1 is given (one-time
-//      migration path, not the normal sync source).
+//   2. FULL extraction from Linx.
 //   3. normalize (dash-only placeholder handling, unchanged) + finalize
 //      (mojibake repair, trimming) + local validation (unchanged fatal
 //      rules).
@@ -54,7 +51,6 @@ const RECONCILE_BASELINE = 15506;
 const ARGV = process.argv.slice(2);
 const DRY_RUN = ARGV.includes("--dry-run");
 const ALLOW_LARGE_REMOVAL = ARGV.includes("--allow-large-removal");
-const BOOTSTRAP_V2 = ARGV.includes("--bootstrap-v2-from-v1");
 
 function flagValue(name) {
   const idx = ARGV.indexOf(name);
@@ -106,8 +102,7 @@ function getSupabaseConfig() {
   };
 }
 
-// Built lazily (only when actually extracting from Linx) so bootstrap mode
-// works without Linx credentials present.
+// Built lazily, read only when extractFromLinx actually needs it.
 function getLinxConfig() {
   return {
     server: requireEnv("LINX_SQL_SERVER"),
@@ -143,8 +138,7 @@ export const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 //   (d) the result has fewer non-ASCII chars than the original (a real repair
 //       collapses 2+ garbage chars back into 1).
 // Any value failing a check is returned untouched. Idempotent — safe to run
-// again over already-repaired text (e.g. the V2 bootstrap re-runs this over
-// V1 snapshot rows that were already repaired once at V1 ingestion time).
+// again over already-repaired text.
 //
 // Applied only to employee-facing product text (desc_produto, tipo_produto,
 // linha). NOT to cor_descricao_linx: that is internal Linx source metadata,
@@ -258,10 +252,9 @@ export function normalizeExtraction(rows) {
 // Finalization: mojibake repair + trimming + numeric coercion. Runs AFTER
 // normalizeExtraction and BEFORE validation/hashing/staging, so every
 // downstream consumer (validateExtraction, the hash engine, the staged
-// payload) sees the exact same canonical row shape. Unchanged in substance
-// from V1's inline `text`/`raw` payload mapping — now a named, reusable,
-// exported function so both the live sync and the bootstrap path (and the
-// diff-engine tests) apply it identically.
+// payload) sees the exact same canonical row shape. A named, reusable,
+// exported function so both the live sync and the diff-engine tests apply it
+// identically.
 // ---------------------------------------------------------------------------
 export function finalizeCanonicalRow(r) {
   const text = (v) => (v == null ? null : repairDoubleEncodedText(String(v).trim()));
@@ -376,47 +369,6 @@ async function extractFromLinx(sql) {
   const result = await pool.request().input("filial", sql.VarChar, linx.filial).query(query);
   await pool.close();
   return result.recordset ?? [];
-}
-
-// One-time bootstrap source (V2 brief section 22): reads the latest
-// successful V1 estoque_snapshot instead of Linx, so V2's current state can
-// be seeded and read-parity-tested against a known V1 state before any real
-// Linx-sourced V2 sync runs. Reuses the SAME normalize/finalize/validate/
-// hash/diff/stage/apply pipeline as a live run — bootstrap is not a special
-// code path beyond where its rows come from.
-async function extractFromV1Snapshot(supabase) {
-  const { data: execRows, error: execErr } = await supabase
-    .from("estoque_sync_execucoes")
-    .select("id,concluido_em")
-    .eq("status", "sucesso")
-    .not("concluido_em", "is", null)
-    .order("concluido_em", { ascending: false })
-    .limit(1);
-  if (execErr)
-    throw new Error(`bootstrap: could not read estoque_sync_execucoes: ${execErr.message}`);
-  if (!execRows || execRows.length === 0) {
-    throw new Error("bootstrap: no successful V1 sync execution found in estoque_sync_execucoes");
-  }
-  const v1SyncId = execRows[0].id;
-  log(`bootstrap source: V1 sync_id=${v1SyncId} (concluido_em=${execRows[0].concluido_em})`);
-
-  const rows = [];
-  let from = 0;
-  for (;;) {
-    const { data, error } = await supabase
-      .from("estoque_snapshot")
-      .select(
-        "produto,desc_produto,tipo_produto,linha,cor_codigo,cor_descricao_linx,grade,tamanho_key,tamanho_venda,quantidade_estoque",
-      )
-      .eq("sync_id", v1SyncId)
-      .order("id", { ascending: true })
-      .range(from, from + READ_PAGE_SIZE - 1);
-    if (error) throw new Error(`bootstrap: could not read estoque_snapshot: ${error.message}`);
-    rows.push(...data);
-    if (data.length < READ_PAGE_SIZE) break;
-    from += READ_PAGE_SIZE;
-  }
-  return rows;
 }
 
 // ---------------------------------------------------------------------------
@@ -552,10 +504,6 @@ async function applySync(supabase, params) {
 function printBanner() {
   const modes = [];
   if (DRY_RUN) modes.push("DRY-RUN — preview only, no claim/stage/apply, no durable writes");
-  if (BOOTSTRAP_V2)
-    modes.push(
-      "BOOTSTRAP-V2-FROM-V1 — one-time seed source is the latest V1 estoque_snapshot, NOT Linx",
-    );
   if (ALLOW_LARGE_REMOVAL)
     modes.push(
       `ALLOW-LARGE-REMOVAL — the >10% removal guardrail may be overridden this run` +
@@ -602,7 +550,7 @@ function printDiffSummary({
 
 // ---------------------------------------------------------------------------
 async function runDryRun(supabase, sql) {
-  const rawRows = BOOTSTRAP_V2 ? await extractFromV1Snapshot(supabase) : await extractFromLinx(sql);
+  const rawRows = await extractFromLinx(sql);
   log(`extraction: ${rawRows.length} raw rows`);
 
   const norm = normalizeExtraction(rawRows);
@@ -679,9 +627,7 @@ async function runReal(supabase, sql) {
   );
 
   try {
-    const rawRows = BOOTSTRAP_V2
-      ? await extractFromV1Snapshot(supabase)
-      : await extractFromLinx(sql);
+    const rawRows = await extractFromLinx(sql);
     log(`extraction: ${rawRows.length} raw rows`);
 
     const norm = normalizeExtraction(rawRows);
