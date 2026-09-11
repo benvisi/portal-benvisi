@@ -1,47 +1,72 @@
 #!/usr/bin/env node
 // =============================================================================
-// Consulta de Estoque — one-shot manual inventory sync (Linx -> Supabase)
+// Consulta de Estoque — Sync V2 (Linx -> Supabase current-state inventory)
 //
-// Proves one complete real Linx -> Supabase publish. Run manually from the
-// on-prem Windows PC. No Task Scheduler, no cron — see the milestone brief.
+//   node scripts/sync-estoque/sync-estoque.mjs                    # real sync
+//   node scripts/sync-estoque/sync-estoque.mjs --dry-run          # preview only, no writes
+//   node scripts/sync-estoque/sync-estoque.mjs --allow-large-removal [--override-reason "..."]
+//   node scripts/sync-estoque/sync-estoque.mjs --bootstrap-v2-from-v1   # one-time, see below
 //
-//   node scripts/sync-estoque/sync-estoque.mjs            # full sync + publish
-//   node scripts/sync-estoque/sync-estoque.mjs --dry-run  # extract + validate only
-//
-// Flow (brief section "Sync architecture"):
-//   1. insert estoque_sync_execucoes row = 'executando'
-//   2. query Linx SQL Server (scripts/sync-estoque/linx-query.sql)
-//   3. validate locally: rows > 0, no duplicate canonical keys, required keys
-//      populated, quantities parse as non-negative integers, no size-level
-//      negatives (STOP + report count if any — no silent normalization)
-//   4. publish all rows tagged with the new sync_id (chunked bulk insert)
-//   5. validate Supabase row count + uniqueness for this sync_id
-//   6. mark execution 'sucesso' with concluido_em, linhas_extraidas/publicadas
-//   7. any failure -> mark execution 'erro'; the previous successful snapshot
-//      is never touched
+// V2 flow (see the Estoque Sync V2 architecture memo for the full design):
+//   1. claim a run (estoque_claim_sync) — DB-enforced, at most one active
+//      execution at a time; a second run gets BUSY and exits cleanly.
+//   2. FULL extraction — from Linx normally, or from the latest successful
+//      V1 estoque_snapshot when --bootstrap-v2-from-v1 is given (one-time
+//      migration path, not the normal sync source).
+//   3. normalize (dash-only placeholder handling, unchanged) + finalize
+//      (mojibake repair, trimming) + local validation (unchanged fatal
+//      rules).
+//   4. group by produto+cor_codigo, compute a deterministic SHA-256 content
+//      hash per group (scripts/sync-estoque/estoque-hash.mjs).
+//   5. read the compact current group hashes from estoque_atual_grupos
+//      (~1,371 rows, never the full current inventory).
+//   6. diff locally: novo / alterado / removido / inalterado. Unchanged
+//      groups generate NO inventory-row upload.
+//   7. stage only changed/new group rows + a compact action manifest.
+//   8. estoque_aplicar_sync applies the whole delta atomically in one
+//      Postgres transaction — Portal never observes a half-applied state.
 //
 // Secrets come only from scripts/sync-estoque/.env (gitignored). Nothing is
-// logged that could expose a credential.
+// ever logged that could expose a credential.
 // =============================================================================
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import process from "node:process";
+import { hashAllGroups, diffGroups, groupKey } from "./estoque-hash.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const DRY_RUN = process.argv.includes("--dry-run");
 const CHUNK_SIZE = 1000;
-// Soft reconciliation baseline for the APPLICABLE-grade grain (one row per
-// qualifying produto+cor+labelled size position). ~15 506 at the 2026-09-09
-// inspection. Advisory only — a drift beyond +/-15% just logs a WARNING;
-// assortment/grade changes over time are expected and must not be rejected.
+const READ_PAGE_SIZE = 1000;
+const STALE_CLAIM_MINUTES = 30; // locked (V2 brief section 6) — a normal sync runs in seconds.
+
+// Soft reconciliation baseline for the full canonical extraction row count
+// (independent of, and in addition to, the per-group removal guardrail
+// below). ~15 506 at the 2026-09-09 inspection. Advisory only — a drift
+// beyond +/-15% just logs a WARNING; assortment/grade changes over time are
+// expected and must not be rejected.
 const RECONCILE_BASELINE = 15506;
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// CLI
+// -----------------------------------------------------------------------------
+const ARGV = process.argv.slice(2);
+const DRY_RUN = ARGV.includes("--dry-run");
+const ALLOW_LARGE_REMOVAL = ARGV.includes("--allow-large-removal");
+const BOOTSTRAP_V2 = ARGV.includes("--bootstrap-v2-from-v1");
+
+function flagValue(name) {
+  const idx = ARGV.indexOf(name);
+  if (idx === -1 || idx === ARGV.length - 1) return null;
+  return ARGV[idx + 1];
+}
+const OVERRIDE_REASON = flagValue("--override-reason");
+
+// -----------------------------------------------------------------------------
 // Minimal .env loader (no dependency). KEY=VALUE lines, # comments, optional
 // surrounding quotes. Only fills vars not already set in the environment.
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 function loadDotEnv(path) {
   let text;
   try {
@@ -65,7 +90,7 @@ function loadDotEnv(path) {
 
 loadDotEnv(join(HERE, ".env"));
 
-function requireEnv(name) {
+export function requireEnv(name) {
   const v = process.env[name];
   if (!v || !v.trim()) {
     console.error(`ERROR: missing required env var ${name} (set it in scripts/sync-estoque/.env)`);
@@ -74,8 +99,17 @@ function requireEnv(name) {
   return v.trim();
 }
 
-const CONFIG = {
-  linx: {
+function getSupabaseConfig() {
+  return {
+    url: requireEnv("SUPABASE_URL"),
+    serviceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  };
+}
+
+// Built lazily (only when actually extracting from Linx) so bootstrap mode
+// works without Linx credentials present.
+function getLinxConfig() {
+  return {
     server: requireEnv("LINX_SQL_SERVER"),
     port: Number(process.env.LINX_SQL_PORT || 1433),
     database: requireEnv("LINX_SQL_DATABASE"),
@@ -83,14 +117,10 @@ const CONFIG = {
     password: requireEnv("LINX_SQL_PASSWORD"),
     encrypt: /^true$/i.test(process.env.LINX_SQL_ENCRYPT || "false"),
     filial: process.env.LINX_FILIAL || "LACOSTE SHOPPING  MANAUS",
-  },
-  supabase: {
-    url: requireEnv("SUPABASE_URL"),
-    serviceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  },
-};
+  };
+}
 
-const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
+export const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 
 // ---------------------------------------------------------------------------
 // Encoding repair for double-encoded Linx source text.
@@ -112,15 +142,14 @@ const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 //   (c) those bytes are valid UTF-8, and
 //   (d) the result has fewer non-ASCII chars than the original (a real repair
 //       collapses 2+ garbage chars back into 1).
-// Any value failing a check is returned untouched. Idempotent.
+// Any value failing a check is returned untouched. Idempotent — safe to run
+// again over already-repaired text (e.g. the V2 bootstrap re-runs this over
+// V1 snapshot rows that were already repaired once at V1 ingestion time).
 //
 // Applied only to employee-facing product text (desc_produto, tipo_produto,
 // linha). NOT to cor_descricao_linx: that is internal Linx source metadata,
 // part of the curated mapping key (cor_codigo, cor_descricao_linx), and is
-// preserved exactly as Linx supplies it (it is never shown to employees, and
-// current diagnostics found it clean). Lossy source corruption that is not
-// mechanically reversible (e.g. "CALÇA" stored as "CALÃA", a dropped byte) is
-// deliberately left alone — check (a) declines it.
+// preserved exactly as Linx supplies it.
 // ---------------------------------------------------------------------------
 
 // CP1252 code points for bytes 0x80..0x9F — the only range where Windows-1252
@@ -161,10 +190,6 @@ function countNonAscii(s) {
   return n;
 }
 
-// A char 0xC3 ("Ã") or 0xC2 ("Â") immediately followed by another non-ASCII
-// char is the hallmark of one accented char that became two. Plain accented
-// text ("SAO"->"SÃO", "CALCA"->"CALÇA", "ACESSORIOS"->"ACESSÓRIOS") never has
-// that adjacency.
 function hasMojibakeSignature(s) {
   const cps = Array.from(s, (ch) => ch.codePointAt(0));
   for (let i = 0; i < cps.length - 1; i += 1) {
@@ -173,7 +198,7 @@ function hasMojibakeSignature(s) {
   return false;
 }
 
-function repairDoubleEncodedText(value) {
+export function repairDoubleEncodedText(value) {
   if (typeof value !== "string" || value.length === 0) return value;
   if (!hasMojibakeSignature(value)) return value;
 
@@ -181,7 +206,7 @@ function repairDoubleEncodedText(value) {
   for (const ch of value) {
     const cp = ch.codePointAt(0);
     const byte = cp <= 0xff ? cp : CP1252_HIGH_TO_BYTE.get(cp);
-    if (byte === undefined) return value; // not a single CP1252 byte -> leave as-is
+    if (byte === undefined) return value;
     bytes.push(byte);
   }
 
@@ -189,38 +214,22 @@ function repairDoubleEncodedText(value) {
   try {
     decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
   } catch {
-    return value; // bytes are not valid UTF-8 -> not this kind of mojibake
+    return value;
   }
 
   return countNonAscii(decoded) < countNonAscii(value) ? decoded : value;
 }
 
 // ---------------------------------------------------------------------------
-// Dash-only structural placeholder handling.
-//
-// A few Linx grades carry size labels that are just dash characters ("-",
-// "--", "---") — placeholder positions, not real sizes. In the current
-// dataset every one of them has quantidade_estoque = 0.
-//
-// Rule (content-based only — NO hard-coded tamanho_key / produto / grade
-// list, so a position that later gets a real label such as "XXS", "38" or
-// "9,5" automatically flows through unchanged):
-//   * trimmed tamanho_venda matches /^-+$/  AND  quantidade_estoque === 0
-//       -> drop the row from the canonical snapshot
-//   * trimmed tamanho_venda matches /^-+$/  AND  quantidade_estoque !== 0
-//       -> KEEP the row (never lose stock), and emit a prominent WARNING.
-//         This must NOT fail the sync or freeze the feed — the Portal
-//         prefers resilience over blocking the whole stock feed for one
-//         source anomaly. Proactive notification of warnings is future
-//         scheduled-sync work.
-// Blank/null labels are still handled upstream (linx-query.sql only emits
-// labelled positions) and by validateExtraction below.
+// Dash-only structural placeholder handling. Unchanged from V1 (locked
+// 2026-09-10 decision) — content-based only, no hard-coded key/produto/grade
+// list.
 // ---------------------------------------------------------------------------
 function isDashOnlyLabel(value) {
   return typeof value === "string" && /^-+$/.test(value.trim());
 }
 
-function normalizeExtraction(rows) {
+export function normalizeExtraction(rows) {
   const kept = [];
   const warnings = [];
   let excludedDashZero = 0;
@@ -246,9 +255,36 @@ function normalizeExtraction(rows) {
 }
 
 // ---------------------------------------------------------------------------
-// Local validation of the extracted rows.
+// Finalization: mojibake repair + trimming + numeric coercion. Runs AFTER
+// normalizeExtraction and BEFORE validation/hashing/staging, so every
+// downstream consumer (validateExtraction, the hash engine, the staged
+// payload) sees the exact same canonical row shape. Unchanged in substance
+// from V1's inline `text`/`raw` payload mapping — now a named, reusable,
+// exported function so both the live sync and the bootstrap path (and the
+// diff-engine tests) apply it identically.
 // ---------------------------------------------------------------------------
-function validateExtraction(rows) {
+export function finalizeCanonicalRow(r) {
+  const text = (v) => (v == null ? null : repairDoubleEncodedText(String(v).trim()));
+  const raw = (v) => (v == null ? null : String(v).trim());
+  return {
+    produto: String(r.produto).trim(),
+    desc_produto: text(r.desc_produto),
+    tipo_produto: text(r.tipo_produto),
+    linha: text(r.linha),
+    cor_codigo: String(r.cor_codigo).trim(),
+    cor_descricao_linx: raw(r.cor_descricao_linx),
+    grade: r.grade == null ? null : String(r.grade).trim(),
+    tamanho_key: Number(r.tamanho_key),
+    tamanho_venda: r.tamanho_venda == null ? null : String(r.tamanho_venda).trim(),
+    quantidade_estoque: Number(r.quantidade_estoque),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Local validation of the (already normalized + finalized) canonical rows.
+// Unchanged rules from V1.
+// ---------------------------------------------------------------------------
+export function validateExtraction(rows) {
   const problems = [];
   if (rows.length === 0) problems.push("extraction returned 0 rows");
 
@@ -264,12 +300,9 @@ function validateExtraction(rows) {
     for (const f of REQUIRED_TEXT) {
       if (r[f] == null || String(r[f]).trim() === "") missingKeys++;
     }
-    // tamanho_key is internal ordering metadata: any 1..48 source position is
-    // valid — there is no hard-coded Portal maximum grade size.
     const tk = Number(r.tamanho_key);
     if (!Number.isInteger(tk) || tk < 1 || tk > 48) missingKeys++;
 
-    // Every published row must be an APPLICABLE / LABELLED grade position.
     if (r.tamanho_venda == null || String(r.tamanho_venda).trim() === "") missingLabel++;
 
     const q = Number(r.quantidade_estoque);
@@ -319,190 +352,479 @@ function validateExtraction(rows) {
 }
 
 // ---------------------------------------------------------------------------
+// Extraction sources
+// ---------------------------------------------------------------------------
+async function extractFromLinx(sql) {
+  const linx = getLinxConfig();
+  const query = readFileSync(join(HERE, "linx-query.sql"), "utf8");
+  log(`connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} ...`);
+  const pool = await sql.connect({
+    server: linx.server,
+    port: linx.port,
+    database: linx.database,
+    user: linx.user,
+    password: linx.password,
+    options: {
+      encrypt: linx.encrypt,
+      trustServerCertificate: true,
+      enableArithAbort: true,
+    },
+    requestTimeout: 180_000,
+    pool: { max: 1 },
+  });
+
+  const result = await pool.request().input("filial", sql.VarChar, linx.filial).query(query);
+  await pool.close();
+  return result.recordset ?? [];
+}
+
+// One-time bootstrap source (V2 brief section 22): reads the latest
+// successful V1 estoque_snapshot instead of Linx, so V2's current state can
+// be seeded and read-parity-tested against a known V1 state before any real
+// Linx-sourced V2 sync runs. Reuses the SAME normalize/finalize/validate/
+// hash/diff/stage/apply pipeline as a live run — bootstrap is not a special
+// code path beyond where its rows come from.
+async function extractFromV1Snapshot(supabase) {
+  const { data: execRows, error: execErr } = await supabase
+    .from("estoque_sync_execucoes")
+    .select("id,concluido_em")
+    .eq("status", "sucesso")
+    .not("concluido_em", "is", null)
+    .order("concluido_em", { ascending: false })
+    .limit(1);
+  if (execErr)
+    throw new Error(`bootstrap: could not read estoque_sync_execucoes: ${execErr.message}`);
+  if (!execRows || execRows.length === 0) {
+    throw new Error("bootstrap: no successful V1 sync execution found in estoque_sync_execucoes");
+  }
+  const v1SyncId = execRows[0].id;
+  log(`bootstrap source: V1 sync_id=${v1SyncId} (concluido_em=${execRows[0].concluido_em})`);
+
+  const rows = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("estoque_snapshot")
+      .select(
+        "produto,desc_produto,tipo_produto,linha,cor_codigo,cor_descricao_linx,grade,tamanho_key,tamanho_venda,quantidade_estoque",
+      )
+      .eq("sync_id", v1SyncId)
+      .order("id", { ascending: true })
+      .range(from, from + READ_PAGE_SIZE - 1);
+    if (error) throw new Error(`bootstrap: could not read estoque_snapshot: ${error.message}`);
+    rows.push(...data);
+    if (data.length < READ_PAGE_SIZE) break;
+    from += READ_PAGE_SIZE;
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Supabase RPC / table helpers
+// ---------------------------------------------------------------------------
+async function claimSync(supabase) {
+  const { data, error } = await supabase.rpc("estoque_claim_sync");
+  if (error) throw new Error(`estoque_claim_sync failed: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row;
+}
+
+async function markErro(supabase, syncId, mensagem, errorCode) {
+  if (!syncId) return;
+  const { error } = await supabase.rpc("estoque_marcar_erro", {
+    p_sync_id: syncId,
+    p_mensagem: mensagem,
+    p_error_code: errorCode ?? null,
+  });
+  if (error) throw new Error(`estoque_marcar_erro failed: ${error.message}`);
+  log(`marked execution ${syncId} as erro (error_code=${errorCode ?? "none"})`);
+}
+
+async function fetchCurrentHashes(supabase) {
+  const map = new Map();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("estoque_atual_grupos")
+      .select("produto,cor_codigo,hash_conteudo,row_count")
+      .order("produto", { ascending: true })
+      .order("cor_codigo", { ascending: true })
+      .range(from, from + READ_PAGE_SIZE - 1);
+    if (error) throw new Error(`could not read estoque_atual_grupos: ${error.message}`);
+    for (const row of data) {
+      map.set(groupKey(row.produto, row.cor_codigo), row);
+    }
+    if (data.length < READ_PAGE_SIZE) break;
+    from += READ_PAGE_SIZE;
+  }
+  return map;
+}
+
+function toStagingLine(syncId, r) {
+  return {
+    sync_id: syncId,
+    produto: r.produto,
+    cor_codigo: r.cor_codigo,
+    tamanho_key: r.tamanho_key,
+    desc_produto: r.desc_produto,
+    tipo_produto: r.tipo_produto,
+    linha: r.linha,
+    cor_descricao_linx: r.cor_descricao_linx,
+    grade: r.grade,
+    tamanho_venda: r.tamanho_venda,
+    quantidade_estoque: r.quantidade_estoque,
+  };
+}
+
+async function stageChanges(supabase, syncId, diff) {
+  const manifestRows = [];
+  const lineRows = [];
+
+  for (const g of diff.novo) {
+    manifestRows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "novo",
+      hash_conteudo: g.hash,
+      row_count_esperado: g.row_count,
+    });
+    for (const r of g.rows) lineRows.push(toStagingLine(syncId, r));
+  }
+  for (const g of diff.alterado) {
+    manifestRows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "alterado",
+      hash_conteudo: g.hash,
+      row_count_esperado: g.row_count,
+    });
+    for (const r of g.rows) lineRows.push(toStagingLine(syncId, r));
+  }
+  for (const g of diff.removido) {
+    manifestRows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "removido",
+      hash_conteudo: null,
+      row_count_esperado: null,
+    });
+  }
+
+  for (let i = 0; i < manifestRows.length; i += CHUNK_SIZE) {
+    const chunk = manifestRows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase.from("estoque_staging_grupos").insert(chunk);
+    if (error) throw new Error(`staging manifest insert failed at offset ${i}: ${error.message}`);
+  }
+  for (let i = 0; i < lineRows.length; i += CHUNK_SIZE) {
+    const chunk = lineRows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase.from("estoque_staging_linhas").insert(chunk);
+    if (error) throw new Error(`staging rows insert failed at offset ${i}: ${error.message}`);
+  }
+
+  log(
+    `staged ${manifestRows.length} group manifest row(s) ` +
+      `(${diff.novo.length} novo, ${diff.alterado.length} alterado, ${diff.removido.length} removido), ` +
+      `${lineRows.length} inventory row(s)`,
+  );
+}
+
+async function applySync(supabase, params) {
+  const { data, error } = await supabase.rpc("estoque_aplicar_sync", {
+    p_sync_id: params.syncId,
+    p_raw_rows: params.rawRows,
+    p_canonical_rows: params.canonicalRows,
+    p_produto_count: params.produtoCount,
+    p_produto_cor_count: params.produtoCorCount,
+    p_avisos: params.avisos,
+    p_allow_large_removal: params.allowLargeRemoval,
+    p_override_reason: params.overrideReason,
+  });
+  if (error) throw new Error(`estoque_aplicar_sync failed: ${error.message}`);
+  return Array.isArray(data) ? data[0] : data;
+}
+
+// ---------------------------------------------------------------------------
+// Reporting
+// ---------------------------------------------------------------------------
+function printBanner() {
+  const modes = [];
+  if (DRY_RUN) modes.push("DRY-RUN — preview only, no claim/stage/apply, no durable writes");
+  if (BOOTSTRAP_V2)
+    modes.push(
+      "BOOTSTRAP-V2-FROM-V1 — one-time seed source is the latest V1 estoque_snapshot, NOT Linx",
+    );
+  if (ALLOW_LARGE_REMOVAL)
+    modes.push(
+      `ALLOW-LARGE-REMOVAL — the >10% removal guardrail may be overridden this run` +
+        (OVERRIDE_REASON ? ` (reason: "${OVERRIDE_REASON}")` : " (NO --override-reason GIVEN)"),
+    );
+  if (modes.length === 0) return;
+  log("=".repeat(78));
+  log("NONSTANDARD MODE(S) ACTIVE FOR THIS RUN:");
+  for (const m of modes) log(`  - ${m}`);
+  log("=".repeat(78));
+}
+
+function printDiffSummary({
+  rawRows,
+  canonicalRows,
+  currentGroups,
+  incomingGroups,
+  diff,
+  removalPct,
+  warningsCount,
+}) {
+  const changedRows = [...diff.novo, ...diff.alterado].reduce((sum, g) => sum + g.row_count, 0);
+  log("--- diff summary ---");
+  log(`raw rows:                  ${rawRows}`);
+  log(`canonical rows:            ${canonicalRows}`);
+  log(`current groups:            ${currentGroups}`);
+  log(`incoming groups:           ${incomingGroups}`);
+  log(`new groups:                ${diff.novo.length}`);
+  log(`changed groups:            ${diff.alterado.length}`);
+  log(`removed groups:            ${diff.removido.length}`);
+  log(`unchanged groups:          ${diff.inalterado}`);
+  log(`changed/new rows to stage: ${changedRows}`);
+  log(`removal %:                 ${removalPct.toFixed(3)}%`);
+  log(`warnings:                  ${warningsCount}`);
+  log(
+    `override requested:        ${
+      ALLOW_LARGE_REMOVAL
+        ? `yes${OVERRIDE_REASON ? ` ("${OVERRIDE_REASON}")` : " (no reason given)"}`
+        : "no"
+    }`,
+  );
+  log("--------------------");
+}
+
+// ---------------------------------------------------------------------------
+async function runDryRun(supabase, sql) {
+  const rawRows = BOOTSTRAP_V2 ? await extractFromV1Snapshot(supabase) : await extractFromLinx(sql);
+  log(`extraction: ${rawRows.length} raw rows`);
+
+  const norm = normalizeExtraction(rawRows);
+  if (norm.excludedDashZero > 0) {
+    log(`excluded ${norm.excludedDashZero} dash-only zero-stock placeholder row(s)`);
+  }
+  for (const w of norm.warnings) log(`WARNING: ${w}`);
+
+  const canonicalRows = norm.rows.map(finalizeCanonicalRow);
+  const v = validateExtraction(canonicalRows);
+  log("extraction stats:", JSON.stringify(v.stats));
+  if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
+    log(
+      `WARNING: canonical rows (${v.stats.linhas}) differ from the reconciliation baseline ` +
+        `(${RECONCILE_BASELINE}) by more than 15%. Expected with assortment/grade changes — ` +
+        `verify it reflects real movement, not a query/connection fault.`,
+    );
+  }
+  if (!v.ok) {
+    console.error(`\nDRY RUN — local validation FAILED:\n  - ${v.problems.join("\n  - ")}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  log("local validation: PASS");
+
+  const incomingGroups = hashAllGroups(canonicalRows);
+  const currentHashes = await fetchCurrentHashes(supabase);
+  const diff = diffGroups(incomingGroups, currentHashes);
+  const removalPct = currentHashes.size > 0 ? (diff.removido.length / currentHashes.size) * 100 : 0;
+
+  printDiffSummary({
+    rawRows: rawRows.length,
+    canonicalRows: canonicalRows.length,
+    currentGroups: currentHashes.size,
+    incomingGroups: incomingGroups.size,
+    diff,
+    removalPct,
+    warningsCount: norm.warnings.length,
+  });
+
+  if (removalPct > 10 && !ALLOW_LARGE_REMOVAL) {
+    log(
+      `NOTE: a REAL run right now would be BLOCKED by the >10% removal guardrail ` +
+        `(would need --allow-large-removal).`,
+    );
+  } else if (removalPct >= 5) {
+    log(
+      `NOTE: a REAL run right now would succeed but emit a high-visibility removal warning (5-10% band).`,
+    );
+  }
+
+  log("dry run complete — nothing staged, claimed, or applied.");
+}
+
+async function runReal(supabase, sql) {
+  const claim = await claimSync(supabase);
+  if (!claim.claimed) {
+    log(`SKIPPED — sync already in progress (motivo=${claim.motivo}). No mutation performed.`);
+    if (claim.execucao_anterior_recuperada) {
+      log(
+        `(note: a stale execution ${claim.execucao_anterior_recuperada} was recovered/marked erro ` +
+          `during this claim attempt)`,
+      );
+    }
+    return;
+  }
+
+  const syncId = claim.sync_id;
+  log(
+    `claimed sync ${syncId}` +
+      (claim.execucao_anterior_recuperada
+        ? ` (recovered abandoned execution ${claim.execucao_anterior_recuperada})`
+        : ""),
+  );
+
+  try {
+    const rawRows = BOOTSTRAP_V2
+      ? await extractFromV1Snapshot(supabase)
+      : await extractFromLinx(sql);
+    log(`extraction: ${rawRows.length} raw rows`);
+
+    const norm = normalizeExtraction(rawRows);
+    if (norm.excludedDashZero > 0) {
+      log(`excluded ${norm.excludedDashZero} dash-only zero-stock placeholder row(s)`);
+    }
+    for (const w of norm.warnings) log(`WARNING: ${w}`);
+
+    const canonicalRows = norm.rows.map(finalizeCanonicalRow);
+    const v = validateExtraction(canonicalRows);
+    log("extraction stats:", JSON.stringify(v.stats));
+    if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
+      log(
+        `WARNING: canonical rows (${v.stats.linhas}) differ from the reconciliation baseline ` +
+          `(${RECONCILE_BASELINE}) by more than 15%. Expected with assortment/grade changes — ` +
+          `verify it reflects real movement, not a query/connection fault.`,
+      );
+    }
+    if (!v.ok) {
+      const msg = `local validation failed:\n  - ${v.problems.join("\n  - ")}`;
+      await markErro(supabase, syncId, msg, "EXTRACTION_FATAL");
+      console.error(`\nSYNC FAILED:\n${msg}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    log("local validation: PASS");
+
+    const incomingGroups = hashAllGroups(canonicalRows);
+    const currentHashes = await fetchCurrentHashes(supabase);
+    const diff = diffGroups(incomingGroups, currentHashes);
+    const removalPct =
+      currentHashes.size > 0 ? (diff.removido.length / currentHashes.size) * 100 : 0;
+
+    printDiffSummary({
+      rawRows: rawRows.length,
+      canonicalRows: canonicalRows.length,
+      currentGroups: currentHashes.size,
+      incomingGroups: incomingGroups.size,
+      diff,
+      removalPct,
+      warningsCount: norm.warnings.length,
+    });
+
+    if (removalPct >= 5 && removalPct <= 10) {
+      log(
+        `HIGH-VISIBILITY WARNING: removal ${removalPct.toFixed(3)}% (${diff.removido.length} of ` +
+          `${currentHashes.size} groups) is in the 5-10% warning band. The sync may still apply.`,
+      );
+    }
+    if (removalPct > 10 && !ALLOW_LARGE_REMOVAL) {
+      log(
+        `GUARDRAIL: removal ${removalPct.toFixed(3)}% exceeds 10% — this run WILL BE BLOCKED by ` +
+          `estoque_aplicar_sync unless re-run with --allow-large-removal.`,
+      );
+    }
+    if (ALLOW_LARGE_REMOVAL) {
+      log(
+        `NOTICE: --allow-large-removal is set for this run` +
+          (OVERRIDE_REASON ? ` (reason: "${OVERRIDE_REASON}")` : " (NO --override-reason GIVEN)") +
+          `. This does not bypass any other validation.`,
+      );
+    }
+
+    await stageChanges(supabase, syncId, diff);
+
+    const produtoCount = new Set(canonicalRows.map((r) => r.produto)).size;
+    const produtoCorCount = incomingGroups.size;
+
+    const result = await applySync(supabase, {
+      syncId,
+      rawRows: rawRows.length,
+      canonicalRows: canonicalRows.length,
+      produtoCount,
+      produtoCorCount,
+      avisos: norm.warnings,
+      allowLargeRemoval: ALLOW_LARGE_REMOVAL,
+      overrideReason: ALLOW_LARGE_REMOVAL ? OVERRIDE_REASON : null,
+    });
+
+    if (result.status === "sucesso") {
+      log(
+        `SUCCESS — sync ${syncId}: novo=${result.grupos_novos} alterado=${result.grupos_alterados} ` +
+          `removido=${result.grupos_removidos} inalterado=${result.grupos_inalterados} ` +
+          `linhas_escritas=${result.linhas_escritas} remocao=${result.remocao_percentual}% ` +
+          `freshness=${result.concluido_em}` +
+          (norm.warnings.length ? ` — ${norm.warnings.length} warning(s)` : ""),
+      );
+    } else {
+      console.error(
+        `\nSYNC BLOCKED/FAILED — status=${result.status} error_code=${result.error_code}\n` +
+          `${result.mensagem}\n`,
+      );
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    const message = err?.message ?? String(err);
+    try {
+      await markErro(supabase, syncId, message, "UNEXPECTED_ERROR");
+    } catch (markErr) {
+      log(`WARNING: could not mark execution erro: ${markErr?.message ?? markErr}`);
+    }
+    console.error(`\nSYNC FAILED:\n${message}\n`);
+    process.exitCode = 1;
+  }
+}
+
+// ---------------------------------------------------------------------------
 async function main() {
+  const startedAt = Date.now();
+  printBanner();
+
   const [{ default: sql }, { createClient }] = await Promise.all([
     import("mssql"),
     import("@supabase/supabase-js"),
   ]);
 
-  const supabase = createClient(CONFIG.supabase.url, CONFIG.supabase.serviceRoleKey, {
+  const supabaseConfig = getSupabaseConfig();
+  const supabase = createClient(supabaseConfig.url, supabaseConfig.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // -- 1. open execution row ------------------------------------------------
-  let execId = null;
-  if (!DRY_RUN) {
-    const { data, error } = await supabase
-      .from("estoque_sync_execucoes")
-      .insert({ status: "executando" })
-      .select("id")
-      .single();
-    if (error) throw new Error(`could not open estoque_sync_execucoes row: ${error.message}`);
-    execId = data.id;
-    log(`opened sync execution ${execId} (status=executando)`);
+  if (DRY_RUN) {
+    await runDryRun(supabase, sql);
   } else {
-    log("dry run — no estoque_sync_execucoes row will be written");
+    await runReal(supabase, sql);
   }
 
-  try {
-    // -- 2. extract from Linx --------------------------------------------
-    const query = readFileSync(join(HERE, "linx-query.sql"), "utf8");
-    log(
-      `connecting to Linx SQL Server ${CONFIG.linx.server}:${CONFIG.linx.port} / ${CONFIG.linx.database} ...`,
-    );
-    const pool = await sql.connect({
-      server: CONFIG.linx.server,
-      port: CONFIG.linx.port,
-      database: CONFIG.linx.database,
-      user: CONFIG.linx.user,
-      password: CONFIG.linx.password,
-      options: {
-        encrypt: CONFIG.linx.encrypt,
-        trustServerCertificate: true,
-        enableArithAbort: true,
-      },
-      requestTimeout: 180_000,
-      pool: { max: 1 },
-    });
-
-    const result = await pool
-      .request()
-      .input("filial", sql.VarChar, CONFIG.linx.filial)
-      .query(query);
-    await pool.close();
-
-    const rawRows = result.recordset ?? [];
-    log(`Linx extraction: ${rawRows.length} raw rows`);
-
-    // -- 3. normalize (dash-only placeholders) + validate locally ------
-    const norm = normalizeExtraction(rawRows);
-    const rows = norm.rows;
-    if (norm.excludedDashZero > 0) {
-      log(
-        `excluded ${norm.excludedDashZero} dash-only zero-stock placeholder row(s) ` +
-          `from the canonical snapshot`,
-      );
-    }
-    for (const w of norm.warnings) log(`WARNING: ${w}`);
-    log(
-      `canonical extraction: ${rows.length} rows` +
-        (norm.warnings.length ? ` — ${norm.warnings.length} warning(s)` : ""),
-    );
-
-    const v = validateExtraction(rows);
-    log("extraction stats:", JSON.stringify(v.stats));
-    if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
-      log(
-        `WARNING: applicable-grade rows (${v.stats.linhas}) differ from the reconciliation ` +
-          `baseline (${RECONCILE_BASELINE}) by more than 15%. Expected with assortment/grade ` +
-          `changes — verify it reflects real movement, not a query/connection fault.`,
-      );
-    }
-    if (!v.ok) {
-      throw new Error(`local validation failed:\n  - ${v.problems.join("\n  - ")}`);
-    }
-    log("local validation: PASS");
-
-    if (DRY_RUN) {
-      log(
-        `dry run complete — nothing published. raw=${rawRows.length} ` +
-          `canonical=${rows.length} excluded_dash_zero=${norm.excludedDashZero} ` +
-          `warnings=${norm.warnings.length}`,
-      );
-      return;
-    }
-
-    // -- 4. publish ----------------------------------------------------
-    // Employee-facing product text passes through repairDoubleEncodedText (see
-    // top of file) — a few Linx source values arrive double-encoded. Codes
-    // (produto, cor_codigo, grade, tamanho_venda) and cor_descricao_linx (the
-    // curated-mapping key metadata) are left exactly as Linx supplies them.
-    const text = (v) => (v == null ? null : repairDoubleEncodedText(String(v).trim()));
-    const raw = (v) => (v == null ? null : String(v).trim());
-    const payload = rows.map((r) => ({
-      sync_id: execId,
-      produto: String(r.produto).trim(),
-      desc_produto: text(r.desc_produto),
-      tipo_produto: text(r.tipo_produto),
-      linha: text(r.linha),
-      cor_codigo: String(r.cor_codigo).trim(),
-      cor_descricao_linx: raw(r.cor_descricao_linx),
-      grade: r.grade == null ? null : String(r.grade).trim(),
-      tamanho_key: Number(r.tamanho_key),
-      tamanho_venda: r.tamanho_venda == null ? null : String(r.tamanho_venda).trim(),
-      quantidade_estoque: Number(r.quantidade_estoque),
-    }));
-
-    let published = 0;
-    for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
-      const chunk = payload.slice(i, i + CHUNK_SIZE);
-      const { error } = await supabase.from("estoque_snapshot").insert(chunk);
-      if (error) throw new Error(`bulk insert failed at offset ${i}: ${error.message}`);
-      published += chunk.length;
-      if (i % (CHUNK_SIZE * 10) === 0 || published === payload.length) {
-        log(`published ${published}/${payload.length}`);
-      }
-    }
-
-    // -- 5. verify what landed ---------------------------------------
-    const { count: landed, error: countErr } = await supabase
-      .from("estoque_snapshot")
-      .select("id", { count: "exact", head: true })
-      .eq("sync_id", execId);
-    if (countErr) throw new Error(`could not count published rows: ${countErr.message}`);
-    if (landed !== payload.length) {
-      throw new Error(
-        `published ${payload.length} rows but Supabase holds ${landed} for this sync_id`,
-      );
-    }
-    // Uniqueness is guaranteed by the unique (sync_id, produto, cor_codigo,
-    // tamanho_key) constraint — a violation would have aborted an insert
-    // chunk above. The count match confirms every extracted row landed once.
-    log(`Supabase confirms ${landed} rows for sync_id ${execId} (matches extraction)`);
-
-    // -- 6. mark success -------------------------------------------
-    const { error: doneErr } = await supabase
-      .from("estoque_sync_execucoes")
-      .update({
-        status: "sucesso",
-        concluido_em: new Date().toISOString(),
-        // canonical (post-normalization) count; raw Linx count and the
-        // dash-only exclusions are in the run log
-        linhas_extraidas: rows.length,
-        linhas_publicadas: published,
-        erro: null,
-      })
-      .eq("id", execId);
-    if (doneErr) throw new Error(`could not mark execution sucesso: ${doneErr.message}`);
-
-    log(
-      `SUCCESS — sync ${execId} published ${published} rows` +
-        (norm.warnings.length ? ` with ${norm.warnings.length} warning(s)` : "") +
-        ` and is now the visible snapshot.`,
-    );
-  } catch (err) {
-    // -- 7. mark failure; leave the previous successful snapshot intact --
-    const message = err?.message ?? String(err);
-    if (execId) {
-      await supabase
-        .from("estoque_sync_execucoes")
-        .update({
-          status: "erro",
-          concluido_em: new Date().toISOString(),
-          erro: message.slice(0, 4000),
-        })
-        .eq("id", execId)
-        .then(
-          () => log(`marked execution ${execId} as erro`),
-          (e) => log(`WARNING: could not mark execution erro: ${e?.message ?? e}`),
-        );
-    }
-    console.error("\nSYNC FAILED:\n" + message + "\n");
-    process.exit(1);
-  }
+  log(`done in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  process.exit(process.exitCode ?? 0);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Entry-point guard: this file exports pure functions (normalizeExtraction,
+// finalizeCanonicalRow, validateExtraction, requireEnv, log) that other
+// scripts import for testing/diagnostics (test-diff-engine.mjs). Without
+// this guard, merely IMPORTING this module would unconditionally trigger a
+// real claim/extract/stage/apply run as a side effect — main() only runs
+// when this file is the actual process entry point.
+const isDirectEntryPoint =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectEntryPoint) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
