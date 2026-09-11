@@ -8,7 +8,8 @@
    NOT emitted, even though Linx physically stores up to ES1..ES48.
 
    Output columns (exact names — the sync script maps these 1:1 into
-   public.estoque_snapshot; every text value is RTRIM-ed by the script):
+   public.estoque_atual (via the V2 staging/apply pipeline); every text value
+   is RTRIM-ed by the script):
 
      produto             PRODUTOS.PRODUTO
      desc_produto        PRODUTOS.DESC_PRODUTO
