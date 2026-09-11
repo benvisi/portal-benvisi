@@ -1133,6 +1133,7 @@ Its purpose is fast product availability lookup while the employee remains focus
 **Implementation status (Milestone 4E — Inventory Backend V1):**
 
 - **Implemented and validated:** the Supabase inventory schema (`estoque_sync_execucoes`, `estoque_snapshot`, `estoque_cores_mapeamento`), the 419-row curated colour dictionary, the employee-facing read RPCs (`buscar_produtos_estoque`, `get_produto_estoque_detalhe`, `get_estoque_freshness`), and the manual Linx → Supabase sync script (`scripts/sync-estoque/`). **A real Linx → Supabase publish has run** (corrected applicable-grade snapshot, 2026-09-10: ~15.5k rows across 1 371 produto/cores, `status = sucesso`, 100 % colour-map coverage). See section 9.8 for the locked architecture and Milestone 4E (section 16.2).
+- **Superseded (Milestone 4F, V2 — current production model):** the sync now maintains a current-state table (`estoque_atual`) instead of inserting a full snapshot every run; identical RPC signatures/results, zero employee-facing change. `estoque_snapshot` and `estoque_sync_atual()` were retired and dropped 2026-09-11 (`chore/estoque-v1-cleanup`) once a live dependency audit confirmed nothing still referenced them. Linx remains the source of truth; the lightweight `estoque_sync_execucoes` sync-execution history is retained unchanged.
 - **Not built:** the Consulta de Estoque **frontend** — product search screen, colour/size matrix, freshness banner, availability treatments (sections 9.3–9.11). That is the next milestone.
 - **Still deferred from the Sep 16 critical path:** barcode / SKU scanning and lookup (section 9.4) — no barcode work in Backend V1; `PRODUTOS_BARRA` is intentionally not joined by the sync.
 
@@ -2978,7 +2979,7 @@ FULL Linx extraction (unchanged, ~15.5k raw rows)
 
 **Scheduler readiness (code, not configuration).** Deterministic exit codes (0 = success or clean busy-skip; non-zero = real failure), no interactive prompts, working-directory-independent, `.env`-based secrets never logged, self-healing stale-claim recovery (30-minute timeout) so a server reboot mid-run cannot permanently block future runs, no automatic retry loop. Windows Task Scheduler configuration itself remains a separate, not-yet-started operational step.
 
-**Historical V1 snapshot cleanup — awaiting explicit approval.** `estoque_snapshot` (112k+ rows across V1's 4 historical syncs) is left completely untouched and is no longer written to or read from by anything. Safe to prune once Joshua approves; not done automatically.
+**Historical V1 snapshot cleanup — completed 2026-09-11 (`chore/estoque-v1-cleanup`).** `estoque_snapshot` (112,140 rows across V1's 4 historical syncs, ~31 MB) and `estoque_sync_atual()` were dropped after a live dependency audit (pg_depend + a `pg_proc.prosrc` scan of every function in `public`) confirmed neither was referenced by any view, trigger, or function — the three read RPCs already read `estoque_atual`/`estoque_freshness_atual()` exclusively since the `20260911_003` cutover. `estoque_sync_execucoes` audit history, `estoque_cores_mapeamento`, and all V2 objects are untouched.
 
 ## 16.3 Planned Operational Modules
 
@@ -3191,7 +3192,7 @@ This supersedes the originally-implemented Milestone 2A model, which excluded al
 
 **Status:** APPROVED — implemented in Milestone 4E
 
-Portal inventory (`estoque_snapshot`) is a periodically-refreshed read model of Linx, not a live view. Each refresh is one `estoque_sync_execucoes` row (`executando` → `sucesso` | `erro`).
+Portal inventory (`estoque_atual`) is a periodically-refreshed read model of Linx, not a live view. Each refresh is one `estoque_sync_execucoes` row (`executando` → `sucesso` | `erro`).
 
 The employee-visible snapshot is defined **only** by the most recent execution with `status = 'sucesso'` and a non-null `concluido_em`. An in-progress or failed run is never visible, and a failed run never invalidates the previous successful snapshot — its rows simply stay attached to the older `sync_id`. Prior successful snapshots are retained for now (no aggressive cleanup).
 
@@ -3205,7 +3206,7 @@ Employee-facing colour identity is always `cor_codigo + cor_nome_portal` from th
 
 Linx physically stores each product/colour's stock across up to 48 fixed columns (`ESTOQUE_PRODUTOS.ES1..ES48`), with the size labels for a grade in `PRODUTOS_TAMANHOS.TAMANHO_1..48`. Most grades use far fewer than 48 positions.
 
-The canonical `estoque_snapshot` grain is **one row per qualifying `produto` + `cor_codigo` + applicable/labelled size position** — every real size in the product's grade, including applicable sizes whose quantity is `0`. Unused positions (those whose `TAMANHO_<n>` is null/blank for that grade) are **not** persisted, even though Linx physically has a column for them. A 2026-09 diagnostic confirmed every unlabelled padding position across current inventory is quantity `0` (0 positive, 0 negative), so discarding them loses no stock information.
+The canonical `estoque_atual` grain is **one row per qualifying `produto` + `cor_codigo` + applicable/labelled size position** — every real size in the product's grade, including applicable sizes whose quantity is `0`. Unused positions (those whose `TAMANHO_<n>` is null/blank for that grade) are **not** persisted, even though Linx physically has a column for them. A 2026-09 diagnostic confirmed every unlabelled padding position across current inventory is quantity `0` (0 positive, 0 negative), so discarding them loses no stock information.
 
 The extraction still reads all 48 physical positions and discards a position only for being unlabelled — never by a `tamanho_key` threshold. There is no hard-coded Portal maximum grade size; a future grade using positions 21–48 flows through unchanged.
 
@@ -3276,9 +3277,9 @@ Dedicated read-only employee module for fast inventory lookup.
 
 Portal-side inventory current-state model (Milestone 4F, V2), refreshed from Linx by a periodic sync. `estoque_atual` holds ONE authoritative row per qualifying **produto + cor + applicable labelled size position** (`produto, cor_codigo, tamanho_key`) — no `sync_id` dimension; it always holds exactly the current state, mutated only inside the atomic `estoque_aplicar_sync` transaction. `estoque_atual_grupos` is a compact registry, one row per `produto + cor_codigo`, holding the deterministic Node-computed content hash a sync run reads to diff against a fresh Linx extraction without fetching the full current inventory. `tamanho_key` is internal ordering metadata; employees see only `tamanho_venda`.
 
-## `estoque_snapshot` (V1, historical)
+## `estoque_snapshot` (V1, historical — retired)
 
-The Milestone 4E predecessor read model: one full new ~15k-row snapshot inserted per sync run, identified by `sync_id`. Superseded by `estoque_atual` — no longer written to or read from by anything, left in place untouched pending Joshua's approval to clean up.
+The Milestone 4E predecessor read model: one full new ~15k-row snapshot inserted per sync run, identified by `sync_id`. Superseded by `estoque_atual`; dropped 2026-09-11 (`chore/estoque-v1-cleanup`) along with `estoque_sync_atual()` after a live dependency audit confirmed neither was referenced by any view, trigger, or function.
 
 ## `estoque_sync_execucoes`
 
