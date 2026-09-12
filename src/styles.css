@@ -115,7 +115,7 @@
    * of --brand's depth/saturation (this is a header background, not a
    * brand accent) — --foreground text stays comfortably legible on it.
    */
-  --zebra-header: oklch(0.88 0.03 158);
+  --zebra-header: oklch(0.87 0.05 158);
 }
 
 /*
