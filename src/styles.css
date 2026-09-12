@@ -43,6 +43,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-zebra: var(--zebra);
+  --color-zebra-header: var(--zebra-header);
 
   --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
   --shadow-card: 0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 6px -2px rgb(15 23 42 / 0.04);
@@ -95,6 +97,25 @@
   --border: oklch(0.918 0.012 255);
   --input: oklch(0.918 0.012 255);
   --ring: oklch(0.548 0.213 264);
+
+  /*
+   * Zebra-striping fill for tabular/list rows (Estoque, Contagem de
+   * Embalagens). Same hue as --brand (158, the Dashboard green) but pushed
+   * to a very light, low-chroma tint so the stripe reads as brand-related
+   * rather than a saturated green block, and keeps --foreground text
+   * comfortably legible on top of it.
+   */
+  --zebra: oklch(0.965 0.018 158);
+
+  /*
+   * Header-row fill for the same zebra-striped tables. Same 158° brand hue
+   * family as --brand/--zebra, but deliberately a muted sage/gray-green —
+   * darker than --zebra (so the header reads as clearly distinct from the
+   * striped body rows) at low chroma, so it stays a sophisticated neutral
+   * header treatment rather than reading as a success/highlight green like
+   * --brand — --foreground text stays comfortably legible on it.
+   */
+  --zebra-header: oklch(0.88 0.035 158);
 }
 
 /*
@@ -134,6 +155,27 @@ html[data-text-size="grande"] {
   --text-5xl: 3.39rem;
   --text-6xl: 4.2375rem;
   --text-7xl: 5.085rem;
+}
+
+/*
+ * "Extra grande" — a third, further step above "grande", added alongside
+ * it rather than replacing it. Same approach (typography-only, every scale
+ * step covered, unlayered so it reliably overrides Tailwind's defaults) at
+ * a ~30% increase over the standard scale — noticeably larger than
+ * "grande" (~13%) while staying usable on a phone screen.
+ */
+html[data-text-size="extra"] {
+  --text-xs: 0.975rem;
+  --text-sm: 1.1375rem;
+  --text-base: 1.3rem;
+  --text-lg: 1.4625rem;
+  --text-xl: 1.625rem;
+  --text-2xl: 1.95rem;
+  --text-3xl: 2.4375rem;
+  --text-4xl: 2.925rem;
+  --text-5xl: 3.9rem;
+  --text-6xl: 4.875rem;
+  --text-7xl: 5.85rem;
 }
 
 @utility min-touch {

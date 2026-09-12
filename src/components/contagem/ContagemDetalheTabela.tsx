@@ -16,19 +16,23 @@ interface ContagemDetalheTabelaProps {
  * avulsas, and the per-item total (pacotes × unidades_por_pacote +
  * avulsas). No cross-category grand total — summing heterogeneous
  * packaging items is not operationally meaningful. Even rows take the
- * neutral `--border` design token as a fill (`bg-border` — a step darker
- * than `bg-muted`, still a light grey, no hue) so the zebra striping is
+ * shared `--zebra` design token as a fill (a very light, low-chroma tint of
+ * the Dashboard brand green — see styles.css) so the zebra striping is
  * unmistakable on a phone at rest without reading as heavy; it aids
  * left-to-right tracking across the four columns. Odd rows keep the card
- * background. Kept in its own overflow-x-auto container so a narrow screen
- * scrolls the table rather than the page.
+ * background. The header row uses the same `--brand` green as the
+ * Dashboard tiles (`bg-brand`/`text-brand-foreground`) rather than another
+ * approximation of it, with `border-brand-foreground/15` dividers, for the
+ * same strong-header vs pale-striped-body hierarchy as the Estoque matrix.
+ * Kept in its own overflow-x-auto container so a narrow screen scrolls the
+ * table rather than the page.
  */
 export function ContagemDetalheTabela({ linhas }: ContagemDetalheTabelaProps) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[22rem] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-brand-foreground/15 bg-brand text-xs uppercase tracking-wide text-brand-foreground">
             <th scope="col" className="px-3 py-2 text-left font-semibold">
               {CONTAGEM_COL_ITEM_LABEL}
             </th>
@@ -47,7 +51,7 @@ export function ContagemDetalheTabela({ linhas }: ContagemDetalheTabelaProps) {
           {linhas.map((linha) => (
             <tr
               key={linha.id_item}
-              className="border-b border-border/60 last:border-b-0 even:bg-border"
+              className="border-b border-border/60 last:border-b-0 even:bg-zebra"
             >
               <td className="px-3 py-2 text-left text-foreground">{linha.rotulo}</td>
               <td className="px-3 py-2 text-right tabular-nums text-foreground">

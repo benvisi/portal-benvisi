@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import {
 } from "@/config/constants";
 import { WHATSAPP_MESSAGE_GROUPS } from "@/config/mensagens-whatsapp";
 import { ROUTES } from "@/config/routes";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 
 export const Route = createFileRoute("/operacoes/mensagens-whatsapp")({
@@ -59,7 +60,7 @@ async function handleCopy(texto: string) {
 // a wall of text. Portal never sends/personalizes the message itself; it
 // only helps employees find and copy the approved wording quickly.
 function MensagensWhatsAppPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.OPERACOES);
   const { session, ready } = useRequireSession();
 
   if (!ready || !session) return null;
@@ -73,7 +74,7 @@ function MensagensWhatsAppPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.OPERACOES })}
+            onClick={goBack}
             aria-label={VOLTAR_A_OPERACOES_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />

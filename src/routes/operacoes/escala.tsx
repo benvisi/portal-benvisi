@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
@@ -17,6 +17,7 @@ import {
   VOLTAR_A_OPERACOES_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { getManausDateISO, monthStartISO } from "@/lib/escala";
 
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/operacoes/escala")({
 // same reference date across, rather than resetting. The active tab is also
 // state here so Mês can send the user to Dia for a specific day (4C.2 QA).
 function EscalaPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.OPERACOES);
   const { session, ready } = useRequireSession();
   const hojeISO = getManausDateISO();
   const [abaSelecionada, setAbaSelecionada] = useState("dia");
@@ -55,7 +56,7 @@ function EscalaPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.OPERACOES })}
+            onClick={goBack}
             aria-label={VOLTAR_A_OPERACOES_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />

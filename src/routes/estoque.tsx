@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -22,6 +22,7 @@ import { ROUTES } from "@/config/routes";
 import { useBuscarProdutosEstoque } from "@/hooks/useBuscarProdutosEstoque";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEstoqueFreshness } from "@/hooks/useEstoqueFreshness";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { formatEstoqueFreshness } from "@/lib/estoque";
 
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/estoque")({
 // Lista da Vez (useRequireSession is the only gate). All ordering, colours,
 // applicable sizes, quantities and freshness come from the backend RPCs.
 function ConsultaEstoquePage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
   const sessionToken = session?.session_token ?? null;
 
@@ -132,7 +133,7 @@ function ConsultaEstoquePage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.DASHBOARD })}
+            onClick={goBack}
             aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
