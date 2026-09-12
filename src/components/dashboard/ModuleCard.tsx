@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 //   brand green, unchanged, with white text/icons.
 // - "brand-level-2" is one level deeper (e.g. inside a section hub like
 //   Operações or Conhecimento & Cultura) — a clearly lighter/brighter
-//   medium green, same 158° hue family, still with white text/icons
-//   (contrast-checked — see --brand-level-2 in styles.css).
+//   medium green, same 158° hue family, kept with white text/icons per
+//   product-owner visual QA approval (measured contrast falls a bit short
+//   of WCAG AA — see --brand-level-2 in styles.css for the exact number).
 // - "brand-level-3" is reserved for a still-deeper future tier — no such
 //   navigation surface exists in the app today, so this is defined but
 //   unused. It reuses the same pale green as the table `--zebra` stripe

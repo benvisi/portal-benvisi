@@ -78,14 +78,18 @@
   /*
    * Navigation-depth tier 2, ModuleCard only (Blueprint section 14.8): a
    * deliberately clear step lighter/brighter than --brand, not a subtle
-   * saturation tweak — QA on the incremental-chroma-only approach found it
-   * too close to --brand to register as a hierarchy cue. Same 158° hue
-   * family, contrast-checked against --brand-foreground white (~5.4:1,
-   * clears WCAG AA for ModuleCard's title/description text sizes).
-   * (Tier 3 is defined further down, right next to --zebra, since it
-   * reuses that same value rather than an independent color.)
+   * saturation tweak — earlier incremental-chroma-only attempts were too
+   * close to --brand to register as a hierarchy cue. Same 158° hue family
+   * (this is #2F9E67, the exact product-approved value from visual QA —
+   * kept as a literal hex rather than re-derived via oklch, for exact
+   * color fidelity). Measured contrast against --brand-foreground white is
+   * ~3.24:1, short of WCAG AA's 4.5:1 for ModuleCard's title/description
+   * text sizes — flagged during review; kept as-is per product-owner
+   * visual QA approval. (Tier 3 is defined further down, right next to
+   * --zebra, since it reuses that same value rather than an independent
+   * color.)
    */
-  --brand-level-2: oklch(0.5 0.115 158);
+  --brand-level-2: #2f9e67;
 
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.279 0.037 260);

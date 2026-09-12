@@ -1836,9 +1836,9 @@ Page-level "back" arrows (Estoque, Administrativo, the Operações hub and its s
 
 Navigation depth is reinforced visually through progressively softer/lighter green navigation levels, while preserving the same hue family. The mechanism is a deliberate, perceptible step at each level — not merely a subtle chroma/saturation adjustment — so an employee can register the hierarchy at a glance. This applies to navigation/menu hierarchy rather than all semantic uses of green.
 
-- Level 1 (Dashboard's own module tiles) keeps the existing dark brand green and white text/icons, unchanged;
-- Level 2 (navigation tiles inside a section hub, e.g. Operações, Conhecimento & Cultura) uses a clearly lighter/brighter medium green in the same hue family, with white text/icons — validated for adequate contrast at the text sizes/weights actually used on these tiles;
-- Level 3 is reserved for a still-deeper future navigation tier — no such tier exists in the app today. Rather than inventing a fourth green, it reuses the same pale green already established for table zebra striping, paired with dark (not white) text/icons, since that background is light;
+- Level 1 (Dashboard's own module tiles) keeps the existing dark brand green (`#123C27`) and white text/icons, unchanged;
+- Level 2 (navigation tiles inside a section hub, e.g. Operações, Conhecimento & Cultura) uses a clearly lighter/brighter medium green in the same hue family (`#2F9E67`), with white text/icons — product-owner-approved via visual QA. Note: measured contrast for this exact value is below the formal WCAG AA text threshold; kept as approved rather than substituted for a passing-but-less-differentiated shade;
+- Level 3 is reserved for a still-deeper future navigation tier — no such tier exists in the app today. Rather than inventing a fourth green, it reuses the same pale green already established for table zebra striping (`#EAF7EF`), paired with dark (not white) text/icons, since that background is light;
 - Scoped specifically to navigation/menu surfaces: table headers, zebra striping itself, status/success indicators, content-card accents, and other unrelated green uses elsewhere in the Portal are unaffected.
 
 ---
