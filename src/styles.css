@@ -109,13 +109,13 @@
 
   /*
    * Header-row fill for the same zebra-striped tables. Same 158° brand hue
-   * family as --brand/--zebra, deliberately pitched between the two:
-   * noticeably darker/more saturated than --zebra (so the header reads as
-   * clearly distinct from the striped body rows) while staying well short
-   * of --brand's depth/saturation (this is a header background, not a
-   * brand accent) — --foreground text stays comfortably legible on it.
+   * family as --brand/--zebra, but deliberately a muted sage/gray-green —
+   * darker than --zebra (so the header reads as clearly distinct from the
+   * striped body rows) at low chroma, so it stays a sophisticated neutral
+   * header treatment rather than reading as a success/highlight green like
+   * --brand — --foreground text stays comfortably legible on it.
    */
-  --zebra-header: oklch(0.87 0.05 158);
+  --zebra-header: oklch(0.88 0.035 158);
 }
 
 /*
