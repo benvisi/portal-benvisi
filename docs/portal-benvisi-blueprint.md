@@ -1830,6 +1830,17 @@ Page-level "back" arrows (Estoque, Administrativo, the Operações hub and its s
 - No custom swipe gesture was introduced or is planned; this relies entirely on the platform/browser's own native back gesture together with TanStack Router's browser-history integration;
 - Local-state "back" actions that never change the route — the login screen's PIN-entry "Voltar" (returns to employee selection) and Contagem de Embalagens' detail-to-list "Voltar à lista" — were intentionally left unchanged; they are page-internal view toggles, not navigations, and are unrelated to this behavior.
 
+## 14.8 Navigation Depth Colors
+
+### IMPLEMENTED
+
+Navigation depth is reinforced visually through progressively softer versions of the Portal's brand green, while preserving the same hue family. This applies to navigation/menu hierarchy rather than all semantic uses of green.
+
+- Level 1 (Dashboard's own module tiles) keeps the full-strength brand green, unchanged;
+- Level 2 (navigation tiles inside a section hub, e.g. Operações, Conhecimento & Cultura) uses the same green hue at a modestly reduced saturation — a shared design token, not a one-off color, and not simply a paler/lighter version of the same green;
+- A reserved Level 3 token exists for a future third navigation tier, should one be introduced — no such tier exists in the app today;
+- Scoped specifically to navigation/menu surfaces: table headers, zebra striping, status/success indicators, and other unrelated green uses elsewhere in the Portal are unaffected.
+
 ---
 
 # 15. Engineering Principles
@@ -2665,7 +2676,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 - ~~replace the provisional September 2026 workbook data with the real published workbook before real rollout~~ — **DONE, Milestone 4C.4** (final workbook published, reconciled 230/230, visual QA PASS);
 - **motivo da folga** — when a schedule is published/sent, record the reason/type of each `FOLGA` (e.g. regular weekly folga vs. an additional compensatory folga for having worked a holiday). Concept only — the final categories and business rules are **not** defined yet and are deferred to later design;
-- **swipe between days on `Dia`** — on mobile/touch devices, let the user swipe left/right in the day-level view to move to the next/previous day, keeping the existing day selector / prev-next navigation as a visible fallback. UX design deferred; do not implement now;
+- **swipe between days on `Dia`** — on mobile/touch devices, let the user swipe left/right in the day-level view to move to the next/previous day, keeping the existing day selector / prev-next navigation as a visible fallback and avoiding interference with vertical scrolling/taps elsewhere on the view. UX design deferred; do not implement now;
 - Gestão / Favacho consistency refinement — how consistently a gerência member should appear on Escala when no explicit schedule entry exists (accepted as-is for V1; see the OPEN / FUTURE note under Milestone 4C.3);
 - real employee `email` addresses (still `NULL` for all eight — never invented);
 - the real Excel → structured-data UUID / technical-column mapping and publish flow (V1.1 — see below);
