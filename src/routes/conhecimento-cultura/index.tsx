@@ -30,6 +30,10 @@ export const Route = createFileRoute("/conhecimento-cultura/")({
 // & Cultura, Blueprint) will be added here as their own cards. Only one
 // category exists today, so a single card is shown rather than several
 // disabled placeholders.
+//
+// variant="brand-level-2": this hub is one level below the Dashboard, so
+// its tiles use the softer navigation-depth tier (Blueprint section 14.8)
+// rather than the Dashboard's own full-saturation brand green.
 function ConhecimentoCulturaPage() {
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.DASHBOARD);
@@ -61,7 +65,7 @@ function ConhecimentoCulturaPage() {
             icon={Compass}
             title={NOSSOS_PRINCIPIOS_TITLE}
             description={NOSSOS_PRINCIPIOS_CARD_DESCRIPTION}
-            variant="brand"
+            variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.CONHECIMENTO_CULTURA_PRINCIPIOS })}
           />
         </div>

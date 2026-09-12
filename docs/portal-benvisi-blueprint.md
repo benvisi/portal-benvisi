@@ -1830,6 +1830,17 @@ Page-level "back" arrows (Estoque, Administrativo, the Operações hub and its s
 - No custom swipe gesture was introduced or is planned; this relies entirely on the platform/browser's own native back gesture together with TanStack Router's browser-history integration;
 - Local-state "back" actions that never change the route — the login screen's PIN-entry "Voltar" (returns to employee selection) and Contagem de Embalagens' detail-to-list "Voltar à lista" — were intentionally left unchanged; they are page-internal view toggles, not navigations, and are unrelated to this behavior.
 
+## 14.8 Navigation Depth Colors
+
+### IMPLEMENTED
+
+Navigation depth is reinforced visually through progressively softer/lighter green navigation levels, while preserving the same hue family. The mechanism is a deliberate, perceptible step at each level — not merely a subtle chroma/saturation adjustment — so an employee can register the hierarchy at a glance. This applies to navigation/menu hierarchy rather than all semantic uses of green.
+
+- Level 1 (Dashboard's own module tiles) keeps the existing dark brand green (`#123C27`) and white text/icons, unchanged;
+- Level 2 (navigation tiles inside a section hub, e.g. Operações, Conhecimento & Cultura) uses a clearly lighter/brighter medium green in the same hue family (`#2F9E67`), with white text/icons — product-owner-approved via visual QA. Note: measured contrast for this exact value is below the formal WCAG AA text threshold; kept as approved rather than substituted for a passing-but-less-differentiated shade;
+- Level 3 is reserved for a still-deeper future navigation tier — no such tier exists in the app today. Rather than inventing a fourth green, it reuses the same pale green already established for table zebra striping (`#EAF7EF`), paired with dark (not white) text/icons, since that background is light;
+- Scoped specifically to navigation/menu surfaces: table headers, zebra striping itself, status/success indicators, content-card accents, and other unrelated green uses elsewhere in the Portal are unaffected.
+
 ---
 
 # 15. Engineering Principles
@@ -2665,7 +2676,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 - ~~replace the provisional September 2026 workbook data with the real published workbook before real rollout~~ — **DONE, Milestone 4C.4** (final workbook published, reconciled 230/230, visual QA PASS);
 - **motivo da folga** — when a schedule is published/sent, record the reason/type of each `FOLGA` (e.g. regular weekly folga vs. an additional compensatory folga for having worked a holiday). Concept only — the final categories and business rules are **not** defined yet and are deferred to later design;
-- **swipe between days on `Dia`** — on mobile/touch devices, let the user swipe left/right in the day-level view to move to the next/previous day, keeping the existing day selector / prev-next navigation as a visible fallback. UX design deferred; do not implement now;
+- **swipe between days on `Dia`** — on mobile/touch devices, let the user swipe left/right in the day-level view to move to the next/previous day, keeping the existing day selector / prev-next navigation as a visible fallback and avoiding interference with vertical scrolling/taps elsewhere on the view. UX design deferred; do not implement now;
 - Gestão / Favacho consistency refinement — how consistently a gerência member should appear on Escala when no explicit schedule entry exists (accepted as-is for V1; see the OPEN / FUTURE note under Milestone 4C.3);
 - real employee `email` addresses (still `NULL` for all eight — never invented);
 - the real Excel → structured-data UUID / technical-column mapping and publish flow (V1.1 — see below);

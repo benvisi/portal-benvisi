@@ -34,6 +34,10 @@ export const Route = createFileRoute("/operacoes/")({
 // deliberately not rendered here as disabled placeholders. Navigation is
 // not being redesigned in this milestone; only the order of the real
 // module cards is curated (Blueprint section 18).
+//
+// variant="brand-level-2": this hub is one level below the Dashboard, so
+// its tiles use the softer navigation-depth tier (Blueprint section 14.8)
+// rather than the Dashboard's own full-saturation brand green.
 function OperacoesPage() {
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.DASHBOARD);
@@ -71,28 +75,28 @@ function OperacoesPage() {
             icon={CalendarDays}
             title={ESCALA_TITLE}
             description={ESCALA_CARD_DESCRIPTION}
-            variant="brand"
+            variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_ESCALA })}
           />
           <ModuleCard
             icon={MessageCircle}
             title={MENSAGENS_WHATSAPP_TITLE}
             description={MENSAGENS_WHATSAPP_CARD_DESCRIPTION}
-            variant="brand"
+            variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_MENSAGENS_WHATSAPP })}
           />
           <ModuleCard
             icon={Boxes}
             title={CONTAGEM_EMBALAGENS_TITLE}
             description={CONTAGEM_EMBALAGENS_CARD_DESCRIPTION}
-            variant="brand"
+            variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_CONTAGEM_EMBALAGENS })}
           />
           <ModuleCard
             icon={Link2}
             title={LINKS_IMPORTANTES_TITLE}
             description={LINKS_IMPORTANTES_CARD_DESCRIPTION}
-            variant="brand"
+            variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_LINKS_IMPORTANTES })}
           />
         </div>
