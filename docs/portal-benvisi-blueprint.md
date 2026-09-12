@@ -958,6 +958,17 @@ Backend should atomically:
 
 A partial failure must not leave a half-completed Atendimento.
 
+## 8.13.1 Unsaved Data Protection (Finalizar Atendimento)
+
+### IMPLEMENTED / QA COMPLETE
+
+While the Finalizar Atendimento closing form has unsaved (dirty) data, navigating away from Atendimento is protected by a confirmation warning rather than silently discarding the partially filled-out form.
+
+- Protection is implemented at the route-navigation level using TanStack Router's `useBlocker`, so it applies uniformly no matter how the employee tries to leave the page — QA-confirmed for the in-app Portal back arrow, the browser's Back button, and native mobile edge-swipe-back;
+- Canceling the warning keeps the employee on the Finalizar Atendimento form with the partially entered data intact; confirming discard allows the navigation to proceed, and the draft is lost, as intended;
+- The separate **"Voltar ao atendimento"** confirmation inside the closing form itself is unchanged and remains a distinct guard — it reverts the Atendimento's status via its own action rather than navigating away from the page, so it does not overlap with the route-navigation protection described here;
+- As an additional best-effort layer, the browser's own native "leave site?" prompt is also requested on refresh/tab-close while the form is dirty (`enableBeforeUnload`). This is standard browser behavior, not a Portal-built dialog, and browser support for it — particularly on mobile — is not reliable; QA observed a refresh can occur without this warning appearing. Treat this as an accepted browser/platform limitation, not an unresolved Portal defect — it does not affect the route-navigation protection above, which is fully QA-confirmed on all three paths.
+
 ## 8.14 Previous-Day Pending Atendimento
 
 ### APPROVED
@@ -1797,6 +1808,27 @@ A deliberately small accessibility capability: a user-controlled text-size prefe
 **What it deliberately is not (yet):** contrast options, color-vision-safe alternatives, reduced motion, or a broader accessibility audit. Do not treat this section as implying any of those already exist.
 
 **Future accessibility roadmap** (not approved for implementation, listed for context only): stronger contrast options; color-vision-safe alternatives; reduced motion; a broader accessibility review across the whole application.
+
+## 14.6 Zebra-Striped Tables (Brand-Consistent Green)
+
+### IMPLEMENTED
+
+Where the Portal intentionally uses zebra striping (alternating row shading in dense tabular views), the treatment is a subtle, brand-consistent green rather than a neutral gray — tying these tables to the Dashboard's green brand identity without approaching the Dashboard's own saturation.
+
+- Alternating body rows use a very light, low-saturation green tint, defined as a shared design token rather than a one-off per-component color — still subtle and easy to read, not a status color;
+- The header row of these same tables uses the actual Dashboard/brand green background with white header text, a clearly stronger/more defined treatment than the body stripe, giving an unambiguous header-vs-body hierarchy;
+- Currently applies to: the Estoque colour × size matrix (section 9) and the Contagem de Embalagens submission detail table (section 10);
+- Deliberately not a blanket table redesign — other tables/lists with their own established visual treatment were left unchanged; this pattern is applied only where zebra striping was already an intentional design choice.
+
+## 14.7 Navigation — Back Behavior
+
+### IMPLEMENTED
+
+Page-level "back" arrows (Estoque, Administrativo, the Operações hub and its subpages, the Conhecimento & Cultura hub and Princípios, Atendimento) share one `useGoBack` helper: when a real prior in-app history entry exists, tapping back performs an actual browser-history back rather than a hardcoded forward navigation, falling back to the existing logical parent route only when there is no prior entry to return to (e.g. a direct link or a page refresh landed the employee straight on that page).
+
+- This aligns three previously-divergent behaviors — the in-app back arrow, the browser's own Back button, and the OS/browser's native mobile edge-swipe-back gesture — so all three now behave the same way and land in the same place;
+- No custom swipe gesture was introduced or is planned; this relies entirely on the platform/browser's own native back gesture together with TanStack Router's browser-history integration;
+- Local-state "back" actions that never change the route — the login screen's PIN-entry "Voltar" (returns to employee selection) and Contagem de Embalagens' detail-to-list "Voltar à lista" — were intentionally left unchanged; they are page-internal view toggles, not navigations, and are unrelated to this behavior.
 
 ---
 
