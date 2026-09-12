@@ -18,7 +18,9 @@ interface EstoqueMatrixProps {
  * - Real operational table: every quantity sits in a bordered cell, header
  *   row and colour column clearly separated. Positive quantity shows the
  *   number; a known 0 shows an empty bordered cell (never a literal "0",
- *   never a colour-coded status).
+ *   never a colour-coded status). The header row uses `--zebra-header`
+ *   (same 158° brand-green hue family as `--zebra`, but noticeably darker/
+ *   more defined) so it reads as clearly separate from the striped body.
  * - Subtle zebra striping across the colour rows, using the shared `--zebra`
  *   brand-green tint (not a red/yellow/green status colour), continuing
  *   through the sticky colour column so each row stays visually coherent
@@ -36,7 +38,7 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
           <tr>
             <th
               scope="col"
-              className="sticky left-0 top-0 z-30 min-w-[8.5rem] max-w-[12rem] border-b-2 border-r-2 border-border bg-accent px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              className="sticky left-0 top-0 z-30 min-w-[8.5rem] max-w-[12rem] border-b-2 border-r-2 border-border bg-zebra-header px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
             >
               {ESTOQUE_COR_COLUNA_LABEL}
             </th>
@@ -44,7 +46,7 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
               <th
                 key={tamanho.key}
                 scope="col"
-                className="sticky top-0 z-20 min-w-[3.25rem] border-b-2 border-r border-border bg-accent px-2 py-2 text-center text-xs font-semibold text-foreground"
+                className="sticky top-0 z-20 min-w-[3.25rem] border-b-2 border-r border-border bg-zebra-header px-2 py-2 text-center text-xs font-semibold text-foreground"
               >
                 {tamanho.venda}
               </th>

@@ -44,6 +44,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-zebra: var(--zebra);
+  --color-zebra-header: var(--zebra-header);
 
   --shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
   --shadow-card: 0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 6px -2px rgb(15 23 42 / 0.04);
@@ -105,6 +106,16 @@
    * comfortably legible on top of it.
    */
   --zebra: oklch(0.965 0.018 158);
+
+  /*
+   * Header-row fill for the same zebra-striped tables. Same 158° brand hue
+   * family as --brand/--zebra, deliberately pitched between the two:
+   * noticeably darker/more saturated than --zebra (so the header reads as
+   * clearly distinct from the striped body rows) while staying well short
+   * of --brand's depth/saturation (this is a header background, not a
+   * brand accent) — --foreground text stays comfortably legible on it.
+   */
+  --zebra-header: oklch(0.88 0.03 158);
 }
 
 /*

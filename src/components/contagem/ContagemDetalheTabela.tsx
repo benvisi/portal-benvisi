@@ -20,15 +20,17 @@ interface ContagemDetalheTabelaProps {
  * the Dashboard brand green — see styles.css) so the zebra striping is
  * unmistakable on a phone at rest without reading as heavy; it aids
  * left-to-right tracking across the four columns. Odd rows keep the card
- * background. Kept in its own overflow-x-auto container so a narrow screen
- * scrolls the table rather than the page.
+ * background. The header row uses `--zebra-header` (same hue family,
+ * noticeably darker/more defined) for the same header-vs-body separation
+ * as the Estoque matrix. Kept in its own overflow-x-auto container so a
+ * narrow screen scrolls the table rather than the page.
  */
 export function ContagemDetalheTabela({ linhas }: ContagemDetalheTabelaProps) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[22rem] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border bg-zebra-header text-xs uppercase tracking-wide text-muted-foreground">
             <th scope="col" className="px-3 py-2 text-left font-semibold">
               {CONTAGEM_COL_ITEM_LABEL}
             </th>
