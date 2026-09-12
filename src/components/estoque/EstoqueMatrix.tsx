@@ -19,9 +19,10 @@ interface EstoqueMatrixProps {
  *   row and colour column clearly separated. Positive quantity shows the
  *   number; a known 0 shows an empty bordered cell (never a literal "0",
  *   never a colour-coded status).
- * - Subtle neutral zebra striping across the colour rows (no red/yellow/green
- *   semantics), continuing through the sticky colour column so each row stays
- *   visually coherent while scrolling.
+ * - Subtle zebra striping across the colour rows, using the shared `--zebra`
+ *   brand-green tint (not a red/yellow/green status colour), continuing
+ *   through the sticky colour column so each row stays visually coherent
+ *   while scrolling.
  * - Horizontal (and vertical) scrolling is contained in this region so the
  *   page never overflows sideways; the colour column and the size header stay
  *   pinned. `border-separate` keeps each cell's gridlines attached to it when
@@ -52,10 +53,11 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
         </thead>
         <tbody>
           {matriz.cores.map((cor, index) => {
-            // Neutral alternating fill — a step lighter than the card so the
-            // gridlines stay visible over both bands. Applied to the sticky
-            // colour cell too, so its stripe never detaches while scrolling.
-            const stripe = index % 2 === 1 ? "bg-muted" : "bg-card";
+            // Brand-tinted alternating fill (see --zebra in styles.css) — a
+            // step lighter than the card so the gridlines stay visible over
+            // both bands. Applied to the sticky colour cell too, so its
+            // stripe never detaches while scrolling.
+            const stripe = index % 2 === 1 ? "bg-zebra" : "bg-card";
             return (
               <tr key={cor.codigo}>
                 <th

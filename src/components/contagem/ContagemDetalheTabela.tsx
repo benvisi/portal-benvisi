@@ -16,8 +16,8 @@ interface ContagemDetalheTabelaProps {
  * avulsas, and the per-item total (pacotes × unidades_por_pacote +
  * avulsas). No cross-category grand total — summing heterogeneous
  * packaging items is not operationally meaningful. Even rows take the
- * neutral `--border` design token as a fill (`bg-border` — a step darker
- * than `bg-muted`, still a light grey, no hue) so the zebra striping is
+ * shared `--zebra` design token as a fill (a very light, low-chroma tint of
+ * the Dashboard brand green — see styles.css) so the zebra striping is
  * unmistakable on a phone at rest without reading as heavy; it aids
  * left-to-right tracking across the four columns. Odd rows keep the card
  * background. Kept in its own overflow-x-auto container so a narrow screen
@@ -47,7 +47,7 @@ export function ContagemDetalheTabela({ linhas }: ContagemDetalheTabelaProps) {
           {linhas.map((linha) => (
             <tr
               key={linha.id_item}
-              className="border-b border-border/60 last:border-b-0 even:bg-border"
+              className="border-b border-border/60 last:border-b-0 even:bg-zebra"
             >
               <td className="px-3 py-2 text-left text-foreground">{linha.rotulo}</td>
               <td className="px-3 py-2 text-right tabular-nums text-foreground">

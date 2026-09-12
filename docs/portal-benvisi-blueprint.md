@@ -1583,9 +1583,12 @@ built now.
 - operational / marketing / other categories;
 - future voting/upvoting remains a roadmap possibility.
 
-**Links Importantes — IMPLEMENTED (Milestone 4A)**
+**Links Importantes — IMPLEMENTED (Milestone 4A, guides added in the Operações guides/polish batch)**
 
-- curated links to external tools/forms Portal should not own yet: the confidential external Canal de Denúncia Segura e Sigilosa Google Form, and official app-store links for the YOOBIC ONE and CRM360 mobile apps. Portal is a front door to these systems, not an owner or replacement of them — it stores no complaint content and integrates with neither app.
+- curated links to external tools/forms Portal should not own yet: the confidential external Canal de Denúncia Segura e Sigilosa Google Form, official app-store links for the YOOBIC ONE and CRM360 mobile apps, and two operational guide documents (Google Docs) — **Emissão NF-e (DANFE)** and **Orientações durante viagem**. Portal is a front door to these systems, not an owner or replacement of them — it stores no complaint content, integrates with neither mobile app, and does not render or manage the guide documents beyond linking out to them;
+- cards are individually expandable/collapsible (collapsed by default): the icon, title, and short description stay visible as a compact preview, and the action button(s)/links/notes for that resource only render once expanded — same underlying resources and links as before, just progressively disclosed.
+
+**FUTURE — Native Portal guidance content.** Convert selected operational guidance (currently plain linked-out Google Docs under Links Importantes) into polished, mobile-friendly content rendered natively in the Portal, starting with **Orientações durante viagem**. Not implemented, not scaffolded — potential future features include structured sections, tap-to-call / WhatsApp actions, dates/versioning, and publication/expiration periods. Related future scope: the Checklists de processos guided-reference concept above (e.g. Entrada de Mercadoria).
 
 **Mensagens para WhatsApp — IMPLEMENTED (Milestone 4B)**
 
@@ -1774,26 +1777,26 @@ The absence of a completed Design System document should **not** block implement
 
 ## 14.5 Accessibility
 
-### Small Accessibility MVP — Larger Text
+### Small Accessibility MVP — Text Size (Padrão / Maior / Extra grande)
 
 **Status:** IMPLEMENTED / QA COMPLETE
 
-A deliberately small, first accessibility capability: a user-controlled **Texto maior** (larger text) preference, offered alongside the default **Padrão** sizing. This is not a full accessibility overhaul — it is scoped to readability only.
+A deliberately small accessibility capability: a user-controlled text-size preference. Originally shipped as two steps (Padrão / Texto maior); extended in the Operações guides/polish batch to three steps — **Padrão**, **Maior**, and **Extra grande** — by adding one further step above the original "Texto maior," which itself keeps its exact original sizing under the new "Maior" label. This is not a full accessibility overhaul — it is scoped to readability only.
 
-**QA status:** toggle behavior, persistence, Login/PIN mobile layout, notice/indicator layouts, the reinforcement toast, desktop, and the final Aa-trigger interaction (Padrão/Texto maior hidden until tapped) — all **PASS**. The ~13% increase is confirmed intentional and kept as-is (not increased on a subjective "feels subtle" observation alone — pending real employee feedback). Placement and presentation went through three polish rounds: first collapsed into the header on mobile only; then moved out of the header entirely into a Dashboard utility area near the bottom, using the same placement and interaction model on mobile, tablet, and desktop (no per-device placement rules); then, per final product direction, the always-visible Padrão/Texto maior options within that area were tucked behind a compact **Aa** trigger to keep the row subtle. All three rounds are now browser-verified. In the Milestone 4C.3 polish tranche this utility area was extracted into a shared `AuthUtilityBar` component and now renders in the same bottom position on **every** authenticated employee-facing route, not only the Dashboard (Termos shows only the Aa control there — it has its own accept/decline pair).
+**QA status:** toggle behavior, persistence, Login/PIN mobile layout, notice/indicator layouts, the reinforcement toast, desktop, and the Aa-trigger interaction (options hidden until tapped) — all **PASS** for the original two-step version. The ~13% "Maior" increase is confirmed intentional and kept as-is. Placement and presentation went through three polish rounds: first collapsed into the header on mobile only; then moved out of the header entirely into a Dashboard utility area near the bottom, using the same placement and interaction model on mobile, tablet, and desktop (no per-device placement rules); then, per final product direction, the always-visible options within that area were tucked behind a compact **Aa** trigger to keep the row subtle. All three rounds are browser-verified. In the Milestone 4C.3 polish tranche this utility area was extracted into a shared `AuthUtilityBar` component and now renders in the same bottom position on **every** authenticated employee-facing route, not only the Dashboard (Termos shows only the Aa control there — it has its own accept/decline pair).
 
 **What it is:**
 
-- the bottom utility area (shared `AuthUtilityBar`, present on every authenticated route) contains a compact **Aa** accessibility trigger that opens the Padrão / Texto maior options, alongside the always-visible **Sair** action — the same location and interaction model on every viewport (normal document flow, not fixed/sticky/overlay), separated from the header and from the operational modules by a subtle divider; Sair always shows its text label, never icon-only;
-- a device/browser presentation preference, stored in `localStorage` under a Portal-Benvisi-namespaced key — **never** sent to Supabase, never employee-account data, never read by any backend RPC;
-- applied by toggling a `data-text-size` attribute on `<html>`, which a small, unlayered CSS rule uses to override Tailwind's own `--text-*` typography-scale custom properties by approximately 13% (within the approved 12–15% range) — every component already using Tailwind's ordinary `text-*` utilities picks up the larger scale automatically, with no per-component `if (larger) ... else ...` branching anywhere;
+- the bottom utility area (shared `AuthUtilityBar`, present on every authenticated route) contains a compact **Aa** accessibility trigger that opens the Padrão / Maior / Extra grande options, alongside the always-visible **Sair** action — the same location and interaction model on every viewport (normal document flow, not fixed/sticky/overlay), separated from the header and from the operational modules by a subtle divider; Sair always shows its text label, never icon-only; each option's chip label renders at a size representative of the size it activates (progressively larger Padrão → Maior → Extra grande) so the picker previews its own effect;
+- a device/browser presentation preference, stored in `localStorage` under a Portal-Benvisi-namespaced key — **never** sent to Supabase, never employee-account data, never read by any backend RPC. The persisted value for the original "Texto maior" tier is unchanged (still the literal `"grande"`), so employees who already chose it keep exactly the same size with no migration needed; a new `"extra"` value was added for the new top tier;
+- applied by toggling a `data-text-size` attribute on `<html>`, which small, unlayered CSS rules use to override Tailwind's own `--text-*` typography-scale custom properties — **Maior** by approximately 13% (the original, unchanged range), **Extra grande** by approximately 30% — every component already using Tailwind's ordinary `text-*` utilities picks up the larger scale automatically, with no per-component `if (larger) ... else ...` branching anywhere;
 - deliberately scoped to typography only — spacing, padding, gaps, widths, icon sizes, and touch targets are untouched, so this cannot become an accidental "zoom the whole interface." Line-heights are not separately overridden either: Tailwind's line-height values are unitless ratios that already scale proportionally with whatever font-size is applied;
 - applied as early as practical via a tiny inline script in `<head>` (before first paint) reading the stored preference, so a returning employee does not see a flash of normal-size text before it enlarges — the same standard technique used for dark-mode-before-hydration, not new SSR/hydration infrastructure;
-- the Milestone 2E reinforcement toast's font size now also derives from the same shared `--text-sm` variable (previously a fixed pixel value) so it participates in the same scale consistently rather than being a fixed-size exception.
+- the Milestone 2E reinforcement toast's font size derives from the same shared `--text-sm` variable (previously a fixed pixel value) so it participates in the same scale consistently rather than being a fixed-size exception.
 
-**What it deliberately is not (yet):** contrast options, color-vision-safe alternatives, additional text-size levels beyond the two, reduced motion, or a broader accessibility audit. Do not treat this section as implying any of those already exist.
+**What it deliberately is not (yet):** contrast options, color-vision-safe alternatives, reduced motion, or a broader accessibility audit. Do not treat this section as implying any of those already exist.
 
-**Future accessibility roadmap** (not approved for implementation, listed for context only): stronger contrast options; color-vision-safe alternatives; additional text-size levels; reduced motion; a broader accessibility review across the whole application.
+**Future accessibility roadmap** (not approved for implementation, listed for context only): stronger contrast options; color-vision-safe alternatives; reduced motion; a broader accessibility review across the whole application.
 
 ---
 

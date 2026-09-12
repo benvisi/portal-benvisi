@@ -66,7 +66,8 @@ export const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamen
 // without relying on the icon.
 export const TEXT_SIZE_TOGGLE_LABEL = "Tamanho do texto";
 export const TEXT_SIZE_PADRAO_LABEL = "Padrão";
-export const TEXT_SIZE_GRANDE_LABEL = "Texto maior";
+export const TEXT_SIZE_GRANDE_LABEL = "Maior";
+export const TEXT_SIZE_EXTRA_LABEL = "Extra grande";
 
 export const ATENDIMENTO_PAGE_TITLE = "Atendimento";
 export const VOLTAR_AO_PAINEL_LABEL = "Voltar ao painel";
