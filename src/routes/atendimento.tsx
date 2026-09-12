@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, UserMinus, UserPlus } from "lucide-react";
 
@@ -95,7 +95,6 @@ function AtendimentoPage() {
   const { reset: resetDraft } = draft;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmVoltarPainelOpen, setConfirmVoltarPainelOpen] = useState(false);
   const [delegateAlvo, setDelegateAlvo] = useState<{ id: string; nome: string } | null>(null);
   const [delegateInOrderOpen, setDelegateInOrderOpen] = useState(false);
   const [delegateForaDeOrdemOpen, setDelegateForaDeOrdemOpen] = useState(false);
@@ -108,6 +107,23 @@ function AtendimentoPage() {
   // below.
   const emFluxoDeFechamento =
     ativoQuery.data?.status === "finalizando" || ativoQuery.data?.status === "pendente_fechamento";
+
+  // Route-level guard for leaving /atendimento entirely while the closing
+  // draft is dirty — covers the header's Voltar ao painel arrow, the
+  // browser back button, and native edge-swipe-back uniformly, since all
+  // three are just different triggers for the same history PUSH/REPLACE or
+  // BACK action that TanStack Router's blocker mechanism intercepts before
+  // it completes. (FechamentoAtendimento's own "Voltar ao atendimento"
+  // confirmation is separate and untouched — that button calls
+  // actions.voltarAoAtendimento(), an RPC status change, not a navigation,
+  // so this blocker never applies to it.) enableBeforeUnload: true also
+  // gets us the browser's native "leave site?" prompt on refresh/tab-close
+  // for free while dirty.
+  const voltarPainelBlocker = useBlocker({
+    shouldBlockFn: () => emFluxoDeFechamento && draft.isDirty,
+    enableBeforeUnload: true,
+    withResolver: true,
+  });
 
   // The draft only makes sense while actually in the closing flow. Resetting
   // it whenever we're not in finalizando/pendente_fechamento (rather than
@@ -232,14 +248,6 @@ function AtendimentoPage() {
     void actions.iniciar(true);
   };
 
-  const handleVoltarPainelClick = () => {
-    if (emFluxoDeFechamento && draft.isDirty) {
-      setConfirmVoltarPainelOpen(true);
-      return;
-    }
-    goBack();
-  };
-
   // Milestone 2A.1: starting an Atendimento for another employee. Unlike
   // self-start, an in-order delegated start still requires an explicit
   // (lightweight) confirmation naming the target — starting on someone
@@ -316,7 +324,7 @@ function AtendimentoPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={handleVoltarPainelClick}
+            onClick={goBack}
             aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
@@ -601,12 +609,11 @@ function AtendimentoPage() {
       </AlertDialog>
 
       <UnsavedDataConfirmDialog
-        open={confirmVoltarPainelOpen}
-        onOpenChange={setConfirmVoltarPainelOpen}
-        onConfirmDiscard={() => {
-          setConfirmVoltarPainelOpen(false);
-          goBack();
+        open={voltarPainelBlocker.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) voltarPainelBlocker.reset?.();
         }}
+        onConfirmDiscard={() => voltarPainelBlocker.proceed?.()}
       />
 
       <AlertDialog open={delegateInOrderOpen} onOpenChange={setDelegateInOrderOpen}>
