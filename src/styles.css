@@ -76,22 +76,16 @@
   --brand-foreground: oklch(0.985 0.002 247);
 
   /*
-   * Navigation-depth tiers, ModuleCard only: as Portal navigation goes one
-   * level deeper (Dashboard → a section hub like Operações), the nav
-   * tile's green gets visibly softer so depth reads as a clear (but still
-   * subtle/coherent) visual cue rather than a hard color change. Same 158°
-   * hue as --brand throughout — no shift toward blue/teal. --brand-level-2
-   * moves lightness up enough to actually register as "softer" next to
-   * --brand rather than reading as a rendering variance, while keeping
-   * chroma close enough to --brand's that it still reads as the same green
-   * family, not gray/washed out or a different brand color.
-   * --brand-foreground (white) stays legible against it — confirmed at
-   * this lightness, no separate foreground token needed.
-   * --brand-level-3 has no current consumer (no third ModuleCard tier
-   * exists in the app today) — reserved for if one is introduced later.
+   * Navigation-depth tier 2, ModuleCard only (Blueprint section 14.8): a
+   * deliberately clear step lighter/brighter than --brand, not a subtle
+   * saturation tweak — QA on the incremental-chroma-only approach found it
+   * too close to --brand to register as a hierarchy cue. Same 158° hue
+   * family, contrast-checked against --brand-foreground white (~5.4:1,
+   * clears WCAG AA for ModuleCard's title/description text sizes).
+   * (Tier 3 is defined further down, right next to --zebra, since it
+   * reuses that same value rather than an independent color.)
    */
-  --brand-level-2: oklch(0.42 0.038 158);
-  --brand-level-3: oklch(0.365 0.03 158);
+  --brand-level-2: oklch(0.5 0.115 158);
 
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.279 0.037 260);
@@ -126,6 +120,17 @@
    * comfortably legible on top of it.
    */
   --zebra: oklch(0.965 0.018 158);
+
+  /*
+   * Navigation-depth tier 3, ModuleCard only (Blueprint section 14.8) — a
+   * still-deeper future navigation tier reuses this same pale green
+   * (referencing --zebra directly rather than an independently-invented
+   * near-duplicate color) instead of inventing a fourth green. No such
+   * navigation surface exists in the app today, so this token is defined
+   * but currently unused; ModuleCard's "brand-level-3" variant pairs it
+   * with dark (not white) text/icons, since it is this light.
+   */
+  --brand-level-3: var(--zebra);
 
   /*
    * Header-row fill for the same zebra-striped tables. Same 158° brand hue
