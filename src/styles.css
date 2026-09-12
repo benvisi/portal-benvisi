@@ -78,16 +78,19 @@
   /*
    * Navigation-depth tiers, ModuleCard only: as Portal navigation goes one
    * level deeper (Dashboard → a section hub like Operações), the nav
-   * tile's green gets a step less saturated so depth reads as a subtle,
-   * coherent visual cue rather than a hard color change. Same 158° hue and
-   * near-identical lightness as --brand — chroma is the primary lever, with
-   * only a small lightness assist, so this stays "softer green," never
-   * "washed out" or a hue shift toward blue/teal. --brand-foreground
-   * (white) is legible against both — no separate foreground token needed.
+   * tile's green gets visibly softer so depth reads as a clear (but still
+   * subtle/coherent) visual cue rather than a hard color change. Same 158°
+   * hue as --brand throughout — no shift toward blue/teal. --brand-level-2
+   * moves lightness up enough to actually register as "softer" next to
+   * --brand rather than reading as a rendering variance, while keeping
+   * chroma close enough to --brand's that it still reads as the same green
+   * family, not gray/washed out or a different brand color.
+   * --brand-foreground (white) stays legible against it — confirmed at
+   * this lightness, no separate foreground token needed.
    * --brand-level-3 has no current consumer (no third ModuleCard tier
    * exists in the app today) — reserved for if one is introduced later.
    */
-  --brand-level-2: oklch(0.34 0.044 158);
+  --brand-level-2: oklch(0.42 0.038 158);
   --brand-level-3: oklch(0.365 0.03 158);
 
   --secondary: oklch(0.968 0.007 247);
