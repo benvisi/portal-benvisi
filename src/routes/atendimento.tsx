@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, UserMinus, UserPlus } from "lucide-react";
 
@@ -64,6 +64,7 @@ import { useAtendimentoChecklist } from "@/hooks/useAtendimentoChecklist";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
 import { useChecklistPolicy } from "@/hooks/useChecklistPolicy";
 import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useListaVez } from "@/hooks/useListaVez";
 import { useListaVezActions } from "@/hooks/useListaVezActions";
 import { useRequireSession } from "@/hooks/useRequireSession";
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/atendimento")({
 });
 
 function AtendimentoPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
   const funcionarioId = session?.funcionario_id ?? null;
   const sessionToken = session?.session_token ?? null;
@@ -236,7 +237,7 @@ function AtendimentoPage() {
       setConfirmVoltarPainelOpen(true);
       return;
     }
-    void navigate({ to: ROUTES.DASHBOARD });
+    goBack();
   };
 
   // Milestone 2A.1: starting an Atendimento for another employee. Unlike
@@ -604,7 +605,7 @@ function AtendimentoPage() {
         onOpenChange={setConfirmVoltarPainelOpen}
         onConfirmDiscard={() => {
           setConfirmVoltarPainelOpen(false);
-          void navigate({ to: ROUTES.DASHBOARD });
+          goBack();
         }}
       />
 

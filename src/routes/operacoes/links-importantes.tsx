@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, Link2, Smartphone } from "lucide-react";
 
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/config/constants";
 import { IMPORTANT_RESOURCES } from "@/config/links-importantes";
 import { ROUTES } from "@/config/routes";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 
 export const Route = createFileRoute("/operacoes/links-importantes")({
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/operacoes/links-importantes")({
 // `type`) rather than one hardcoded card per resource — adding/editing a
 // resource later means editing that config file, not this page.
 function LinksImportantesPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.OPERACOES);
   const { session, ready } = useRequireSession();
 
   if (!ready || !session) return null;
@@ -46,7 +47,7 @@ function LinksImportantesPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.OPERACOES })}
+            onClick={goBack}
             aria-label={VOLTAR_A_OPERACOES_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />

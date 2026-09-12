@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/config/constants";
 import { PRINCIPIOS } from "@/config/principios";
 import { ROUTES } from "@/config/routes";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 
 export const Route = createFileRoute("/conhecimento-cultura/principios")({
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/conhecimento-cultura/principios")({
 // out of view until requested — no separate detail page/route needed, and
 // nothing depends on hover, so it works identically on touch and desktop.
 function PrincipiosPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.CONHECIMENTO_CULTURA);
   const { session, ready } = useRequireSession();
 
   if (!ready || !session) return null;
@@ -46,7 +47,7 @@ function PrincipiosPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.CONHECIMENTO_CULTURA })}
+            onClick={goBack}
             aria-label={VOLTAR_A_CONHECIMENTO_CULTURA_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />

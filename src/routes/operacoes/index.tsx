@@ -18,6 +18,7 @@ import {
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 
 export const Route = createFileRoute("/operacoes/")({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/operacoes/")({
 // module cards is curated (Blueprint section 18).
 function OperacoesPage() {
   const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
 
   if (!ready || !session) return null;
@@ -48,7 +50,7 @@ function OperacoesPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.DASHBOARD })}
+            onClick={goBack}
             aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />

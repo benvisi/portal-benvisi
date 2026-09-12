@@ -37,6 +37,7 @@ import {
 import { ROUTES } from "@/config/routes";
 import type { ChecklistPolicy } from "@/integrations/supabase/contracts";
 import { useChecklistPolicy } from "@/hooks/useChecklistPolicy";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useSetChecklistPolicy } from "@/hooks/useSetChecklistPolicy";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,7 @@ const POLICY_OPTIONS: {
 
 function AdministrativoPage() {
   const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
   const sessionToken = session?.session_token ?? null;
   const isAdmin = session?.cargo === ADMINISTRATOR_CARGO;
@@ -118,7 +120,7 @@ function AdministrativoPage() {
             variant="ghost"
             size="icon"
             className="min-touch shrink-0"
-            onClick={() => void navigate({ to: ROUTES.DASHBOARD })}
+            onClick={goBack}
             aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
