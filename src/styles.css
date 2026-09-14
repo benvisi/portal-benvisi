@@ -77,19 +77,18 @@
 
   /*
    * Navigation-depth tier 2, ModuleCard only (Blueprint section 14.8): a
-   * deliberately clear step lighter/brighter than --brand, not a subtle
-   * saturation tweak — earlier incremental-chroma-only attempts were too
-   * close to --brand to register as a hierarchy cue. Same 158° hue family
-   * (this is #2F9E67, the exact product-approved value from visual QA —
-   * kept as a literal hex rather than re-derived via oklch, for exact
-   * color fidelity). Measured contrast against --brand-foreground white is
-   * ~3.24:1, short of WCAG AA's 4.5:1 for ModuleCard's title/description
-   * text sizes — flagged during review; kept as-is per product-owner
-   * visual QA approval. (Tier 3 is defined further down, right next to
-   * --zebra, since it reuses that same value rather than an independent
-   * color.)
+   * deliberately clear step lighter than --brand, not a subtle saturation
+   * tweak — earlier incremental-chroma-only attempts were too close to
+   * --brand to register as a hierarchy cue. This is #416352, a muted
+   * mid-tone green in the same general hue family as --brand (replaces an
+   * earlier #708A7D that read as too gray/desaturated, and before that
+   * #2F9E67 — kept as a literal hex rather than re-derived via oklch, for
+   * exact color fidelity). Measured contrast against --brand-foreground
+   * white is ~6.71:1, comfortably clearing WCAG AA's 4.5:1 for ModuleCard's
+   * title/description text sizes, so white text/icons are kept with no
+   * legibility caveat — see ModuleCard.tsx.
    */
-  --brand-level-2: #2f9e67;
+  --brand-level-2: #416352;
 
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.279 0.037 260);
@@ -127,14 +126,19 @@
 
   /*
    * Navigation-depth tier 3, ModuleCard only (Blueprint section 14.8) — a
-   * still-deeper future navigation tier reuses this same pale green
-   * (referencing --zebra directly rather than an independently-invented
-   * near-duplicate color) instead of inventing a fourth green. No such
-   * navigation surface exists in the app today, so this token is defined
-   * but currently unused; ModuleCard's "brand-level-3" variant pairs it
-   * with dark (not white) text/icons, since it is this light.
+   * still-deeper future navigation tier. Previously reused --zebra's pale
+   * mint (#EAF7EF) directly; now an independent, more muted sage-gray
+   * (#CFD8D3) so it no longer tracks whatever --zebra becomes — zebra
+   * striping is unrelated to navigation depth and must not move when this
+   * token changes. Kept as a literal hex (not re-derived via oklch) for
+   * exact color fidelity. No such navigation surface exists in the app
+   * today, so this token is defined but currently unused; ModuleCard's
+   * "brand-level-3" variant pairs it with dark (not white) text/icons,
+   * since it is this light. No Level 4 is defined yet — white
+   * (--brand-foreground) is the natural next step in this progression if
+   * a fourth tier is ever needed.
    */
-  --brand-level-3: var(--zebra);
+  --brand-level-3: #cfd8d3;
 
   /*
    * Header-row fill for the same zebra-striped tables. Same 158° brand hue
