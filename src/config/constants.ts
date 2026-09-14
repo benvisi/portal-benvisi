@@ -374,6 +374,28 @@ export const CONTAGEM_CATALOGO_ERRO_MESSAGE =
   "Não foi possível carregar os itens da contagem. Tente novamente.";
 export const CONTAGEM_ENVIO_ERRO_MESSAGE = "Não foi possível enviar a contagem. Tente novamente.";
 
+// Milestone 4D.1 — draft resume.
+export function getContagemIniciadaDescription(nome: string, dataHora: string): string {
+  return `Contagem iniciada por ${nome} em ${dataHora}. Continue de onde parou.`;
+}
+
+// Explicit "Salvar" action (replaces an earlier autosave attempt that
+// proved unreliable across steady field-to-field data entry).
+export const CONTAGEM_SALVAR_LABEL = "Salvar";
+export const CONTAGEM_SALVANDO_LABEL = "Salvando...";
+export const CONTAGEM_PROGRESSO_SALVO_LABEL = "Progresso salvo";
+export const CONTAGEM_SALVAR_ERRO_MESSAGE = "Não foi possível salvar o progresso. Tente novamente.";
+
+export const CONTAGEM_CANCELAR_LABEL = "Cancelar contagem";
+export const CONTAGEM_CANCELAR_CONFIRM_TITLE = "Cancelar esta contagem?";
+export const CONTAGEM_CANCELAR_CONFIRM_DESCRIPTION =
+  "O progresso contado até agora será perdido. Esta ação não pode ser desfeita.";
+export const CONTAGEM_CANCELAR_CONFIRM_CANCEL_LABEL = "Continuar contagem";
+export const CONTAGEM_CANCELAR_CONFIRM_ACCEPT_LABEL = "Sim, cancelar contagem";
+export const CONTAGEM_CANCELANDO_LABEL = "Cancelando...";
+export const CONTAGEM_CANCELAR_ERRO_MESSAGE =
+  "Não foi possível cancelar a contagem. Tente novamente.";
+
 // Unit suffix for the live and recorded totals ("217 un.").
 export const CONTAGEM_UNIDADE_SUFFIX = "un.";
 

@@ -358,6 +358,33 @@ export function isContagemCatalogoItem(value: unknown): value is ContagemCatalog
   );
 }
 
+// Milestone 4D.1 — draft resume. One row per get_or_start_contagem_ativa
+// result: header columns repeated per saved item, id_item/pacotes_fechados/
+// unidades_avulsas null on the lone row returned for a brand-new draft with
+// nothing autosaved yet (see 20260912_001_add_contagem_draft_resume.sql).
+export interface ContagemAtivaLinha {
+  id_contagem: string;
+  iniciado_por_nome: string;
+  iniciado_em: string;
+  id_item: string | null;
+  pacotes_fechados: number | null;
+  unidades_avulsas: number | null;
+}
+
+export function isContagemAtivaLinha(value: unknown): value is ContagemAtivaLinha {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_contagem === "string" &&
+    candidate.id_contagem.length > 0 &&
+    typeof candidate.iniciado_por_nome === "string" &&
+    typeof candidate.iniciado_em === "string" &&
+    (candidate.id_item === null || typeof candidate.id_item === "string") &&
+    (candidate.pacotes_fechados === null || typeof candidate.pacotes_fechados === "number") &&
+    (candidate.unidades_avulsas === null || typeof candidate.unidades_avulsas === "number")
+  );
+}
+
 export interface ContagemPendente {
   id: string;
   submetido_por_nome: string;
