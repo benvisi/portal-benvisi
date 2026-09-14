@@ -259,6 +259,15 @@ export function getUndoButtonLabel(secondsLeft: number): string {
 }
 
 export const ADMINISTRATIVO_PAGE_TITLE = "Administrativo";
+export const ADMINISTRATIVO_PAGE_SUBTITLE = "Escolha o módulo que deseja administrar.";
+
+// Administrativo → Atendimento (currently just Política do Checklist). A
+// distinct module from the employee-facing Atendimento/Lista da Vez route —
+// same Portuguese word, different page, so it gets its own constants rather
+// than reusing ATENDIMENTO_PAGE_TITLE.
+export const ADMINISTRATIVO_ATENDIMENTO_TITLE = "Atendimento";
+export const ADMINISTRATIVO_ATENDIMENTO_CARD_DESCRIPTION =
+  "Configurações de checklist e atendimento.";
 
 // Epic 3, Milestone 3A: Conhecimento & Cultura module foundation.
 export const CONHECIMENTO_CULTURA_TITLE = "Conhecimento & Cultura";
@@ -346,6 +355,80 @@ export const ESCALA_MES_NAO_DISPONIVEL_MESSAGE = "Este mês ainda não foi publi
 // active publication is not a technical failure, so Hoje/Semana must never
 // show the "Tente novamente" error copy for it.
 export const ESCALA_NAO_PUBLICADA_MESSAGE = "Esta escala ainda não foi publicada.";
+
+// V1.1 — Admin Escala upload/publish workflow (Administrativo → Escala).
+export const ESCALA_ADMIN_TITLE = "Escala";
+export const ESCALA_ADMIN_CARD_DESCRIPTION = "Envie a planilha do mês e publique a escala.";
+export const ESCALA_ADMIN_TAB_ENVIAR_LABEL = "Enviar escala";
+export const ESCALA_ADMIN_TAB_HISTORICO_LABEL = "Histórico";
+
+export const ESCALA_ADMIN_ESCOLHER_ARQUIVO_LABEL = "Escolher arquivo .xlsx";
+export const ESCALA_ADMIN_ARQUIVO_SELECIONADO_PREFIX = "Arquivo selecionado";
+export const ESCALA_ADMIN_TROCAR_ARQUIVO_LABEL = "Escolher outro arquivo";
+export const ESCALA_ADMIN_PROCESSANDO_MESSAGE = "Lendo e validando a planilha...";
+export const ESCALA_ADMIN_PUBLICANDO_LABEL = "Publicando...";
+
+export const ESCALA_ADMIN_ESCALAS_ENCONTRADAS_LABEL = "Escalas encontradas";
+export const ESCALA_ADMIN_MES_A_PUBLICAR_LABEL = "Mês a publicar";
+export const ESCALA_ADMIN_NENHUMA_ESCALA_ENCONTRADA_MESSAGE =
+  "Nenhuma aba de escala reconhecida foi encontrada neste arquivo.";
+export const ESCALA_ADMIN_SELECIONE_MES_MESSAGE =
+  "Mais de uma escala válida foi encontrada neste arquivo. Selecione o mês que deseja publicar.";
+export const ESCALA_ADMIN_ARQUIVO_INVALIDO_MESSAGE =
+  "Não foi possível ler este arquivo. Verifique se é um .xlsx válido.";
+
+export function getEscalaAdminProntaTitle(mesRotulo: string): string {
+  return `Escala de ${mesRotulo} pronta para publicação`;
+}
+export function getEscalaAdminRevisaoTitle(mesRotulo: string): string {
+  return `Atualização da escala de ${mesRotulo}`;
+}
+export function getEscalaAdminAlteracoesLabel(quantidade: number): string {
+  return quantidade === 1
+    ? "1 alteração em relação à escala publicada."
+    : `${quantidade} alterações em relação à escala publicada.`;
+}
+export function getEscalaAdminAvisoLabel(quantidade: number): string {
+  return quantidade === 1 ? "1 aviso" : `${quantidade} avisos`;
+}
+export const ESCALA_ADMIN_NENHUM_PROBLEMA_MESSAGE = "Nenhum problema encontrado.";
+export const ESCALA_ADMIN_VER_ALTERACOES_LABEL = "Ver alterações";
+export const ESCALA_ADMIN_OCULTAR_ALTERACOES_LABEL = "Ocultar alterações";
+export const ESCALA_ADMIN_PUBLICAR_LABEL = "Publicar escala";
+export const ESCALA_ADMIN_PUBLICAR_MESMO_ASSIM_LABEL = "Publicar mesmo assim";
+
+export const ESCALA_ADMIN_SEM_ALTERACOES_TITLE = "Esta escala já está publicada.";
+export const ESCALA_ADMIN_SEM_ALTERACOES_MESSAGE =
+  "Nenhuma alteração foi encontrada em relação à versão atual.";
+
+export const ESCALA_ADMIN_BLOQUEIOS_TITLE = "Não é possível publicar esta planilha";
+export const ESCALA_ADMIN_CORRIJA_E_REENVIE_MESSAGE = "Corrija a planilha e envie novamente.";
+
+export const ESCALA_ADMIN_SUCESSO_TITLE = "Escala publicada.";
+export const ESCALA_ADMIN_SUCESSO_MESSAGE = "A nova escala já está disponível para a equipe.";
+export const ESCALA_ADMIN_ENVIAR_OUTRA_LABEL = "Enviar outra escala";
+
+export const ESCALA_ADMIN_ERRO_MESSAGE = "Não foi possível processar a planilha. Tente novamente.";
+
+export const ESCALA_ADMIN_DIFF_STATUS_LABELS: Record<"trabalho" | "folga" | "ferias", string> = {
+  trabalho: "",
+  folga: "Folga",
+  ferias: "Férias",
+};
+export const ESCALA_ADMIN_DIFF_A_CONFIRMAR_LABEL = "A confirmar";
+export const ESCALA_ADMIN_DIFF_SETA = "→";
+
+export const ESCALA_ADMIN_HISTORICO_VAZIO_MESSAGE = "Nenhuma escala publicada ainda.";
+export const ESCALA_ADMIN_HISTORICO_ERRO_MESSAGE =
+  "Não foi possível carregar o histórico de publicações. Tente novamente.";
+export const ESCALA_ADMIN_HISTORICO_ATIVA_LABEL = "Ativa";
+export const ESCALA_ADMIN_HISTORICO_SUBSTITUIDA_LABEL = "Substituída";
+export function getEscalaAdminVersaoLabel(versao: number): string {
+  return `v${versao}`;
+}
+export function getEscalaAdminPublicadoPorLabel(nome: string): string {
+  return `Publicado por ${nome}`;
+}
 
 // Epic 4, Milestone 4D: Operações → Contagem de Embalagens V1.
 export const CONTAGEM_EMBALAGENS_TITLE = "Contagem de Embalagens";

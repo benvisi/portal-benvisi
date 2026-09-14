@@ -558,6 +558,161 @@ export function isEstoqueProdutoDetalheLinha(value: unknown): value is EstoquePr
   );
 }
 
+// =============================================================================
+// Escala Admin upload (V1.1). Matches escala_processar_importacao and
+// get_escala_publicacoes_historico in
+// 20260914_004_add_escala_processar_importacao_rpc.sql /
+// 20260914_006_fix_escala_historico_stable_session_bug.sql. The raw workbook
+// status values ("trabalho"/"folga"/"ferias") are distinct from EscalaSecao
+// above — EscalaSecao is the derived display section (manha/tarde/...),
+// while these are the literal escala_entradas.status values the import RPC
+// reads/writes.
+// =============================================================================
+
+export type EscalaEntradaStatus = "trabalho" | "folga" | "ferias";
+
+const ESCALA_ENTRADA_STATUSES: readonly EscalaEntradaStatus[] = ["trabalho", "folga", "ferias"];
+
+function isEscalaEntradaStatusOrNull(value: unknown): value is EscalaEntradaStatus | null {
+  return (
+    value === null ||
+    (typeof value === "string" && ESCALA_ENTRADA_STATUSES.includes(value as EscalaEntradaStatus))
+  );
+}
+
+export type EscalaImportacaoStatus = "bloqueado" | "pronto" | "publicado";
+
+const ESCALA_IMPORTACAO_STATUSES: readonly EscalaImportacaoStatus[] = [
+  "bloqueado",
+  "pronto",
+  "publicado",
+];
+
+export interface EscalaImportacaoMensagem {
+  codigo: string;
+  mensagem: string;
+}
+
+function isEscalaImportacaoMensagem(value: unknown): value is EscalaImportacaoMensagem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.codigo === "string" && typeof candidate.mensagem === "string";
+}
+
+export type EscalaImportacaoDiffTipo = "adicionado" | "removido" | "alterado";
+
+const ESCALA_DIFF_TIPOS: readonly EscalaImportacaoDiffTipo[] = [
+  "adicionado",
+  "removido",
+  "alterado",
+];
+
+export interface EscalaImportacaoDiffItem {
+  tipo: EscalaImportacaoDiffTipo;
+  id_funcionario: string;
+  apelido: string;
+  data: string;
+  de_status: EscalaEntradaStatus | null;
+  de_hora_inicio: string | null;
+  de_hora_fim: string | null;
+  para_status: EscalaEntradaStatus | null;
+  para_hora_inicio: string | null;
+  para_hora_fim: string | null;
+}
+
+function isEscalaImportacaoDiffItem(value: unknown): value is EscalaImportacaoDiffItem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.tipo === "string" &&
+    ESCALA_DIFF_TIPOS.includes(candidate.tipo as EscalaImportacaoDiffTipo) &&
+    typeof candidate.id_funcionario === "string" &&
+    typeof candidate.apelido === "string" &&
+    typeof candidate.data === "string" &&
+    isEscalaEntradaStatusOrNull(candidate.de_status) &&
+    (candidate.de_hora_inicio === null || typeof candidate.de_hora_inicio === "string") &&
+    (candidate.de_hora_fim === null || typeof candidate.de_hora_fim === "string") &&
+    isEscalaEntradaStatusOrNull(candidate.para_status) &&
+    (candidate.para_hora_inicio === null || typeof candidate.para_hora_inicio === "string") &&
+    (candidate.para_hora_fim === null || typeof candidate.para_hora_fim === "string")
+  );
+}
+
+export interface EscalaImportacaoContadores {
+  funcionarios: number;
+  dias: number;
+  registros: number;
+}
+
+export interface EscalaImportacaoResultado {
+  status: EscalaImportacaoStatus;
+  mes_referencia: string;
+  bloqueios: EscalaImportacaoMensagem[];
+  avisos: EscalaImportacaoMensagem[];
+  diff: EscalaImportacaoDiffItem[];
+  contadores: EscalaImportacaoContadores;
+  is_revisao: boolean | null;
+  publicacao_id: string | null;
+  publicacao_anterior_id: string | null;
+}
+
+export function isEscalaImportacaoResultado(value: unknown): value is EscalaImportacaoResultado {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  if (
+    typeof candidate.status !== "string" ||
+    !ESCALA_IMPORTACAO_STATUSES.includes(candidate.status as EscalaImportacaoStatus) ||
+    typeof candidate.mes_referencia !== "string" ||
+    !Array.isArray(candidate.bloqueios) ||
+    !candidate.bloqueios.every(isEscalaImportacaoMensagem) ||
+    !Array.isArray(candidate.avisos) ||
+    !candidate.avisos.every(isEscalaImportacaoMensagem) ||
+    !Array.isArray(candidate.diff) ||
+    !candidate.diff.every(isEscalaImportacaoDiffItem) ||
+    typeof candidate.contadores !== "object" ||
+    candidate.contadores === null ||
+    (candidate.is_revisao !== null && typeof candidate.is_revisao !== "boolean") ||
+    (candidate.publicacao_id !== null && typeof candidate.publicacao_id !== "string") ||
+    (candidate.publicacao_anterior_id !== null &&
+      typeof candidate.publicacao_anterior_id !== "string")
+  ) {
+    return false;
+  }
+  const contadores = candidate.contadores as Record<string, unknown>;
+  return (
+    typeof contadores.funcionarios === "number" &&
+    typeof contadores.dias === "number" &&
+    typeof contadores.registros === "number"
+  );
+}
+
+export interface EscalaPublicacaoHistorico {
+  id: string;
+  mes_referencia: string;
+  publicado_em: string;
+  publicado_por_nome: string;
+  nome_arquivo: string | null;
+  ativa: boolean;
+  total_registros: number;
+  versao: number;
+}
+
+export function isEscalaPublicacaoHistorico(value: unknown): value is EscalaPublicacaoHistorico {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.mes_referencia === "string" &&
+    typeof candidate.publicado_em === "string" &&
+    typeof candidate.publicado_por_nome === "string" &&
+    (candidate.nome_arquivo === null || typeof candidate.nome_arquivo === "string") &&
+    typeof candidate.ativa === "boolean" &&
+    typeof candidate.total_registros === "number" &&
+    typeof candidate.versao === "number"
+  );
+}
+
 // get_estoque_freshness: zero or one row. The timestamp is the completion of
 // the latest successful complete inventory sync (a failed/in-progress
 // execution is invisible to this RPC by construction).

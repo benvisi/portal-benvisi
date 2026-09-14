@@ -13,15 +13,17 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AtendimentoRouteImport } from './routes/atendimento'
-import { Route as AdministrativoRouteImport } from './routes/administrativo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OperacoesIndexRouteImport } from './routes/operacoes/index'
 import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
+import { Route as AdministrativoIndexRouteImport } from './routes/administrativo/index'
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
 import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
+import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
+import { Route as AdministrativoAtendimentoRouteImport } from './routes/administrativo/atendimento'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -43,11 +45,6 @@ const AtendimentoRoute = AtendimentoRouteImport.update({
   path: '/atendimento',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdministrativoRoute = AdministrativoRouteImport.update({
-  id: '/administrativo',
-  path: '/administrativo',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,6 +61,11 @@ const ConhecimentoCulturaIndexRoute =
     path: '/conhecimento-cultura/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdministrativoIndexRoute = AdministrativoIndexRouteImport.update({
+  id: '/administrativo/',
+  path: '/administrativo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperacoesMensagensWhatsappRoute =
   OperacoesMensagensWhatsappRouteImport.update({
     id: '/operacoes/mensagens-whatsapp',
@@ -93,50 +95,67 @@ const ConhecimentoCulturaPrincipiosRoute =
     path: '/conhecimento-cultura/principios',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdministrativoEscalaRoute = AdministrativoEscalaRouteImport.update({
+  id: '/administrativo/escala',
+  path: '/administrativo/escala',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministrativoAtendimentoRoute =
+  AdministrativoAtendimentoRouteImport.update({
+    id: '/administrativo/atendimento',
+    path: '/administrativo/atendimento',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
+  '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
+  '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
+  '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
+  '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/administrativo': typeof AdministrativoIndexRoute
   '/conhecimento-cultura': typeof ConhecimentoCulturaIndexRoute
   '/operacoes': typeof OperacoesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/administrativo': typeof AdministrativoRoute
   '/atendimento': typeof AtendimentoRoute
   '/dashboard': typeof DashboardRoute
   '/estoque': typeof EstoqueRoute
   '/termos': typeof TermosRoute
+  '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
+  '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
 }
@@ -144,62 +163,70 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/administrativo'
     | '/atendimento'
     | '/dashboard'
     | '/estoque'
     | '/termos'
+    | '/administrativo/atendimento'
+    | '/administrativo/escala'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/administrativo'
     | '/atendimento'
     | '/dashboard'
     | '/estoque'
     | '/termos'
+    | '/administrativo/atendimento'
+    | '/administrativo/escala'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/administrativo'
     | '/conhecimento-cultura'
     | '/operacoes'
   id:
     | '__root__'
     | '/'
-    | '/administrativo'
     | '/atendimento'
     | '/dashboard'
     | '/estoque'
     | '/termos'
+    | '/administrativo/atendimento'
+    | '/administrativo/escala'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdministrativoRoute: typeof AdministrativoRoute
   AtendimentoRoute: typeof AtendimentoRoute
   DashboardRoute: typeof DashboardRoute
   EstoqueRoute: typeof EstoqueRoute
   TermosRoute: typeof TermosRoute
+  AdministrativoAtendimentoRoute: typeof AdministrativoAtendimentoRoute
+  AdministrativoEscalaRoute: typeof AdministrativoEscalaRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
+  AdministrativoIndexRoute: typeof AdministrativoIndexRoute
   ConhecimentoCulturaIndexRoute: typeof ConhecimentoCulturaIndexRoute
   OperacoesIndexRoute: typeof OperacoesIndexRoute
 }
@@ -234,13 +261,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtendimentoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/administrativo': {
-      id: '/administrativo'
-      path: '/administrativo'
-      fullPath: '/administrativo'
-      preLoaderRoute: typeof AdministrativoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -260,6 +280,13 @@ declare module '@tanstack/react-router' {
       path: '/conhecimento-cultura'
       fullPath: '/conhecimento-cultura/'
       preLoaderRoute: typeof ConhecimentoCulturaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administrativo/': {
+      id: '/administrativo/'
+      path: '/administrativo'
+      fullPath: '/administrativo/'
+      preLoaderRoute: typeof AdministrativoIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/operacoes/mensagens-whatsapp': {
@@ -297,21 +324,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConhecimentoCulturaPrincipiosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/administrativo/escala': {
+      id: '/administrativo/escala'
+      path: '/administrativo/escala'
+      fullPath: '/administrativo/escala'
+      preLoaderRoute: typeof AdministrativoEscalaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administrativo/atendimento': {
+      id: '/administrativo/atendimento'
+      path: '/administrativo/atendimento'
+      fullPath: '/administrativo/atendimento'
+      preLoaderRoute: typeof AdministrativoAtendimentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdministrativoRoute: AdministrativoRoute,
   AtendimentoRoute: AtendimentoRoute,
   DashboardRoute: DashboardRoute,
   EstoqueRoute: EstoqueRoute,
   TermosRoute: TermosRoute,
+  AdministrativoAtendimentoRoute: AdministrativoAtendimentoRoute,
+  AdministrativoEscalaRoute: AdministrativoEscalaRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,
+  AdministrativoIndexRoute: AdministrativoIndexRoute,
   ConhecimentoCulturaIndexRoute: ConhecimentoCulturaIndexRoute,
   OperacoesIndexRoute: OperacoesIndexRoute,
 }
