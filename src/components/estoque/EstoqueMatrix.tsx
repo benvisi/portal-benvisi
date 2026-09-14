@@ -1,5 +1,9 @@
-import { ESTOQUE_COR_COLUNA_LABEL } from "@/config/constants";
-import type { EstoqueMatriz } from "@/lib/estoque";
+import {
+  ESTOQUE_COR_COLUNA_LABEL,
+  ESTOQUE_PRECO_AUSENTE_LABEL,
+  ESTOQUE_PRECO_COLUNA_LABEL,
+} from "@/config/constants";
+import { formatEstoquePreco, type EstoqueMatriz } from "@/lib/estoque";
 import { cn } from "@/lib/utils";
 
 interface EstoqueMatrixProps {
@@ -32,6 +36,13 @@ interface EstoqueMatrixProps {
  *   page never overflows sideways; the colour column and the size header stay
  *   pinned. `border-separate` keeps each cell's gridlines attached to it when
  *   it is the sticky cell (a plain `border-collapse` table drops them there).
+ * - Price V1: one Preço column, right after Cor, holding the full/list price
+ *   for that colour (never per-size). Only the Cor column is sticky — a
+ *   second sticky column adds real width/z-index complexity on narrow
+ *   viewports for one column's worth of benefit, so Preço scrolls with the
+ *   size grade instead (locked decision: keep it simple). A missing price
+ *   shows the neutral ESTOQUE_PRECO_AUSENTE_LABEL, never a manufactured
+ *   value.
  */
 export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
   return (
@@ -44,6 +55,12 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
               className="sticky left-0 top-0 z-30 min-w-[8.5rem] max-w-[12rem] border-b-2 border-r-2 border-brand-foreground/15 bg-brand px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-brand-foreground"
             >
               {ESTOQUE_COR_COLUNA_LABEL}
+            </th>
+            <th
+              scope="col"
+              className="sticky top-0 z-20 min-w-[5rem] border-b-2 border-r-2 border-brand-foreground/15 bg-brand px-2 py-2 text-center text-xs font-semibold text-brand-foreground"
+            >
+              {ESTOQUE_PRECO_COLUNA_LABEL}
             </th>
             {matriz.tamanhos.map((tamanho) => (
               <th
@@ -75,6 +92,14 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
                   <span className="font-semibold text-foreground">{cor.codigo}</span>{" "}
                   <span className="text-xs text-muted-foreground">{cor.nome}</span>
                 </th>
+                <td
+                  className={cn(
+                    "border-b border-r-2 border-border px-2 py-2 text-center tabular-nums text-foreground",
+                    stripe,
+                  )}
+                >
+                  {cor.preco !== null ? formatEstoquePreco(cor.preco) : ESTOQUE_PRECO_AUSENTE_LABEL}
+                </td>
                 {matriz.tamanhos.map((tamanho) => {
                   const quantidade = cor.quantidades.get(tamanho.key) ?? 0;
                   return (

@@ -515,6 +515,12 @@ export function isEstoqueProdutoBusca(value: unknown): value is EstoqueProdutoBu
 // exact produto, restricted to the labelled grade (tamanho_venda is never
 // null here). Zero-quantity sizes are included — the UI renders them blank.
 // tamanho_key is internal ordering metadata only and is never shown.
+//
+// Milestone Price V1 (20260914_002): `preco` is the full/list price for this
+// produto+cor (never per-size — repeated on every size row of the same
+// colour, same precedent as desc_produto/cor_nome_portal). null means no R3
+// price was found for this produto/cor; the UI shows "—", never a
+// manufactured value.
 export interface EstoqueProdutoDetalheLinha {
   produto: string;
   desc_produto: string | null;
@@ -526,6 +532,7 @@ export interface EstoqueProdutoDetalheLinha {
   tamanho_key: number;
   tamanho_venda: string;
   quantidade_estoque: number;
+  preco: number | null;
   sync_concluido_em: string;
 }
 
@@ -546,6 +553,7 @@ export function isEstoqueProdutoDetalheLinha(value: unknown): value is EstoquePr
     typeof candidate.tamanho_venda === "string" &&
     candidate.tamanho_venda.length > 0 &&
     typeof candidate.quantidade_estoque === "number" &&
+    (candidate.preco === null || typeof candidate.preco === "number") &&
     typeof candidate.sync_concluido_em === "string"
   );
 }

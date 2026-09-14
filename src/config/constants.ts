@@ -481,6 +481,13 @@ export const ESTOQUE_FRESHNESS_ERRO_MESSAGE =
 export const ESTOQUE_COR_COLUNA_LABEL = "Cor";
 export const ESTOQUE_COR_NAO_MAPEADA_LABEL = "Cor não mapeada";
 
+// Price V1 — employee-facing label is deliberately just "Preço", never the
+// internal Linx/pricing terminology (R3, tabela de preço, PRECO1, "preço
+// cheio oficial"). ESTOQUE_PRECO_AUSENTE_LABEL is shown when a produto/cor
+// has no matching R3 price — never a manufactured "R$ 0".
+export const ESTOQUE_PRECO_COLUNA_LABEL = "Preço";
+export const ESTOQUE_PRECO_AUSENTE_LABEL = "—";
+
 // "Estoque atualizado em DD/MM/YYYY às HH:mm" — full Manaus date + time of
 // the latest successful complete inventory sync.
 export function getEstoqueAtualizadoLabel(dataHora: string): string {

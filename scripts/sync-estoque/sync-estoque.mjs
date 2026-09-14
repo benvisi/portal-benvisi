@@ -23,6 +23,17 @@
 //   8. estoque_aplicar_sync applies the whole delta atomically in one
 //      Postgres transaction — Portal never observes a half-applied state.
 //
+// Price V1 adds a second, independent extraction/diff/stage pass in the same
+// run (scripts/sync-estoque/estoque-price-diff.mjs): produto+cor_codigo ->
+// full/list price (Linx R3, PRODUTOS_PRECO_COR.PRECO1), diffed against the
+// compact estoque_precos_atual current-state table and staged into
+// estoque_staging_precos. Deliberately NOT keyed off the inventory group
+// hash — a price-only change (quantities unchanged) must still publish, so
+// it cannot depend on the inventory diff finding anything to stage. Both
+// staged deltas are applied by the SAME estoque_aplicar_sync transaction, so
+// a failure anywhere in the price read/validate/stage path aborts the whole
+// run (via markErro) before either delta is ever applied — no partial state.
+//
 // Secrets come only from scripts/sync-estoque/.env (gitignored). Nothing is
 // ever logged that could expose a credential.
 // =============================================================================
@@ -32,6 +43,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import process from "node:process";
 import { hashAllGroups, diffGroups, groupKey } from "./estoque-hash.mjs";
+import {
+  buildPriceMap,
+  diffPrices,
+  finalizePriceRow,
+  normalizePriceExtraction,
+  validatePriceExtraction,
+} from "./estoque-price-diff.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CHUNK_SIZE = 1000;
@@ -44,6 +62,14 @@ const STALE_CLAIM_MINUTES = 30; // locked (V2 brief section 6) — a normal sync
 // beyond +/-15% just logs a WARNING; assortment/grade changes over time are
 // expected and must not be rejected.
 const RECONCILE_BASELINE = 15506;
+
+// Benvisi standard/list-price table (Price V1 milestone brief) — "PRECO
+// CHEIO OFICIAL R3", validated against TABELAS_PRECO / TABELAS_PRECO_FILIAL
+// and historical LOJA_VENDA usage for the Manaus store. A business constant,
+// not a secret — kept here (not in .env) so it cannot be silently
+// misconfigured per-machine; passed as a bind parameter to
+// linx-price-query.sql, never scattered as a literal elsewhere.
+const LINX_PRECO_TABELA = "R3";
 
 // -----------------------------------------------------------------------------
 // CLI
@@ -371,6 +397,36 @@ async function extractFromLinx(sql) {
   return result.recordset ?? [];
 }
 
+async function extractPricesFromLinx(sql) {
+  const linx = getLinxConfig();
+  const query = readFileSync(join(HERE, "linx-price-query.sql"), "utf8");
+  log(
+    `connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} for R3 prices ...`,
+  );
+  const pool = await sql.connect({
+    server: linx.server,
+    port: linx.port,
+    database: linx.database,
+    user: linx.user,
+    password: linx.password,
+    options: {
+      encrypt: linx.encrypt,
+      trustServerCertificate: true,
+      enableArithAbort: true,
+    },
+    requestTimeout: 180_000,
+    pool: { max: 1 },
+  });
+
+  const result = await pool
+    .request()
+    .input("tabela_preco", sql.VarChar, LINX_PRECO_TABELA)
+    .input("filial", sql.VarChar, linx.filial)
+    .query(query);
+  await pool.close();
+  return result.recordset ?? [];
+}
+
 // ---------------------------------------------------------------------------
 // Supabase RPC / table helpers
 // ---------------------------------------------------------------------------
@@ -403,6 +459,26 @@ async function fetchCurrentHashes(supabase) {
       .order("cor_codigo", { ascending: true })
       .range(from, from + READ_PAGE_SIZE - 1);
     if (error) throw new Error(`could not read estoque_atual_grupos: ${error.message}`);
+    for (const row of data) {
+      map.set(groupKey(row.produto, row.cor_codigo), row);
+    }
+    if (data.length < READ_PAGE_SIZE) break;
+    from += READ_PAGE_SIZE;
+  }
+  return map;
+}
+
+async function fetchCurrentPrices(supabase) {
+  const map = new Map();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("estoque_precos_atual")
+      .select("produto,cor_codigo,preco")
+      .order("produto", { ascending: true })
+      .order("cor_codigo", { ascending: true })
+      .range(from, from + READ_PAGE_SIZE - 1);
+    if (error) throw new Error(`could not read estoque_precos_atual: ${error.message}`);
     for (const row of data) {
       map.set(groupKey(row.produto, row.cor_codigo), row);
     }
@@ -483,6 +559,48 @@ async function stageChanges(supabase, syncId, diff) {
   );
 }
 
+async function stagePrices(supabase, syncId, diff) {
+  const rows = [];
+  for (const g of diff.novo) {
+    rows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "novo",
+      preco: g.preco,
+    });
+  }
+  for (const g of diff.alterado) {
+    rows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "alterado",
+      preco: g.preco,
+    });
+  }
+  for (const g of diff.removido) {
+    rows.push({
+      sync_id: syncId,
+      produto: g.produto,
+      cor_codigo: g.cor_codigo,
+      acao: "removido",
+      preco: null,
+    });
+  }
+
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase.from("estoque_staging_precos").insert(chunk);
+    if (error) throw new Error(`price staging insert failed at offset ${i}: ${error.message}`);
+  }
+
+  log(
+    `staged ${rows.length} price row(s) ` +
+      `(${diff.novo.length} novo, ${diff.alterado.length} alterado, ${diff.removido.length} removido)`,
+  );
+}
+
 async function applySync(supabase, params) {
   const { data, error } = await supabase.rpc("estoque_aplicar_sync", {
     p_sync_id: params.syncId,
@@ -493,6 +611,9 @@ async function applySync(supabase, params) {
     p_avisos: params.avisos,
     p_allow_large_removal: params.allowLargeRemoval,
     p_override_reason: params.overrideReason,
+    p_preco_rows_lidos: params.precoRowsLidos,
+    p_preco_produto_cor_count: params.precoProdutoCorCount,
+    p_preco_sem_correspondencia: params.precoSemCorrespondencia,
   });
   if (error) throw new Error(`estoque_aplicar_sync failed: ${error.message}`);
   return Array.isArray(data) ? data[0] : data;
@@ -548,6 +669,44 @@ function printDiffSummary({
   log("--------------------");
 }
 
+function printPriceDiffSummary({
+  rawRows,
+  produtoCores,
+  currentCount,
+  incomingCount,
+  diff,
+  incomingInventoryGroups,
+  semCorrespondencia,
+  warningsCount,
+}) {
+  log("--- price diff summary (R3) ---");
+  log(`price raw rows:             ${rawRows}`);
+  log(`price produto+cor rows:     ${produtoCores}`);
+  log(`current prices:             ${currentCount}`);
+  log(`incoming prices:            ${incomingCount}`);
+  log(`new prices:                 ${diff.novo.length}`);
+  log(`changed prices:             ${diff.alterado.length}`);
+  log(`removed prices:             ${diff.removido.length}`);
+  log(`unchanged prices:           ${diff.inalterado}`);
+  log(`inventory groups w/o price: ${semCorrespondencia} of ${incomingInventoryGroups}`);
+  log(`price warnings:             ${warningsCount}`);
+  log("-------------------------------");
+}
+
+/**
+ * Shared price extraction/normalize/validate pass — identical for dry-run and
+ * real runs. Returns the raw count, normalized rows/warnings and validation
+ * result; the caller decides how to report/abort, matching the inline style
+ * already used for the inventory extraction in runDryRun/runReal.
+ */
+async function extractAndValidatePrices(sql) {
+  const rawPriceRows = await extractPricesFromLinx(sql);
+  const finalizedPriceRows = rawPriceRows.map(finalizePriceRow);
+  const normPrice = normalizePriceExtraction(finalizedPriceRows);
+  const priceValidation = validatePriceExtraction(normPrice.rows);
+  return { rawPriceRows, normPrice, priceValidation };
+}
+
 // ---------------------------------------------------------------------------
 async function runDryRun(supabase, sql) {
   const rawRows = await extractFromLinx(sql);
@@ -601,6 +760,45 @@ async function runDryRun(supabase, sql) {
       `NOTE: a REAL run right now would succeed but emit a high-visibility removal warning (5-10% band).`,
     );
   }
+
+  const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sql);
+  log(`price extraction: ${rawPriceRows.length} raw R3 row(s)`);
+  if (normPrice.excludedBlankKey > 0) {
+    log(`excluded ${normPrice.excludedBlankKey} R3 row(s) with a blank produto/cor_codigo`);
+  }
+  if (normPrice.excludedNonPositive > 0) {
+    log(
+      `excluded ${normPrice.excludedNonPositive} non-positive R3 price row(s) (treated as missing)`,
+    );
+  }
+  for (const w of normPrice.warnings) log(`WARNING: ${w}`);
+  log("price extraction stats:", JSON.stringify(priceValidation.stats));
+  if (!priceValidation.ok) {
+    console.error(
+      `\nDRY RUN — price local validation FAILED:\n  - ${priceValidation.problems.join("\n  - ")}\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  log("price local validation: PASS");
+
+  const incomingPrices = buildPriceMap(normPrice.rows);
+  const currentPrices = await fetchCurrentPrices(supabase);
+  const priceDiff = diffPrices(incomingPrices, currentPrices);
+  const semCorrespondencia = [...incomingGroups.keys()].filter(
+    (k) => !incomingPrices.has(k),
+  ).length;
+
+  printPriceDiffSummary({
+    rawRows: rawPriceRows.length,
+    produtoCores: normPrice.rows.length,
+    currentCount: currentPrices.size,
+    incomingCount: incomingPrices.size,
+    diff: priceDiff,
+    incomingInventoryGroups: incomingGroups.size,
+    semCorrespondencia,
+    warningsCount: normPrice.warnings.length,
+  });
 
   log("dry run complete — nothing staged, claimed, or applied.");
 }
@@ -691,7 +889,58 @@ async function runReal(supabase, sql) {
       );
     }
 
+    // Price extraction/validation happens BEFORE any staging — a failed price
+    // read/validate aborts the whole run (markErro below) so neither the
+    // inventory delta nor the price delta is ever staged/applied. This is
+    // what keeps "a failed price read/apply must not silently publish an
+    // inconsistent partial state" true without needing a separate guardrail.
+    const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sql);
+    log(`price extraction: ${rawPriceRows.length} raw R3 row(s)`);
+    if (normPrice.excludedBlankKey > 0) {
+      log(`excluded ${normPrice.excludedBlankKey} R3 row(s) with a blank produto/cor_codigo`);
+    }
+    if (normPrice.excludedNonPositive > 0) {
+      log(
+        `excluded ${normPrice.excludedNonPositive} non-positive R3 price row(s) (treated as missing)`,
+      );
+    }
+    for (const w of normPrice.warnings) log(`WARNING: ${w}`);
+    log("price extraction stats:", JSON.stringify(priceValidation.stats));
+    if (!priceValidation.ok) {
+      const msg = `price local validation failed:\n  - ${priceValidation.problems.join("\n  - ")}`;
+      await markErro(supabase, syncId, msg, "PRICE_EXTRACTION_FATAL");
+      console.error(`\nSYNC FAILED:\n${msg}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    log("price local validation: PASS");
+
+    const incomingPrices = buildPriceMap(normPrice.rows);
+    const currentPrices = await fetchCurrentPrices(supabase);
+    const priceDiff = diffPrices(incomingPrices, currentPrices);
+    const semCorrespondencia = [...incomingGroups.keys()].filter(
+      (k) => !incomingPrices.has(k),
+    ).length;
+
+    printPriceDiffSummary({
+      rawRows: rawPriceRows.length,
+      produtoCores: normPrice.rows.length,
+      currentCount: currentPrices.size,
+      incomingCount: incomingPrices.size,
+      diff: priceDiff,
+      incomingInventoryGroups: incomingGroups.size,
+      semCorrespondencia,
+      warningsCount: normPrice.warnings.length,
+    });
+    if (semCorrespondencia > 0) {
+      log(
+        `WARNING: ${semCorrespondencia} of ${incomingGroups.size} current inventory produto+cor group(s) ` +
+          `have no matching R3 price — Consulta will show "—" for those. Not blocking.`,
+      );
+    }
+
     await stageChanges(supabase, syncId, diff);
+    await stagePrices(supabase, syncId, priceDiff);
 
     const produtoCount = new Set(canonicalRows.map((r) => r.produto)).size;
     const produtoCorCount = incomingGroups.size;
@@ -705,6 +954,9 @@ async function runReal(supabase, sql) {
       avisos: norm.warnings,
       allowLargeRemoval: ALLOW_LARGE_REMOVAL,
       overrideReason: ALLOW_LARGE_REMOVAL ? OVERRIDE_REASON : null,
+      precoRowsLidos: rawPriceRows.length,
+      precoProdutoCorCount: incomingPrices.size,
+      precoSemCorrespondencia: semCorrespondencia,
     });
 
     if (result.status === "sucesso") {
@@ -712,6 +964,9 @@ async function runReal(supabase, sql) {
         `SUCCESS — sync ${syncId}: novo=${result.grupos_novos} alterado=${result.grupos_alterados} ` +
           `removido=${result.grupos_removidos} inalterado=${result.grupos_inalterados} ` +
           `linhas_escritas=${result.linhas_escritas} remocao=${result.remocao_percentual}% ` +
+          `preco_novo=${result.preco_novos} preco_alterado=${result.preco_alterados} ` +
+          `preco_removido=${result.preco_removidos} preco_inalterado=${result.preco_inalterados} ` +
+          `preco_linhas_escritas=${result.preco_linhas_escritas} ` +
           `freshness=${result.concluido_em}` +
           (norm.warnings.length ? ` — ${norm.warnings.length} warning(s)` : ""),
       );

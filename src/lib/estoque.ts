@@ -34,6 +34,11 @@ export interface EstoqueCorLinha {
   nome: string;
   /** tamanho_key -> quantidade_estoque (only entries the snapshot holds). */
   quantidades: Map<number, number>;
+  /**
+   * Full/list price for this produto+colour (never per-size). null means no
+   * R3 price was found — rendered as "—", never a manufactured value.
+   */
+  preco: number | null;
 }
 
 export interface EstoqueMatriz {
@@ -72,6 +77,7 @@ export function buildEstoqueMatriz(
         codigo: linha.cor_codigo,
         nome: corNomeExibicao(linha.cor_nome_portal),
         quantidades: new Map<number, number>(),
+        preco: linha.preco,
       };
       coresPorCodigo.set(linha.cor_codigo, cor);
     }
@@ -114,4 +120,22 @@ export function formatEstoqueFreshness(iso: string): string {
     hour12: false,
   }).format(date);
   return `${data} às ${hora}`;
+}
+
+/**
+ * "R$ 649" for a whole-real price, "R$ 399,90" when it actually carries
+ * cents — never "R$ 399,9" (Intl's maximumFractionDigits alone renders a
+ * lone trailing digit for values like 399.9, which reads as broken currency
+ * formatting). Whole reais are shown without ",00" noise per the locked UI
+ * style; today's live R3 data has no fractional prices, but the column
+ * numerically supports them (numeric(10,2)).
+ */
+export function formatEstoquePreco(preco: number): string {
+  const fractionDigits = Number.isInteger(preco) ? 0 : 2;
+  return new Intl.NumberFormat(LOCALE_PT_BR, {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(preco);
 }

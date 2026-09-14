@@ -99,3 +99,30 @@ negative), so dropping them loses no stock information.
 `~15 506` is a **soft** reconciliation figure: the script only logs a WARNING
 past ±15 %. Assortment and grade changes move it over time and must not be
 rejected; `max_tamanho_key` is reported per run and is data, not a cap.
+
+## Price V1
+
+Each run also extracts and publishes the full/list price (Linx R3,
+`PRODUTOS_PRECO_COR.PRECO1`) for every produto+cor currently in Manaus
+inventory, via [`linx-price-query.sql`](./linx-price-query.sql) and
+[`estoque-price-diff.mjs`](./estoque-price-diff.mjs). This is a second,
+independent extraction/diff/stage pass in the **same** sync execution —
+price can change even when quantities do not, so it is never gated on the
+inventory diff finding anything to stage. Both deltas are staged before
+either is applied, and `estoque_aplicar_sync` applies both in the same
+Postgres transaction: a failed price read/validate aborts the whole run
+(nothing staged or applied), and a genuinely unexpected error during apply
+rolls both deltas back together.
+
+- Price grain is produto+cor only (never per-size) — stored in
+  `estoque_precos_atual`, kept as compact as `estoque_atual_grupos` by
+  scoping the R3 extraction to the same `FILIAL = @filial AND ESTOQUE > 0`
+  qualifying set as the inventory query, not the whole nationwide R3 table
+  (140 554 rows) it lives in.
+- `PRECO1 <= 0` and rows with a blank produto/cor_codigo (a handful of R3
+  placeholder rows, verified live) are excluded before staging — treated as
+  "no price", never shown as `R$ 0`.
+- A produto/cor with no R3 price still shows its inventory row; Consulta
+  renders `—` for the price. Coverage is logged every run
+  (`preco_sem_correspondencia` on `estoque_sync_execucoes`) but never blocks
+  the sync.

@@ -13,6 +13,13 @@
 
 import { hashAllGroups, diffGroups, hashGroup, groupKey } from "./estoque-hash.mjs";
 import { normalizeExtraction, finalizeCanonicalRow } from "./sync-estoque.mjs";
+import {
+  buildPriceMap,
+  diffPrices,
+  finalizePriceRow,
+  normalizePriceExtraction,
+  validatePriceExtraction,
+} from "./estoque-price-diff.mjs";
 
 let failures = 0;
 let passed = 0;
@@ -305,6 +312,142 @@ console.log("estoque-hash.mjs / diff engine");
   check(
     "finalizeCanonicalRow coerces tamanho_key/quantidade_estoque to numbers",
     finalized.tamanho_key === 1 && finalized.quantidade_estoque === 2,
+  );
+}
+
+console.log("\nestoque-price-diff.mjs (Price V1)");
+
+// 13. zero change -> everything inalterado
+{
+  const current = buildPriceMap([
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "TH6709-23", cor_codigo: "QPT", preco: 399 },
+  ]);
+  const incoming = buildPriceMap([
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "TH6709-23", cor_codigo: "QPT", preco: 399 },
+  ]);
+  const diff = diffPrices(incoming, current);
+  check(
+    "zero price change -> no novo/alterado/removido, 2 inalterado",
+    diff.novo.length === 0 &&
+      diff.alterado.length === 0 &&
+      diff.removido.length === 0 &&
+      diff.inalterado === 2,
+  );
+}
+
+// 14. price-only change (quantities untouched by this engine) -> alterado
+{
+  const current = buildPriceMap([{ produto: "TH6709-23", cor_codigo: "001", preco: 429 }]);
+  const incoming = buildPriceMap([{ produto: "TH6709-23", cor_codigo: "001", preco: 449 }]);
+  const diff = diffPrices(incoming, current);
+  check(
+    "price change -> alterado, carries the NEW preco",
+    diff.alterado.length === 1 && diff.alterado[0].preco === 449,
+  );
+}
+
+// 15. new produto+cor price -> novo
+{
+  const current = buildPriceMap([{ produto: "TH6709-23", cor_codigo: "001", preco: 429 }]);
+  const incoming = buildPriceMap([
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "TH6709-23", cor_codigo: "031", preco: 429 },
+  ]);
+  const diff = diffPrices(incoming, current);
+  check(
+    "new produto+cor -> novo, existing inalterado",
+    diff.novo.length === 1 && diff.novo[0].cor_codigo === "031" && diff.inalterado === 1,
+  );
+}
+
+// 16. produto+cor price gone from R3 -> removido
+{
+  const current = buildPriceMap([
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "TH6709-23", cor_codigo: "031", preco: 429 },
+  ]);
+  const incoming = buildPriceMap([{ produto: "TH6709-23", cor_codigo: "001", preco: 429 }]);
+  const diff = diffPrices(incoming, current);
+  check(
+    "price no longer in R3 -> removido, other inalterado",
+    diff.removido.length === 1 &&
+      diff.removido[0].produto === "TH6709-23" &&
+      diff.removido[0].cor_codigo === "031" &&
+      diff.inalterado === 1,
+  );
+}
+
+// 17. non-positive PRECO1 (0 or negative) is excluded, never invented
+{
+  const rows = [
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "ABC1234-99", cor_codigo: "LVH", preco: 0 },
+  ].map((r) => finalizePriceRow(r));
+  const norm = normalizePriceExtraction(rows);
+  check(
+    "PRECO1 = 0 -> excluded, treated as missing (never shown as R$ 0)",
+    norm.excludedNonPositive === 1 && norm.rows.length === 1 && norm.rows[0].cor_codigo === "001",
+  );
+  check("exclusion is warned", norm.warnings.length === 1);
+}
+
+// 17b. blank cor_codigo (R3 placeholder rows, verified live 2026-09-14) is
+//      excluded — it can never match a real inventory group.
+{
+  const rows = [
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "15SPM1611", cor_codigo: "", preco: 1 },
+  ].map((r) => finalizePriceRow(r));
+  const norm = normalizePriceExtraction(rows);
+  check(
+    "blank cor_codigo -> excluded, never blocks the run",
+    norm.excludedBlankKey === 1 && norm.rows.length === 1 && norm.rows[0].cor_codigo === "001",
+  );
+}
+
+// 18. duplicate (produto, cor_codigo) in R3 is FATAL, not silently deduped
+{
+  const rows = [
+    { produto: "TH6709-23", cor_codigo: "001", preco: 429 },
+    { produto: "TH6709-23", cor_codigo: "001", preco: 449 },
+  ];
+  const v = validatePriceExtraction(rows);
+  check(
+    "duplicate (produto, cor_codigo) price row -> validation fails",
+    !v.ok && v.problems.some((p) => p.includes("duplicate")),
+  );
+}
+
+// 19. empty extraction is FATAL (same rule as inventory's own zero-row abort)
+{
+  const v = validatePriceExtraction([]);
+  check(
+    "zero price rows -> validation fails",
+    !v.ok && v.problems.some((p) => p.includes("0 rows")),
+  );
+}
+
+// 20. finalizePriceRow trims and coerces preco to a number
+{
+  const finalized = finalizePriceRow({
+    produto: " TH6709-23 ",
+    cor_codigo: " 001 ",
+    preco: "429.00",
+  });
+  check(
+    "finalizePriceRow trims produto/cor_codigo and coerces preco",
+    finalized.produto === "TH6709-23" && finalized.cor_codigo === "001" && finalized.preco === 429,
+  );
+}
+
+// 21. buildPriceMap uses the same groupKey format as estoque-hash.mjs
+{
+  const map = buildPriceMap([{ produto: "TH6709-23", cor_codigo: "001", preco: 429 }]);
+  check(
+    "buildPriceMap key matches groupKey(produto, cor_codigo)",
+    map.has(groupKey("TH6709-23", "001")),
   );
 }
 

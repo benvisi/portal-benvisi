@@ -1133,7 +1133,7 @@ Do not add it to the MVP unless specifically approved.
 
 ## 9.1 Status
 
-### APPROVED — BACKEND V1 IMPLEMENTED, EMPLOYEE UI IS THE NEXT MILESTONE
+### APPROVED — BACKEND V1/V2, EMPLOYEE UI V1, AND PRICE V1 IMPLEMENTED
 
 **Consulta de Estoque** is a dedicated employee-facing module.
 
@@ -1145,8 +1145,9 @@ Its purpose is fast product availability lookup while the employee remains focus
 
 - **Implemented and validated:** the Supabase inventory schema (`estoque_sync_execucoes`, `estoque_snapshot`, `estoque_cores_mapeamento`), the 419-row curated colour dictionary, the employee-facing read RPCs (`buscar_produtos_estoque`, `get_produto_estoque_detalhe`, `get_estoque_freshness`), and the manual Linx → Supabase sync script (`scripts/sync-estoque/`). **A real Linx → Supabase publish has run** (corrected applicable-grade snapshot, 2026-09-10: ~15.5k rows across 1 371 produto/cores, `status = sucesso`, 100 % colour-map coverage). See section 9.8 for the locked architecture and Milestone 4E (section 16.2).
 - **Superseded (Milestone 4F, V2 — current production model):** the sync now maintains a current-state table (`estoque_atual`) instead of inserting a full snapshot every run; identical RPC signatures/results, zero employee-facing change. `estoque_snapshot` and `estoque_sync_atual()` were retired and dropped 2026-09-11 (`chore/estoque-v1-cleanup`) once a live dependency audit confirmed nothing still referenced them. Linx remains the source of truth; the lightweight `estoque_sync_execucoes` sync-execution history is retained unchanged.
-- **Not built:** the Consulta de Estoque **frontend** — product search screen, colour/size matrix, freshness banner, availability treatments (sections 9.3–9.11). That is the next milestone.
-- **Still deferred from the Sep 16 critical path:** barcode / SKU scanning and lookup (section 9.4) — no barcode work in Backend V1; `PRODUTOS_BARRA` is intentionally not joined by the sync.
+- **Implemented (Consulta de Estoque UI V1, browser-QA'd 2026-09-10):** the employee-facing frontend — product search screen, colour × size matrix, freshness banner (sections 9.3–9.11) — is live at `/estoque`. (An earlier revision of this status section described the frontend as not-yet-built; that was stale relative to the actual UI V1 QA already recorded in section 9.12 and has been corrected here.)
+- **Implemented (Milestone 4G — Price V1, 2026-09-14):** the stock matrix now shows one full/list price per product+colour (`Preço` column, right after `Cor`), sourced from Linx R3. See section 9.8 for the data model and Milestone 4G (section 16.2) for the full scope/QA record.
+- **Still deferred from the Sep 16 critical path:** barcode / SKU scanning and lookup (section 9.4) — no barcode work yet; `PRODUTOS_BARRA` is intentionally not joined by the inventory sync.
 
 ---
 
@@ -1280,7 +1281,7 @@ The product requirement is the ability to understand available **colors and size
 
 ## 9.8 Data Source
 
-### APPROVED — SCHEMA LOCKED (Milestone 4E, superseded by V2 storage in Milestone 4F)
+### APPROVED — SCHEMA LOCKED (Milestone 4E, superseded by V2 storage in Milestone 4F, price added in Milestone 4G)
 
 Primary Portal Benvisi inventory source: the `estoque_*` tables in Supabase,
 populated by a periodic synchronization from Linx (Microsoft SQL Server,
@@ -1323,6 +1324,16 @@ SECURITY DEFINER read RPCs, same pattern as every other Portal module):
   (e.g. `166 · Azul-marinho`). A stock colour with no mapping returns
   `cor_nome_portal = null`, never the Linx source description. Joined at
   read time only — a curated mapping edit never touches inventory rows.
+- **`estoque_precos_atual`** (Milestone 4G — Price V1) — the current
+  full/list price, ONE row per `produto + cor_codigo` (no `tamanho_key`
+  dimension — price never varies by size, only by colour). Sourced from Linx
+  `PRODUTOS_PRECO_COR.PRECO1` where `CODIGO_TAB_PRECO = 'R3'` — the Benvisi
+  standard/list-price table ("PRECO CHEIO OFICIAL R3"), treated as an
+  explicit business configuration constant in the sync (`LINX_PRECO_TABELA`),
+  never a literal scattered through the code. A deliberately **separate**
+  current-state table from `estoque_atual`, not a column denormalized onto
+  every size row. `estoque_staging_precos` is its disposable per-sync staging
+  counterpart, mirroring `estoque_staging_grupos`/`estoque_staging_linhas`.
 
 **Read contract** (SECURITY DEFINER, session-token-validated, `anon`-granted —
 identical signatures/results since Milestone 4E; internals now read
@@ -1337,7 +1348,12 @@ identical signatures/results since Milestone 4E; internals now read
   ordered by `tamanho_key`, zero-stock sizes retained), plus
   `sync_concluido_em`. Never returns `cor_descricao_linx`. `tamanho_key` is
   present as ordering metadata only — the UI renders `tamanho_venda` labels,
-  never storage-position numbers.
+  never storage-position numbers. Since Milestone 4G, also returns `preco`
+  (nullable numeric) via a `LEFT JOIN` on `estoque_precos_atual` by
+  `produto + cor_codigo` — repeated on every size row of that colour (same
+  precedent as `desc_produto`/`cor_nome_portal`), consolidated to one value
+  per colour by the UI. `preco = null` means no R3 price was found; the UI
+  shows `—`, never a manufactured price.
 - `get_estoque_freshness(session)` — `concluido_em` of the latest successful
   sync, for the "Estoque atualizado em DD/MM/YYYY às HH:mm" indicator.
 
@@ -1358,6 +1374,27 @@ unchanged group generates no inventory-row write. A run may finish
 `sucesso` **with warnings** — warnings never force `erro` and never touch
 the previous successful state. Credentials come only from a gitignored
 `.env`.
+
+**Price extraction (Milestone 4G)** runs as a second, independent pass in
+the same execution: reads Linx R3 prices scoped to the same qualifying set
+as the inventory extraction (`FILIAL = @filial AND ESTOQUE > 0`, keeping
+`estoque_precos_atual` as compact as `estoque_atual_grupos` rather than
+publishing R3's full ~140k-row nationwide table), diffs directly against
+`estoque_precos_atual` (novo/alterado/removido/inalterado — no hash needed,
+a group's whole content is one numeric value), and stages its delta
+independently of the inventory diff — **a price-only change publishes even
+when quantities are unchanged.** Both deltas are staged before either is
+applied, and `estoque_aplicar_sync` applies both in the **same** Postgres
+transaction: a failed price read/validate aborts the whole run before
+anything is staged, and a genuinely unexpected error during apply rolls both
+deltas back together. `PRECO1 <= 0` and rows with a blank produto/cor_codigo
+(a handful of R3 placeholder rows, verified live) are excluded before
+staging — treated as "no price," never shown as `R$ 0`. Coverage
+(`preco_sem_correspondencia` on `estoque_sync_execucoes`) is logged every
+run but never blocks the sync — a produto/cor with no R3 price still shows
+its inventory row, with `—` for price. No promotional/manual-discount
+calculation, no final POS ring-up prediction — Portal shows the full/list
+price only (`PRECO_LIQUIDO1` and `PROMOCAO_DESCONTO` are not read).
 
 ---
 
@@ -2618,7 +2655,7 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 
 **Status:** IN DEVELOPMENT
 
-**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), 4C (Escala V1), 4D (Contagem de Embalagens V1) + 4D.1 (resumable draft), and 4E/4F (Consulta de Estoque — Inventory Backend V1/V2) are all complete and QA-passed — more Operações features are still planned.
+**Epic 4 — Operações.** See section 10 for the module's full future scope. This epic implements Operações' first real (non-placeholder) content, starting with small, focused resources rather than the whole roadmap at once. The epic itself stays **IN DEVELOPMENT** even though Milestones 4A (Links Importantes), 4B (Mensagens para WhatsApp), 4C (Escala V1), 4D (Contagem de Embalagens V1) + 4D.1 (resumable draft), 4E/4F (Consulta de Estoque — Inventory Backend V1/V2), and 4G (Consulta de Estoque — Price V1) are all complete and QA-passed — more Operações features are still planned.
 
 **Near-term sequence (also drives an upcoming product demo, not purely technical priority):**
 
@@ -2628,9 +2665,10 @@ Validated: `npm run typecheck`, `npm run lint`, and `npm run build` all pass cle
 4. Operações — Escala V1 (Milestone 4C, section 10) — **complete, QA passed** (4C.1 foundation + 4C.2/4C.3 employee-facing Dia/Semana/Mês UI + 4C.4 final September 2026 publication; the real Excel publish/import flow remains future V1.1 scope);
 5. Operações — Contagem de Embalagens V1 (Milestone 4D, below) + resumable draft (Milestone 4D.1, below) — **complete, QA passed**;
 6. Operações — Consulta de Estoque — Inventory Backend V1 (Milestone 4E, below) — **complete**, superseded by V2's current-state storage;
-7. Operações — Consulta de Estoque — Inventory Sync V2 (Milestone 4F, below) — **complete, QA passed**, current-state inventory + deterministic diff + minimal writes, employee UI unchanged.
+7. Operações — Consulta de Estoque — Inventory Sync V2 (Milestone 4F, below) — **complete, QA passed**, current-state inventory + deterministic diff + minimal writes, employee UI unchanged;
+8. Operações — Consulta de Estoque — Price V1 (Milestone 4G, below) — **complete, QA passed**, full/list price per produto+colour, deployed and validated on the existing scheduled-sync pipeline.
 
-Barcode / SKU scanning stays deferred from the Sep 16 critical path. Windows Task Scheduler automation is not yet configured — see Milestone 4F.
+Barcode / SKU scanning stays deferred from the Sep 16 critical path. Windows Task Scheduler runs the sync automatically on its existing hourly schedule (server root `C:\Benvisi_Automacao\PortalEstoqueSync`) — Milestone 4G deployed its two new sync files onto that same pipeline and validated one unattended scheduled run; no Consulta de Estoque milestone has modified the wrapper, bundled Node runtime, or the Task Scheduler configuration itself.
 
 ### Milestone 4A — Links Importantes
 
@@ -3013,7 +3051,7 @@ Superseded by Milestone 4F below: the sync no longer inserts a full ~15k-row sna
 
 ### Milestone 4F — Consulta de Estoque — Inventory Sync V2
 
-**Status:** IMPLEMENTED, QA COMPLETE. Current-state inventory storage + deterministic Node-side diff + minimal Supabase writes + atomic delta application. Consulta employee UI required **zero** changes (identical RPC signatures/results). Windows Task Scheduler automation is the next, not-yet-started, operational step.
+**Status:** IMPLEMENTED, QA COMPLETE. Current-state inventory storage + deterministic Node-side diff + minimal Supabase writes + atomic delta application. Consulta employee UI required **zero** changes (identical RPC signatures/results). Windows Task Scheduler automation was configured operationally after this milestone (server root `C:\Benvisi_Automacao\PortalEstoqueSync`, wrapper `run-estoque-sync.cmd`, bundled Node runtime) — it runs the sync automatically on an hourly schedule today; that configuration itself was a server-side operational step, not a Portal code milestone.
 
 **Why.** V1 inserted a full new ~15k-row snapshot on every successful sync, even when nothing changed — unbounded storage growth and repeated heavy writes/WAL for a store where most produto+cor groups change rarely (~17–57 sales/day across 1,371 groups).
 
@@ -3052,9 +3090,44 @@ FULL Linx extraction (unchanged, ~15.5k raw rows)
 
 **A real bug found and fixed during this QA pass**, worth recording: the group-key helper and an independent inline key construction in the sync script used what looked like the same delimiter format but were not byte-identical, so every current-vs-incoming group lookup failed in both directions — misclassifying every unchanged group as simultaneously new and removed. Fixed by having exactly one canonical `groupKey()` function (JSON.stringify of a 2-tuple) that every caller imports rather than re-deriving the format. A second issue — importing `sync-estoque.mjs` for its exported pure functions (as the test suite does) unconditionally ran a real sync as a side effect, with no entry-point guard — was also found and fixed (`isDirectEntryPoint` check before invoking `main()`).
 
-**Scheduler readiness (code, not configuration).** Deterministic exit codes (0 = success or clean busy-skip; non-zero = real failure), no interactive prompts, working-directory-independent, `.env`-based secrets never logged, self-healing stale-claim recovery (30-minute timeout) so a server reboot mid-run cannot permanently block future runs, no automatic retry loop. Windows Task Scheduler configuration itself remains a separate, not-yet-started operational step.
+**Scheduler readiness (code, not configuration).** Deterministic exit codes (0 = success or clean busy-skip; non-zero = real failure), no interactive prompts, working-directory-independent, `.env`-based secrets never logged, self-healing stale-claim recovery (30-minute timeout) so a server reboot mid-run cannot permanently block future runs, no automatic retry loop. Windows Task Scheduler was subsequently configured on the server using exactly this readiness (see Milestone 4G for the first Price V1 unattended scheduled run validated against it).
 
 **Historical V1 snapshot cleanup — completed 2026-09-11 (`chore/estoque-v1-cleanup`).** `estoque_snapshot` (112,140 rows across V1's 4 historical syncs, ~31 MB) and `estoque_sync_atual()` were dropped after a live dependency audit (pg_depend + a `pg_proc.prosrc` scan of every function in `public`) confirmed neither was referenced by any view, trigger, or function — the three read RPCs already read `estoque_atual`/`estoque_freshness_atual()` exclusively since the `20260911_003` cutover. `estoque_sync_execucoes` audit history, `estoque_cores_mapeamento`, and all V2 objects are untouched.
+
+### Milestone 4G — Consulta de Estoque — Price V1
+
+**Status:** IMPLEMENTED, QA COMPLETE, DEPLOYED. Full/list price per produto+colour added to the stock detail matrix. Backend, sync, and UI browser-QA'd on desktop and mobile; the two new/changed sync files were deployed to the production scheduled-task server and one unattended scheduled run was validated.
+
+**Why.** Sales-floor staff need the price alongside availability without leaving Consulta de Estoque.
+
+**Source and grain.** Linx `PRODUTOS_PRECO_COR.PRECO1` where `CODIGO_TAB_PRECO = 'R3'` — validated as the Benvisi store/list-price table via `TABELAS_PRECO` (`TABELA = 'PRECO CHEIO OFICIAL R3'`, `OBS = 'TABELA DE PRECO CHEIO DE LOJAS/FRANQUIAS OFICIAL'`) and `TABELAS_PRECO_FILIAL` (associated with `LACOSTE SHOPPING  MANAUS`, `INATIVO = false`). Treated as an explicit business configuration constant in the sync (`LINX_PRECO_TABELA = "R3"`), never a literal scattered through the code. `PRECO_LIQUIDO1` is deliberately not used (41 R3 rows have `PRECO_LIQUIDO1 = 0` while `PRECO1` holds a plausible retail price). No promotion/discount interpretation (`PROMOCAO_DESCONTO`, `INICIO_PROMOCAO`, `FIM_PROMOCAO`) — full/list price only, not a promotion engine, not a POS ring-up prediction. Price grain is **produto + cor_codigo only** — price varies by colour, never by size — kept as a separate current-state table (`estoque_precos_atual`) rather than denormalized onto every `estoque_atual` size row.
+
+**Architecture.** A second, independent extraction/diff/stage pass in the same sync execution as the inventory sync (Milestone 4F), not a separate schedule or job:
+
+```
+Linx R3 price extraction, scoped to the SAME qualifying set as inventory
+  (FILIAL = @filial AND ESTOQUE > 0 — not R3's full ~140k-row nationwide table)
+  → normalize (exclude PRECO1 <= 0 and blank-key placeholder rows) + finalize
+  → diff directly against estoque_precos_atual (novo/alterado/removido/inalterado)
+  → stage the price delta (estoque_staging_precos) — independently of the
+    inventory diff, so a price-only change stages even when stock is unchanged
+  → estoque_aplicar_sync applies BOTH the inventory delta and the price delta
+    in the same Postgres transaction
+```
+
+A failed price read/validate aborts the whole run (`markErro`) before either delta is staged — never a partial publish. Coverage is recorded every run on `estoque_sync_execucoes` (`preco_rows_lidos`, `preco_produto_cor_count`, `preco_novos/alterados/removidos/inalterados`, `preco_sem_correspondencia`, `preco_linhas_escritas`) but a missing price never blocks the inventory feed — the stock row still shows, with `—` for price.
+
+**New schema** (migrations `20260914_001`/`_002`, additive): `estoque_precos_atual` (current price state, PK `produto, cor_codigo`, `preco numeric(10,2) check (preco > 0)`), `estoque_staging_precos` (disposable per-sync staging, same novo/alterado/removido manifest shape as `estoque_staging_grupos`). `estoque_aplicar_sync` gained new parameters/return columns for the price apply step (DROP + CREATE — a `RETURNS TABLE` shape change cannot be `CREATE OR REPLACE`d); `estoque_claim_sync`/`estoque_marcar_erro` staging-purge was extended to include `estoque_staging_precos`. `get_produto_estoque_detalhe` gained a nullable `preco` column via `LEFT JOIN` on `estoque_precos_atual` (also DROP + CREATE).
+
+**UI.** `EstoqueMatrix.tsx` — one `Preço` column immediately after `Cor` (never internal terms like R3, tabela de preço, PRECO1, or "preço cheio oficial" — the employee-facing label is simply `Preço`), non-sticky (only `Cor` stays pinned — a second sticky column on a narrow viewport was judged not worth the width/z-index complexity for one column, locked decision). Whole-real prices render without `,00` noise (`R$ 429`), fractional prices keep two decimals (`R$ 399,90`) — `formatEstoquePreco()` in `src/lib/estoque.ts`. A missing price renders `—` (`ESTOQUE_PRECO_AUSENTE_LABEL`), never `R$ 0` or an invented value.
+
+**Ground-truth validation (2026-09-14, live).** `TH6709-23`: `001 → R$ 429`, `031 → R$ 429`, `QPT → R$ 399` — matched exactly, confirming legitimate colour-level price variation on the same product. R3 table-wide: 140,554 rows, zero duplicate `(R3, produto, cor)`, 41 rows with `PRECO1 ≠ PRECO_LIQUIDO1` (all `PRECO_LIQUIDO1 = 0`), `PROMOCAO_DESCONTO` uniformly zero. **Price coverage at rollout: 1,367 / 1,367 current Manaus inventory produto+cor groups (100%)** — 0 missing.
+
+**QA.** `test-diff-engine.mjs` gained 11 offline fixture tests for the price diff engine (zero change, price-only change, new/removed price, non-positive-price exclusion, blank-key placeholder-row exclusion, duplicate-key fatal validation, empty-extraction fatal validation) — 28/28 passing. `npm run typecheck`, `npm run lint`, `npm run build` all pass. Browser QA (desktop + 390px mobile, Playwright, session injected via a minted test token — no employee PIN touched) confirmed the `Preço` column, `TH6709-23`'s colour-level price variation, contained horizontal matrix scrolling, empty zero-stock cells, correct freshness/footer text, and an unaffected `Aa`/`Sair` utility bar, with zero console errors. Product-owner desktop and mobile visual QA — **PASS**.
+
+**Server deployment, validated.** `sync-estoque.mjs`, `estoque-price-diff.mjs` (new), `linx-price-query.sql` (new) copied onto the existing scheduled-task server (`C:\Benvisi_Automacao\PortalEstoqueSync\scripts\sync-estoque\`) — no `package.json`/lockfile/Node-runtime change, the wrapper (`run-estoque-sync.cmd`) and Task Scheduler configuration untouched. A manual server dry-run and a manual real sync (`sync_id eed0fe45…`) both passed; the first **unattended** scheduled run after deployment also completed successfully with freshness advancing and no scheduler/server regression.
+
+**Not in scope for Price V1** (unchanged from the milestone brief): promotional/sale price calculation, R5/R6/R8 table switching, manual discount logic, checkout-price prediction, barcode scanning, product images, colour filtering, footwear size conversion, product-search enrichment, alerting/notification, historical price analytics. These remain FUTURE, tracked alongside the other Consulta de Estoque data-quality/enrichment items in section 9.12.
 
 ## 16.3 Planned Operational Modules
 
@@ -3289,6 +3362,18 @@ The extraction still reads all 48 physical positions and discards a position onl
 
 ---
 
+## ADR-024 — Price V1 Shows Full/List Price Only, Grain Is Produto + Colour
+
+**Status:** APPROVED — implemented in Milestone 4G
+
+Consulta de Estoque displays the Linx R3 full/list price (`PRODUTOS_PRECO_COR.PRECO1`) and nothing else. `PRECO_LIQUIDO1`, `PROMOCAO_DESCONTO`, and any transaction-level/manual discount are out of scope — Portal is not a promotion engine and does not predict the final POS ring-up.
+
+R3 ("PRECO CHEIO OFICIAL R3") is the Benvisi store standard/list-price table, validated against `TABELAS_PRECO`/`TABELAS_PRECO_FILIAL` and historical `LOJA_VENDA` usage for the Manaus store. It is treated as an explicit business configuration constant in the sync, never a literal scattered through the codebase — a future move to a different table (R5/R6/R8) is a config change, not a rewrite.
+
+Price varies by colour, never by size: the canonical grain is `produto + cor_codigo`, stored in a separate current-state table (`estoque_precos_atual`) rather than denormalized onto every `estoque_atual` size row. A missing price is never invented — it renders as `—` and does not hide the underlying stock row.
+
+---
+
 # 18. Open Decisions
 
 There are currently no unresolved product-level decisions that block implementation of Epic 2 — Atendimento.
@@ -3351,6 +3436,10 @@ Dedicated read-only employee module for fast inventory lookup.
 ## `estoque_atual` / `estoque_atual_grupos`
 
 Portal-side inventory current-state model (Milestone 4F, V2), refreshed from Linx by a periodic sync. `estoque_atual` holds ONE authoritative row per qualifying **produto + cor + applicable labelled size position** (`produto, cor_codigo, tamanho_key`) — no `sync_id` dimension; it always holds exactly the current state, mutated only inside the atomic `estoque_aplicar_sync` transaction. `estoque_atual_grupos` is a compact registry, one row per `produto + cor_codigo`, holding the deterministic Node-computed content hash a sync run reads to diff against a fresh Linx extraction without fetching the full current inventory. `tamanho_key` is internal ordering metadata; employees see only `tamanho_venda`.
+
+## `estoque_precos_atual`
+
+Portal-side full/list price current-state model (Milestone 4G, Price V1). ONE row per `produto + cor_codigo` — no `tamanho_key` dimension, since price never varies by size. Sourced from Linx R3 (`PRODUTOS_PRECO_COR.PRECO1`), diffed and staged (`estoque_staging_precos`) independently of `estoque_atual`'s inventory content, but applied in the same `estoque_aplicar_sync` transaction as part of the same sync run. `preco = null` (no R3 price found) renders as `—` in Consulta, never a manufactured value.
 
 ## `estoque_snapshot` (V1, historical — retired)
 
