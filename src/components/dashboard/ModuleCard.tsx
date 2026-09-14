@@ -9,17 +9,15 @@ import { cn } from "@/lib/utils";
 // - "brand" is Level 1 (top-level Dashboard tiles) — the existing dark
 //   brand green, unchanged, with white text/icons.
 // - "brand-level-2" is one level deeper (e.g. inside a section hub like
-//   Operações or Conhecimento & Cultura) — a muted sage/gray-green, kept
-//   with white text/icons: measured contrast (~3.74:1) is still short of
-//   WCAG AA's 4.5:1, but higher than the color it replaced and switching
-//   to dark text only reaches ~3.92:1 here, not enough of a gain to lose
-//   the white-text look Level 2 shares with Level 1 — see --brand-level-2
-//   in styles.css for the full reasoning.
+//   Operações or Conhecimento & Cultura) — a muted mid-tone green, kept
+//   with white text/icons: measured contrast (~6.71:1) comfortably clears
+//   WCAG AA's 4.5:1, so no legibility caveat applies here — see
+//   --brand-level-2 in styles.css for the exact number.
 // - "brand-level-3" is reserved for a still-deeper future tier — no such
 //   navigation surface exists in the app today, so this is defined but
-//   unused. It is its own independent, still lighter/more muted sage-gray
-//   (no longer tied to the table `--zebra` stripe color), light enough
-//   that it needs DARK text/icons rather than white — see below.
+//   unused. It is its own independent, pale sage-gray (no longer tied to
+//   the table `--zebra` stripe color), light enough that it needs DARK
+//   text/icons rather than white — see below.
 // "secondary" is unrelated to navigation depth. No Level 4 exists yet;
 // white would be the natural next step if one is ever added.
 type ModuleCardVariant = "brand" | "brand-level-2" | "brand-level-3" | "secondary";

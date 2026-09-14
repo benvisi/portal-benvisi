@@ -79,19 +79,16 @@
    * Navigation-depth tier 2, ModuleCard only (Blueprint section 14.8): a
    * deliberately clear step lighter than --brand, not a subtle saturation
    * tweak — earlier incremental-chroma-only attempts were too close to
-   * --brand to register as a hierarchy cue. This is #708A7D, a muted
-   * sage/gray-green in the same general hue family as --brand but heavily
-   * desaturated (replaces the brighter #2F9E67 — kept as a literal hex
-   * rather than re-derived via oklch, for exact color fidelity). Measured
-   * contrast against --brand-foreground white is ~3.74:1 — still short of
-   * WCAG AA's 4.5:1 for ModuleCard's title/description text sizes, but
-   * higher than the previous #2F9E67 (~3.24:1, also product-approved) and
-   * above the 3:1 AA threshold for large text/UI components. Dark
-   * --foreground text only reaches ~3.92:1 here — not enough of a gain to
-   * justify losing the white-text look Level 2 shares with Level 1 — so
-   * white text/icons are kept; see ModuleCard.tsx.
+   * --brand to register as a hierarchy cue. This is #416352, a muted
+   * mid-tone green in the same general hue family as --brand (replaces an
+   * earlier #708A7D that read as too gray/desaturated, and before that
+   * #2F9E67 — kept as a literal hex rather than re-derived via oklch, for
+   * exact color fidelity). Measured contrast against --brand-foreground
+   * white is ~6.71:1, comfortably clearing WCAG AA's 4.5:1 for ModuleCard's
+   * title/description text sizes, so white text/icons are kept with no
+   * legibility caveat — see ModuleCard.tsx.
    */
-  --brand-level-2: #708a7d;
+  --brand-level-2: #416352;
 
   --secondary: oklch(0.968 0.007 247);
   --secondary-foreground: oklch(0.279 0.037 260);
