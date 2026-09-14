@@ -5,6 +5,8 @@ export const ROUTES = {
   ATENDIMENTO: "/atendimento",
   ESTOQUE: "/estoque",
   ADMINISTRATIVO: "/administrativo",
+  ADMINISTRATIVO_ESCALA: "/administrativo/escala",
+  ADMINISTRATIVO_ATENDIMENTO: "/administrativo/atendimento",
   CONHECIMENTO_CULTURA: "/conhecimento-cultura",
   CONHECIMENTO_CULTURA_PRINCIPIOS: "/conhecimento-cultura/principios",
   OPERACOES: "/operacoes",

@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  ADMINISTRATIVO_PAGE_TITLE,
+  ADMINISTRATIVO_ATENDIMENTO_TITLE,
   ADMINISTRATOR_CARGO,
   CHECKLIST_POLICY_CONFIRM_ACCEPT_LABEL,
   CHECKLIST_POLICY_CONFIRM_CANCEL_LABEL,
@@ -42,11 +42,14 @@ import { useRequireSession } from "@/hooks/useRequireSession";
 import { useSetChecklistPolicy } from "@/hooks/useSetChecklistPolicy";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/administrativo")({
+export const Route = createFileRoute("/administrativo/atendimento")({
   head: () => ({
-    meta: [{ title: "Administrativo — Portal Benvisi" }, { name: "robots", content: "noindex" }],
+    meta: [
+      { title: "Atendimento — Administrativo — Portal Benvisi" },
+      { name: "robots", content: "noindex" },
+    ],
   }),
-  component: AdministrativoPage,
+  component: AdministrativoAtendimentoPage,
 });
 
 const POLICY_OPTIONS: {
@@ -71,9 +74,13 @@ const POLICY_OPTIONS: {
   },
 ];
 
-function AdministrativoPage() {
+// V1.1 IA change: content moved verbatim from the old flat administrativo.tsx
+// (no business-logic change) — Administrativo is now a plain module hub, and
+// this settings panel lives one level down, under Administrativo →
+// Atendimento, per the same Administrador-only / server-re-enforced pattern.
+function AdministrativoAtendimentoPage() {
   const navigate = useNavigate();
-  const goBack = useGoBack(ROUTES.DASHBOARD);
+  const goBack = useGoBack(ROUTES.ADMINISTRATIVO);
   const { session, ready } = useRequireSession();
   const sessionToken = session?.session_token ?? null;
   const isAdmin = session?.cargo === ADMINISTRATOR_CARGO;
@@ -125,7 +132,9 @@ function AdministrativoPage() {
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Button>
-          <h1 className="text-xl font-semibold text-foreground">{ADMINISTRATIVO_PAGE_TITLE}</h1>
+          <h1 className="text-xl font-semibold text-foreground">
+            {ADMINISTRATIVO_ATENDIMENTO_TITLE}
+          </h1>
         </header>
 
         <Card className="flex flex-col gap-4 p-6 shadow-card">
