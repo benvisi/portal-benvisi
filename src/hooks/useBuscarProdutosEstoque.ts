@@ -26,11 +26,15 @@ async function fetchProdutosEstoque(
 }
 
 /**
- * Primary produto lookup. The backend does prefix matching on `produto`
- * (ranked first) plus a secondary partial `desc_produto` match — no fuzzy
- * search, no client-side inventory scan. The caller is expected to pass an
- * already-debounced term; terms shorter than the minimum are not queried
- * (the RPC also returns nothing for them).
+ * Primary produto lookup. All matching is server-side (buscar_produtos_estoque,
+ * 20260915_002): exact reference first, reference prefix second (both
+ * hyphen-insensitive), then natural-language matches where every query token
+ * must start a word somewhere in the produto's combined text (descrição,
+ * tipo, linha, colour family/name, approved termos de busca) — case- and
+ * accent-insensitive, any order. No fuzzy search, no client-side inventory
+ * scan. The caller is expected to pass an already-debounced term; terms
+ * shorter than the minimum are not queried (the RPC also returns nothing for
+ * them).
  */
 export function useBuscarProdutosEstoque(sessionToken: string | null, termo: string) {
   const handleSessionError = useSessionErrorHandler();

@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, Loader2, Settings2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { EstoqueBuscaField } from "@/components/estoque/EstoqueBuscaField";
@@ -16,6 +16,7 @@ import {
   ESTOQUE_LEMBRETE_OPERACIONAL_MESSAGE,
   ESTOQUE_SEM_SNAPSHOT_MESSAGE,
   getEstoqueAtualizadoLabel,
+  TERMOS_BUSCA_ADMIN_LINK_LABEL,
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
@@ -24,6 +25,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEstoqueFreshness } from "@/hooks/useEstoqueFreshness";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import { useTermosBuscaPermissao } from "@/hooks/useTermosBuscaPermissao";
 import { formatEstoqueFreshness } from "@/lib/estoque";
 
 export const Route = createFileRoute("/estoque")({
@@ -52,6 +54,7 @@ function ConsultaEstoquePage() {
   const termoDebounced = useDebouncedValue(termo, ESTOQUE_BUSCA_DEBOUNCE_MS);
   const freshness = useEstoqueFreshness(sessionToken);
   const busca = useBuscarProdutosEstoque(sessionToken, termoDebounced);
+  const permissaoTermos = useTermosBuscaPermissao(sessionToken);
 
   const sugestoes = useMemo(
     () => (busca.data ?? []).slice(0, ESTOQUE_BUSCA_MAX_SUGESTOES),
@@ -119,6 +122,20 @@ function ConsultaEstoquePage() {
             {getEstoqueAtualizadoLabel(formatEstoqueFreshness(freshness.data))}
           </span>
           <span>{ESTOQUE_LEMBRETE_OPERACIONAL_MESSAGE}</span>
+          {/*
+            Termos de busca V1: entry to the management area, shown only to
+            holders of the pode_gerenciar_termos_busca capability (the route
+            and every RPC re-check it server-side).
+          */}
+          {permissaoTermos.podeGerenciar && (
+            <Link
+              to={ROUTES.ADMINISTRATIVO_TERMOS_BUSCA}
+              className="mt-2 inline-flex min-h-11 w-fit items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <Settings2 className="h-4 w-4" aria-hidden />
+              {TERMOS_BUSCA_ADMIN_LINK_LABEL}
+            </Link>
+          )}
         </footer>
       </div>
     );

@@ -725,3 +725,111 @@ export function isEstoqueFreshness(value: unknown): value is EstoqueFreshness {
   const candidate = value as Record<string, unknown>;
   return typeof candidate.sync_concluido_em === "string" && candidate.sync_concluido_em.length > 0;
 }
+
+// -----------------------------------------------------------------------------
+// Consulta de Estoque — Termos de busca V1 (20260915_001).
+// -----------------------------------------------------------------------------
+
+export type TermoBuscaStatus = "pendente" | "aprovado" | "rejeitado" | "desativado";
+
+const TERMO_BUSCA_STATUSES: readonly TermoBuscaStatus[] = [
+  "pendente",
+  "aprovado",
+  "rejeitado",
+  "desativado",
+];
+
+function isTermoBuscaStatus(value: unknown): value is TermoBuscaStatus {
+  return typeof value === "string" && (TERMO_BUSCA_STATUSES as readonly string[]).includes(value);
+}
+
+// get_produto_termos_busca: approved terms of one produto plus the caller's
+// own pending suggestions — never other employees' pending/rejected rows.
+export interface ProdutoTermoBusca {
+  id: string;
+  termo: string;
+  status: TermoBuscaStatus;
+}
+
+export function isProdutoTermoBusca(value: unknown): value is ProdutoTermoBusca {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.termo === "string" &&
+    candidate.termo.length > 0 &&
+    isTermoBuscaStatus(candidate.status)
+  );
+}
+
+// get_termos_busca_pendentes: the moderation queue, oldest first, with the
+// context an admin needs to decide (current approved terms of the produto and
+// how many OTHER produtos already carry the same term as approved).
+export interface TermoBuscaPendente {
+  id: string;
+  produto: string;
+  desc_produto: string | null;
+  termo: string;
+  sugerido_por_nome: string;
+  sugerido_em: string;
+  termos_aprovados: string[];
+  outros_produtos_mesmo_termo: number;
+}
+
+export function isTermoBuscaPendente(value: unknown): value is TermoBuscaPendente {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.produto === "string" &&
+    candidate.produto.length > 0 &&
+    (candidate.desc_produto === null || typeof candidate.desc_produto === "string") &&
+    typeof candidate.termo === "string" &&
+    typeof candidate.sugerido_por_nome === "string" &&
+    typeof candidate.sugerido_em === "string" &&
+    Array.isArray(candidate.termos_aprovados) &&
+    candidate.termos_aprovados.every((t) => typeof t === "string") &&
+    typeof candidate.outros_produtos_mesmo_termo === "number"
+  );
+}
+
+// get_termos_busca_produto_admin: every row of one produto (all statuses)
+// with its audit trail. `termo` is the current/final value; `termo_sugerido`
+// is what was originally submitted (differs only after "Editar e aprovar").
+export interface TermoBuscaAdmin {
+  id: string;
+  termo: string;
+  termo_sugerido: string;
+  status: TermoBuscaStatus;
+  origem: "sugestao" | "admin";
+  sugerido_por_nome: string;
+  sugerido_em: string;
+  moderado_por_nome: string | null;
+  moderado_em: string | null;
+  desativado_por_nome: string | null;
+  desativado_em: string | null;
+  reativado_em: string | null;
+}
+
+export function isTermoBuscaAdmin(value: unknown): value is TermoBuscaAdmin {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.termo === "string" &&
+    typeof candidate.termo_sugerido === "string" &&
+    isTermoBuscaStatus(candidate.status) &&
+    (candidate.origem === "sugestao" || candidate.origem === "admin") &&
+    typeof candidate.sugerido_por_nome === "string" &&
+    typeof candidate.sugerido_em === "string" &&
+    optionalString(candidate.moderado_por_nome) &&
+    optionalString(candidate.moderado_em) &&
+    optionalString(candidate.desativado_por_nome) &&
+    optionalString(candidate.desativado_em) &&
+    optionalString(candidate.reativado_em)
+  );
+}
