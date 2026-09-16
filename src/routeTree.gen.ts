@@ -22,6 +22,7 @@ import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoe
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
 import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
+import { Route as AdministrativoTermosBuscaRouteImport } from './routes/administrativo/termos-busca'
 import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
 import { Route as AdministrativoAtendimentoRouteImport } from './routes/administrativo/atendimento'
 
@@ -95,6 +96,12 @@ const ConhecimentoCulturaPrincipiosRoute =
     path: '/conhecimento-cultura/principios',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdministrativoTermosBuscaRoute =
+  AdministrativoTermosBuscaRouteImport.update({
+    id: '/administrativo/termos-busca',
+    path: '/administrativo/termos-busca',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdministrativoEscalaRoute = AdministrativoEscalaRouteImport.update({
   id: '/administrativo/escala',
   path: '/administrativo/escala',
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
@@ -150,6 +159,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
@@ -203,6 +215,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
@@ -221,6 +234,7 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   AdministrativoAtendimentoRoute: typeof AdministrativoAtendimentoRoute
   AdministrativoEscalaRoute: typeof AdministrativoEscalaRoute
+  AdministrativoTermosBuscaRoute: typeof AdministrativoTermosBuscaRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
@@ -324,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConhecimentoCulturaPrincipiosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/administrativo/termos-busca': {
+      id: '/administrativo/termos-busca'
+      path: '/administrativo/termos-busca'
+      fullPath: '/administrativo/termos-busca'
+      preLoaderRoute: typeof AdministrativoTermosBuscaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/administrativo/escala': {
       id: '/administrativo/escala'
       path: '/administrativo/escala'
@@ -349,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   AdministrativoAtendimentoRoute: AdministrativoAtendimentoRoute,
   AdministrativoEscalaRoute: AdministrativoEscalaRoute,
+  AdministrativoTermosBuscaRoute: AdministrativoTermosBuscaRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,

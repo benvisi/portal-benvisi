@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
 
 import { EstoqueMatrix } from "@/components/estoque/EstoqueMatrix";
+import { ProdutoTermosBusca } from "@/components/estoque/ProdutoTermosBusca";
 import { Button } from "@/components/ui/button";
 import {
   ESTOQUE_PRODUTO_CARREGANDO_MESSAGE,
@@ -71,6 +72,8 @@ export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueView
       </header>
 
       <EstoqueMatrix matriz={matriz} />
+
+      <ProdutoTermosBusca sessionToken={sessionToken} produto={matriz.produto} />
     </section>
   );
 }

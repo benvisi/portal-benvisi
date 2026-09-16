@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { ArrowLeft, CalendarDays, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardCheck, Tags } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -13,11 +13,14 @@ import {
   ADMINISTRATOR_CARGO,
   ESCALA_ADMIN_CARD_DESCRIPTION,
   ESCALA_ADMIN_TITLE,
+  TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION,
+  TERMOS_BUSCA_ADMIN_TITLE,
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import { useTermosBuscaPermissao } from "@/hooks/useTermosBuscaPermissao";
 
 export const Route = createFileRoute("/administrativo/")({
   head: () => ({
@@ -35,6 +38,9 @@ function AdministrativoPage() {
   const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
   const isAdmin = session?.cargo === ADMINISTRATOR_CARGO;
+  // Termos de busca is capability-gated (not cargo), so its card only shows
+  // to an Administrador who also holds pode_gerenciar_termos_busca.
+  const permissaoTermos = useTermosBuscaPermissao(session?.session_token ?? null);
 
   useEffect(() => {
     if (ready && session && !isAdmin) {
@@ -78,6 +84,15 @@ function AdministrativoPage() {
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO_ATENDIMENTO })}
           />
+          {permissaoTermos.podeGerenciar && (
+            <ModuleCard
+              icon={Tags}
+              title={TERMOS_BUSCA_ADMIN_TITLE}
+              description={TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION}
+              variant="brand-level-2"
+              onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO_TERMOS_BUSCA })}
+            />
+          )}
         </div>
       </div>
 

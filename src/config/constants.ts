@@ -535,10 +535,13 @@ export function getContagemItensContadosLabel(count: number): string {
 export const CONSULTA_ESTOQUE_TITLE = "Consulta de Estoque";
 export const CONSULTA_ESTOQUE_DASHBOARD_DESCRIPTION =
   "Consulte a disponibilidade de produtos e tamanhos.";
+// Termos de busca V1: the search understands codes AND natural vocabulary
+// (description, line, colour family/name, approved Benvisi terms), so the
+// copy invites both.
 export const CONSULTA_ESTOQUE_PAGE_SUBTITLE =
-  "Busque pelo código do produto para ver as cores e os tamanhos disponíveis no estoque atual.";
+  "Busque pelo código, descrição, cor ou característica do produto para ver as cores e os tamanhos disponíveis no estoque atual.";
 
-export const ESTOQUE_BUSCA_PLACEHOLDER = "Buscar produto (ex.: PH4012)...";
+export const ESTOQUE_BUSCA_PLACEHOLDER = "Buscar produto (ex.: PH4012, polo azul)...";
 export const ESTOQUE_BUSCA_MIN_CHARS = 2;
 export const ESTOQUE_BUSCA_DEBOUNCE_MS = 250;
 export const ESTOQUE_BUSCA_MAX_SUGESTOES = 8;
@@ -612,3 +615,88 @@ export const CHECKLIST_POLICY_CONFIRM_CANCEL_LABEL = "Cancelar";
 export function getChecklistPolicyConfirmDescription(policyLabel: string): string {
   return `A política do checklist será alterada para "${policyLabel}".`;
 }
+
+// -----------------------------------------------------------------------------
+// Consulta de Estoque — Termos de busca V1. Employee-facing vocabulary is
+// "termos de busca"; the internal status names (pendente/aprovado/...) never
+// leak into copy.
+// -----------------------------------------------------------------------------
+export const TERMOS_BUSCA_TITLE = "Termos de busca";
+export const TERMOS_BUSCA_SECAO_LABEL = "Termos de busca";
+export const TERMOS_BUSCA_NENHUM_APROVADO_MESSAGE = "Nenhum termo cadastrado para este produto.";
+export const TERMOS_BUSCA_ERRO_CARREGAR_MESSAGE = "Não foi possível carregar os termos de busca.";
+export const TERMOS_BUSCA_MINHA_PENDENTE_PREFIX = "Sua sugestão pendente:";
+
+export const TERMOS_BUSCA_SUGERIR_LABEL = "Sugerir termo de busca";
+export const TERMOS_BUSCA_SUGERIR_GUIA_MESSAGE =
+  "Sugira uma característica objetiva que ajude a encontrar este produto, como “canelada”, “gola alta” ou “logo grande”. Evite opiniões como “bonita” ou “elegante”, e informações que já aparecem na consulta, como cor, tamanho ou código.";
+export const TERMOS_BUSCA_SUGERIR_PLACEHOLDER = "Ex.: manga longa";
+export const TERMOS_BUSCA_SUGERIR_ENVIAR_LABEL = "Enviar sugestão";
+export const TERMOS_BUSCA_SUGERIR_ENVIANDO_LABEL = "Enviando...";
+export const TERMOS_BUSCA_SUGERIR_CANCELAR_LABEL = "Cancelar";
+export const TERMOS_BUSCA_SUGERIR_SUCESSO_MESSAGE =
+  "Sugestão enviada. Ela passará a valer na busca depois da aprovação da gestão.";
+
+export const TERMO_BUSCA_MIN_CHARS = 3;
+export const TERMO_BUSCA_MAX_CHARS = 30;
+
+export const TERMOS_BUSCA_ERRO_INVALIDO_MESSAGE =
+  "Use de 3 a 30 caracteres: apenas letras, números, espaços e hífens.";
+export const TERMOS_BUSCA_ERRO_JA_APROVADO_MESSAGE =
+  "Este termo já está cadastrado para este produto.";
+export const TERMOS_BUSCA_ERRO_JA_PENDENTE_MESSAGE =
+  "Este termo já foi sugerido para este produto e aguarda aprovação.";
+export const TERMOS_BUSCA_ERRO_DESATIVADO_MESSAGE =
+  "Este termo já foi usado neste produto e foi removido pela gestão.";
+export const TERMOS_BUSCA_ERRO_DESATIVADO_ADMIN_MESSAGE =
+  "Este termo já existiu neste produto e está desativado. Reative-o no histórico em vez de adicionar de novo.";
+export const TERMOS_BUSCA_ERRO_SEM_PERMISSAO_MESSAGE =
+  "Você não tem permissão para gerenciar termos de busca.";
+export const TERMOS_BUSCA_ERRO_TRANSICAO_MESSAGE =
+  "Este termo já foi alterado por outra pessoa. Atualize a lista.";
+export const TERMOS_BUSCA_ERRO_GENERICO_MESSAGE =
+  "Não foi possível concluir agora. Tente novamente.";
+
+// Management area (Administrativo → Termos de busca). Access is the explicit
+// funcionarios.pode_gerenciar_termos_busca capability, never cargo.
+export const TERMOS_BUSCA_ADMIN_TITLE = "Termos de busca";
+export const TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION =
+  "Aprove sugestões e gerencie os termos de busca dos produtos.";
+export const TERMOS_BUSCA_ADMIN_LINK_LABEL = "Gerenciar termos de busca";
+export const TERMOS_BUSCA_ADMIN_TAB_PENDENTES_LABEL = "Pendentes";
+export const TERMOS_BUSCA_ADMIN_TAB_GERENCIAR_LABEL = "Gerenciar termos";
+
+export const TERMOS_BUSCA_PENDENTES_VAZIO_MESSAGE = "Nenhuma sugestão aguardando aprovação.";
+export const TERMOS_BUSCA_PENDENTES_ERRO_MESSAGE =
+  "Não foi possível carregar as sugestões pendentes. Tente novamente.";
+export const TERMOS_BUSCA_SUGERIDO_POR_PREFIX = "Sugerido por";
+export const TERMOS_BUSCA_TERMOS_APROVADOS_LABEL = "Termos aprovados";
+export const TERMOS_BUSCA_TERMO_PROPOSTO_LABEL = "Termo proposto";
+export const TERMOS_BUSCA_TERMO_ORIGINAL_PREFIX = "Sugestão original:";
+export function getTermosBuscaOutrosProdutosLabel(count: number): string {
+  return count === 1 ? "Já aprovado em 1 outro produto" : `Já aprovado em ${count} outros produtos`;
+}
+
+export const TERMOS_BUSCA_APROVAR_LABEL = "Aprovar";
+export const TERMOS_BUSCA_EDITAR_APROVAR_LABEL = "Editar e aprovar";
+export const TERMOS_BUSCA_REJEITAR_LABEL = "Rejeitar";
+export const TERMOS_BUSCA_CONFIRMAR_LABEL = "Confirmar";
+export const TERMOS_BUSCA_CANCELAR_LABEL = "Cancelar";
+
+export const TERMOS_BUSCA_GERENCIAR_DICA_MESSAGE =
+  "Busque e selecione um produto para ver e gerenciar seus termos de busca.";
+export const TERMOS_BUSCA_GERENCIAR_ERRO_MESSAGE =
+  "Não foi possível carregar os termos deste produto. Tente novamente.";
+export const TERMOS_BUSCA_ADICIONAR_LABEL = "Adicionar termo";
+export const TERMOS_BUSCA_ADICIONAR_PLACEHOLDER = "Novo termo (ex.: gola alta)";
+export const TERMOS_BUSCA_ADICIONANDO_LABEL = "Adicionando...";
+export const TERMOS_BUSCA_DESATIVAR_LABEL = "Desativar";
+export const TERMOS_BUSCA_REATIVAR_LABEL = "Reativar";
+export const TERMOS_BUSCA_HISTORICO_VAZIO_MESSAGE = "Sem histórico para este produto.";
+export function getTermosBuscaHistoricoLabel(count: number): string {
+  return `Ver histórico (${count})`;
+}
+export const TERMOS_BUSCA_STATUS_REJEITADO_LABEL = "Rejeitado";
+export const TERMOS_BUSCA_STATUS_DESATIVADO_LABEL = "Desativado";
+export const TERMOS_BUSCA_STATUS_PENDENTE_LABEL = "Aguardando aprovação";
+export const TERMOS_BUSCA_ORIGEM_ADMIN_LABEL = "Adicionado pela gestão";
