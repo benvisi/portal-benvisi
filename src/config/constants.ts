@@ -660,8 +660,8 @@ export const TERMOS_BUSCA_ERRO_GENERICO_MESSAGE =
 // Management area (Administrativo → Termos de busca). Access is the explicit
 // funcionarios.pode_gerenciar_termos_busca capability, never cargo.
 export const TERMOS_BUSCA_ADMIN_TITLE = "Termos de busca";
-export const TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION =
-  "Aprove sugestões e gerencie os termos de busca dos produtos.";
+// Kept to one line so the card matches the height of its hub siblings.
+export const TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION = "Gerencie os termos de busca dos produtos.";
 export const TERMOS_BUSCA_ADMIN_LINK_LABEL = "Gerenciar termos de busca";
 export const TERMOS_BUSCA_ADMIN_TAB_PENDENTES_LABEL = "Pendentes";
 export const TERMOS_BUSCA_ADMIN_TAB_GERENCIAR_LABEL = "Gerenciar termos";

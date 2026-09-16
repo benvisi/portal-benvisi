@@ -68,8 +68,11 @@ export function ProdutoTermosBusca({ sessionToken, produto }: ProdutoTermosBusca
     setErroLocal(null);
     const ok = await sugerir(produto, canonico);
     if (ok) {
+      // Keep the accordion open after a successful send: the employee sees
+      // the confirmation and their new "Sua sugestão pendente" line without
+      // the form vanishing under them. Only Cancelar (or a produto change)
+      // collapses it.
       setTermo("");
-      setAberto(false);
       setSucesso(true);
     }
   };
@@ -107,7 +110,7 @@ export function ProdutoTermosBusca({ sessionToken, produto }: ProdutoTermosBusca
         </p>
       ))}
 
-      {sucesso && !aberto && (
+      {sucesso && (
         <p className="text-xs font-medium text-foreground">
           {TERMOS_BUSCA_SUGERIR_SUCESSO_MESSAGE}
         </p>
