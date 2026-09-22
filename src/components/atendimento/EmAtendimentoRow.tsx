@@ -1,10 +1,11 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   FECHAMENTO_STATUS_LABEL,
   LISTA_DA_VEZ_VOCE_LABEL,
+  getConcluirGerencialAriaLabel,
   getUndoButtonLabel,
 } from "@/config/constants";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -20,6 +21,14 @@ interface EmAtendimentoRowProps {
   podeCancelarComoIniciador: boolean;
   cancelando: boolean;
   onCancelarInicio: (idAtendimento: string) => void;
+  // Conclusão gerencial (required behavior 1/6): true only for a
+  // Gerente/Administrador viewing another employee's row while it is
+  // 'finalizando' — never on the viewer's own row (souEu already covers
+  // their own normal completion flow via FechamentoAtendimento). Enforced
+  // server-side too (concluir_atendimento_gerencial re-checks cargo) — this
+  // prop only controls whether the button renders.
+  podeConcluirComoGerente: boolean;
+  onConcluirComoGerente: (idAtendimento: string, nome: string) => void;
 }
 
 function formatElapsedMinutes(minutos: number): string {
@@ -57,6 +66,8 @@ export function EmAtendimentoRow({
   podeCancelarComoIniciador,
   cancelando,
   onCancelarInicio,
+  podeConcluirComoGerente,
+  onConcluirComoGerente,
 }: EmAtendimentoRowProps) {
   const minutos = useElapsedMinutes(status === "em_atendimento" ? iniciadoEm : null);
   const { secondsLeft, isExpired } = useCountdown(
@@ -67,6 +78,8 @@ export function EmAtendimentoRow({
     !isExpired &&
     idAtendimento !== null &&
     status === "em_atendimento";
+  const mostrarConcluirGerencial =
+    podeConcluirComoGerente && status === "finalizando" && idAtendimento !== null;
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
@@ -92,6 +105,18 @@ export function EmAtendimentoRow({
           ) : (
             getUndoButtonLabel(secondsLeft)
           )}
+        </Button>
+      )}
+      {mostrarConcluirGerencial && idAtendimento && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-touch shrink-0 whitespace-nowrap"
+          onClick={() => onConcluirComoGerente(idAtendimento, nome)}
+          aria-label={getConcluirGerencialAriaLabel(nome)}
+        >
+          <UserCheck className="h-4 w-4" aria-hidden />
         </Button>
       )}
       {souEu && <Badge variant="outline">{LISTA_DA_VEZ_VOCE_LABEL}</Badge>}

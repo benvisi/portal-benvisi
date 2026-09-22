@@ -10,6 +10,7 @@ import {
   ADICIONAR_CLIENTE_LABEL,
   ATENDIMENTO_PENDENTE_SUBTITLE,
   ATENDIMENTO_PENDENTE_TITLE,
+  CANCELAR_GERENCIAL_LABEL,
   CHECKLIST_LOADING_MESSAGE,
   CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE,
   CHECKLIST_SUBTITLE,
@@ -21,6 +22,7 @@ import {
   FECHAMENTO_TITLE,
   VOLTAR_AO_ATENDIMENTO_LABEL,
   getAtendimentoPendenteDataLabel,
+  getFinalizandoEmNomeDeLabel,
 } from "@/config/constants";
 import type {
   AtendimentoChecklistItem,
@@ -53,6 +55,14 @@ interface FechamentoAtendimentoProps {
   // The original Atendimento's Manaus business day, pre-formatted as
   // "DD/MM" — only used (and only rendered) when isPendingRecovery is true.
   diaOriginalFormatado?: string | null;
+  // Conclusão gerencial (required behavior "UX"): the original salesperson's
+  // name, set only when a Gerente/Administrador is completing this
+  // Atendimento on their behalf. Renders a persistent "Finalizando em nome
+  // de {nome}" banner and swaps the Voltar button for a plain Cancelar (no
+  // RPC call — the caller wires onVoltar to close this view, since there is
+  // no "active" state of the manager's own to return to). Never combined
+  // with isPendingRecovery — those are mutually exclusive flows.
+  gerencialNome?: string | null;
   submitting: boolean;
   errorMessage: string | null;
   onVoltar: () => void;
@@ -78,6 +88,7 @@ export function FechamentoAtendimento({
   checklistObrigatorio,
   isPendingRecovery = false,
   diaOriginalFormatado = null,
+  gerencialNome = null,
   submitting,
   errorMessage,
   onVoltar,
@@ -164,6 +175,11 @@ export function FechamentoAtendimento({
         {isPendingRecovery && diaOriginalFormatado && (
           <p className="text-xs text-muted-foreground">
             {getAtendimentoPendenteDataLabel(diaOriginalFormatado)}
+          </p>
+        )}
+        {gerencialNome && (
+          <p className="w-fit rounded-lg border border-info/40 bg-info/10 px-2.5 py-1.5 text-sm font-medium text-info">
+            {getFinalizandoEmNomeDeLabel(gerencialNome)}
           </p>
         )}
       </div>
@@ -281,7 +297,7 @@ export function FechamentoAtendimento({
             disabled={submitting}
             onClick={handleVoltarClick}
           >
-            {VOLTAR_AO_ATENDIMENTO_LABEL}
+            {gerencialNome ? CANCELAR_GERENCIAL_LABEL : VOLTAR_AO_ATENDIMENTO_LABEL}
           </Button>
         )}
       </div>

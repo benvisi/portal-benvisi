@@ -198,6 +198,30 @@ export const FUNCIONARIO_ALVO_INDISPONIVEL_MESSAGE =
 export const SEM_PERMISSAO_CANCELAR_MESSAGE =
   "Você não tem permissão para cancelar este atendimento.";
 
+// Conclusão gerencial: Gerente/Administrador concluindo o atendimento de
+// outro colaborador (ex.: colaborador perdeu acesso ao Portal durante o
+// atendimento).
+export const CONCLUIR_GERENCIAL_LABEL = "Concluir atendimento";
+export const CANCELAR_GERENCIAL_LABEL = "Cancelar";
+export const SEM_PERMISSAO_CONCLUIR_GERENCIAL_MESSAGE =
+  "Você não tem permissão para concluir este atendimento.";
+
+export function getConcluirGerencialAriaLabel(nome: string): string {
+  return `Concluir atendimento de ${nome}`;
+}
+
+export function getConcluirGerencialConfirmTitle(nome: string): string {
+  return `Concluir atendimento de ${nome}?`;
+}
+
+export function getConcluirGerencialConfirmDescription(nome: string): string {
+  return `Você preencherá as informações do atendimento em nome de ${nome}.`;
+}
+
+export function getFinalizandoEmNomeDeLabel(nome: string): string {
+  return `Finalizando em nome de ${nome}`;
+}
+
 export const SAIR_LISTA_DA_VEZ_LABEL = "Sair da Lista da Vez";
 export const ENTRAR_LISTA_DA_VEZ_LABEL = "Entrar na Lista da Vez";
 export const LISTA_DA_VEZ_FORA_TITLE = "Você está fora da Lista da Vez.";

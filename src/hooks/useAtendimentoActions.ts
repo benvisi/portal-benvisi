@@ -209,6 +209,27 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     [runBooleanRpc, sessionToken],
   );
 
+  // Conclusão gerencial: a Gerente/Administrador completing another
+  // employee's Atendimento on their behalf (e.g. the employee lost Portal
+  // access mid-shift). Ownership stays with the original employee — this
+  // only ever changes who performed the action, server-side. No
+  // p_adiar_checklist parameter, same reasoning as concluirPendente: Farei
+  // depois is never offered in the management flow.
+  const concluirComoGerente = useCallback(
+    (idAtendimento: string, clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento_gerencial",
+        {
+          p_session_token: sessionToken,
+          p_id_atendimento: idAtendimento,
+          p_clientes: clientes,
+          p_checklist: checklist,
+        },
+        "concluir_atendimento_gerencial",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
   return {
     submitting,
     errorMessage,
@@ -219,5 +240,6 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     concluir,
     adiarChecklist,
     concluirPendente,
+    concluirComoGerente,
   };
 }
