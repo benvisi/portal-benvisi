@@ -209,7 +209,25 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     [runBooleanRpc, sessionToken],
   );
 
-  // Conclusão gerencial: a Gerente/Administrador completing another
+  // Conclusão gerencial, part 1: the em_atendimento -> finalizando takeover
+  // itself (20260923 correction) — a Gerente/Administrador advancing
+  // another employee's still-active Atendimento so its timer stops and the
+  // closing form can be filled out on their behalf, exactly like the
+  // salesperson tapping "Concluir atendimento" themselves would. Targets an
+  // explicit Atendimento id, never the caller's own row. On success the
+  // caller opens the same closing form used for an already-finalizando
+  // target (concluirComoGerente below).
+  const iniciarFechamentoComoGerente = useCallback(
+    (idAtendimento: string) =>
+      runBooleanRpc(
+        "iniciar_fechamento_atendimento_gerencial",
+        { p_session_token: sessionToken, p_id_atendimento: idAtendimento },
+        "iniciar_fechamento_atendimento_gerencial",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  // Conclusão gerencial, part 2: a Gerente/Administrador completing another
   // employee's Atendimento on their behalf (e.g. the employee lost Portal
   // access mid-shift). Ownership stays with the original employee — this
   // only ever changes who performed the action, server-side. No
@@ -240,6 +258,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     concluir,
     adiarChecklist,
     concluirPendente,
+    iniciarFechamentoComoGerente,
     concluirComoGerente,
   };
 }

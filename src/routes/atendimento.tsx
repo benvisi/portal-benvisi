@@ -120,6 +120,7 @@ function AtendimentoPage() {
   const [gerencialPendingAlvo, setGerencialPendingAlvo] = useState<{
     idAtendimento: string;
     nome: string;
+    status: "em_atendimento" | "finalizando";
   } | null>(null);
 
   // Milestone 2D: previous-day recovery reuses the same closing form/draft
@@ -250,18 +251,40 @@ function AtendimentoPage() {
   // confirmation naming the target employee before entering the completion
   // form — mirrors the existing delegate-start confirmation pattern
   // (handleIniciarParaClick) rather than jumping straight into the form,
-  // since completing on someone else's behalf is consequential.
-  const handleConcluirGerencialClick = (idAtendimento: string, nome: string) => {
-    setGerencialPendingAlvo({ idAtendimento, nome });
+  // since completing on someone else's behalf is consequential. status is
+  // carried through so the confirm handler knows whether an
+  // em_atendimento -> finalizando takeover is needed first (20260923
+  // correction — the incident that motivated this feature is a salesperson
+  // stuck in em_atendimento, not one who already reached finalizando
+  // themselves).
+  const handleConcluirGerencialClick = (
+    idAtendimento: string,
+    nome: string,
+    status: "em_atendimento" | "finalizando",
+  ) => {
+    setGerencialPendingAlvo({ idAtendimento, nome, status });
     setGerencialConfirmOpen(true);
   };
 
-  const handleConfirmGerencial = () => {
+  const handleConfirmGerencial = async () => {
     if (!gerencialPendingAlvo) return;
     setGerencialConfirmOpen(false);
-    resetGerencialDraft();
-    setGerencialAlvo(gerencialPendingAlvo);
+    const alvo = gerencialPendingAlvo;
     setGerencialPendingAlvo(null);
+
+    if (alvo.status === "em_atendimento") {
+      // Performs the salesperson's own "Concluir atendimento" transition on
+      // their behalf (stops the timer server-side, same finalizando_em
+      // semantics as the normal flow). A failure here (someone else already
+      // advanced or completed it, or a permission race) surfaces via
+      // actions.errorMessage on the Lista da Vez card — the closing form is
+      // never opened for a takeover that didn't actually happen.
+      const success = await actions.iniciarFechamentoComoGerente(alvo.idAtendimento);
+      if (!success) return;
+    }
+
+    resetGerencialDraft();
+    setGerencialAlvo({ idAtendimento: alvo.idAtendimento, nome: alvo.nome });
   };
 
   // No RPC call here — unlike the employee's own "Voltar ao atendimento"
@@ -791,7 +814,7 @@ function AtendimentoPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{CANCELAR_GERENCIAL_LABEL}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmGerencial}>
+            <AlertDialogAction onClick={() => void handleConfirmGerencial()}>
               {CONCLUIR_GERENCIAL_LABEL}
             </AlertDialogAction>
           </AlertDialogFooter>

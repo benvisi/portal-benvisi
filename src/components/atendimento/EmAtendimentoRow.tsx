@@ -21,14 +21,27 @@ interface EmAtendimentoRowProps {
   podeCancelarComoIniciador: boolean;
   cancelando: boolean;
   onCancelarInicio: (idAtendimento: string) => void;
-  // Conclusão gerencial (required behavior 1/6): true only for a
-  // Gerente/Administrador viewing another employee's row while it is
-  // 'finalizando' — never on the viewer's own row (souEu already covers
-  // their own normal completion flow via FechamentoAtendimento). Enforced
-  // server-side too (concluir_atendimento_gerencial re-checks cargo) — this
-  // prop only controls whether the button renders.
+  // Conclusão gerencial: true only for a Gerente/Administrador viewing
+  // another employee's row — never on the viewer's own row (souEu already
+  // covers their own normal flow). Enforced server-side too (both
+  // iniciar_fechamento_atendimento_gerencial and concluir_atendimento_gerencial
+  // re-check cargo) — this prop only controls whether the button renders.
+  //
+  // Available for BOTH 'em_atendimento' and 'finalizando' rows (the
+  // corrected V1 scope — see 20260923 migration): the real-world incident
+  // that motivated this feature is a salesperson stuck in 'em_atendimento'
+  // (never even reached Finalizando themselves), so gating this to
+  // 'finalizando' only — the original V1 mistake — left the actual scenario
+  // unsolved. onConcluirComoGerente receives the row's current status so
+  // the caller knows whether it first needs to perform the
+  // em_atendimento -> finalizando takeover itself, or can go straight to
+  // the closing form for an already-finalizando row.
   podeConcluirComoGerente: boolean;
-  onConcluirComoGerente: (idAtendimento: string, nome: string) => void;
+  onConcluirComoGerente: (
+    idAtendimento: string,
+    nome: string,
+    status: "em_atendimento" | "finalizando",
+  ) => void;
 }
 
 function formatElapsedMinutes(minutos: number): string {
@@ -78,8 +91,7 @@ export function EmAtendimentoRow({
     !isExpired &&
     idAtendimento !== null &&
     status === "em_atendimento";
-  const mostrarConcluirGerencial =
-    podeConcluirComoGerente && status === "finalizando" && idAtendimento !== null;
+  const mostrarConcluirGerencial = podeConcluirComoGerente && idAtendimento !== null;
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
@@ -113,7 +125,7 @@ export function EmAtendimentoRow({
           variant="outline"
           size="sm"
           className="min-touch shrink-0 whitespace-nowrap"
-          onClick={() => onConcluirComoGerente(idAtendimento, nome)}
+          onClick={() => onConcluirComoGerente(idAtendimento, nome, status)}
           aria-label={getConcluirGerencialAriaLabel(nome)}
         >
           <UserCheck className="h-4 w-4" aria-hidden />
