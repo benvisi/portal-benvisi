@@ -1,10 +1,11 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   FECHAMENTO_STATUS_LABEL,
   LISTA_DA_VEZ_VOCE_LABEL,
+  getConcluirGerencialAriaLabel,
   getUndoButtonLabel,
 } from "@/config/constants";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -20,6 +21,27 @@ interface EmAtendimentoRowProps {
   podeCancelarComoIniciador: boolean;
   cancelando: boolean;
   onCancelarInicio: (idAtendimento: string) => void;
+  // Conclusão gerencial: true only for a Gerente/Administrador viewing
+  // another employee's row — never on the viewer's own row (souEu already
+  // covers their own normal flow). Enforced server-side too (both
+  // iniciar_fechamento_atendimento_gerencial and concluir_atendimento_gerencial
+  // re-check cargo) — this prop only controls whether the button renders.
+  //
+  // Available for BOTH 'em_atendimento' and 'finalizando' rows (the
+  // corrected V1 scope — see 20260923 migration): the real-world incident
+  // that motivated this feature is a salesperson stuck in 'em_atendimento'
+  // (never even reached Finalizando themselves), so gating this to
+  // 'finalizando' only — the original V1 mistake — left the actual scenario
+  // unsolved. onConcluirComoGerente receives the row's current status so
+  // the caller knows whether it first needs to perform the
+  // em_atendimento -> finalizando takeover itself, or can go straight to
+  // the closing form for an already-finalizando row.
+  podeConcluirComoGerente: boolean;
+  onConcluirComoGerente: (
+    idAtendimento: string,
+    nome: string,
+    status: "em_atendimento" | "finalizando",
+  ) => void;
 }
 
 function formatElapsedMinutes(minutos: number): string {
@@ -57,6 +79,8 @@ export function EmAtendimentoRow({
   podeCancelarComoIniciador,
   cancelando,
   onCancelarInicio,
+  podeConcluirComoGerente,
+  onConcluirComoGerente,
 }: EmAtendimentoRowProps) {
   const minutos = useElapsedMinutes(status === "em_atendimento" ? iniciadoEm : null);
   const { secondsLeft, isExpired } = useCountdown(
@@ -67,6 +91,7 @@ export function EmAtendimentoRow({
     !isExpired &&
     idAtendimento !== null &&
     status === "em_atendimento";
+  const mostrarConcluirGerencial = podeConcluirComoGerente && idAtendimento !== null;
 
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
@@ -92,6 +117,18 @@ export function EmAtendimentoRow({
           ) : (
             getUndoButtonLabel(secondsLeft)
           )}
+        </Button>
+      )}
+      {mostrarConcluirGerencial && idAtendimento && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-touch shrink-0 whitespace-nowrap"
+          onClick={() => onConcluirComoGerente(idAtendimento, nome, status)}
+          aria-label={getConcluirGerencialAriaLabel(nome)}
+        >
+          <UserCheck className="h-4 w-4" aria-hidden />
         </Button>
       )}
       {souEu && <Badge variant="outline">{LISTA_DA_VEZ_VOCE_LABEL}</Badge>}

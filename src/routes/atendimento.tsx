@@ -25,6 +25,8 @@ import {
   ATENDIMENTO_PAGE_TITLE,
   ATENDIMENTO_START_BUTTON_LABEL,
   ATIVIDADES_NAO_INICIADAS_MESSAGE,
+  CANCELAR_GERENCIAL_LABEL,
+  CONCLUIR_GERENCIAL_LABEL,
   DELEGATE_CONFIRM_ACCEPT_LABEL,
   DELEGATE_CONFIRM_CANCEL_LABEL,
   ENTRAR_LISTA_DA_VEZ_LABEL,
@@ -41,6 +43,8 @@ import {
   REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL,
   SAIR_LISTA_DA_VEZ_LABEL,
   VOLTAR_AO_PAINEL_LABEL,
+  getConcluirGerencialConfirmDescription,
+  getConcluirGerencialConfirmTitle,
   getDelegateForaDeOrdemConfirmDescription,
   getDelegateForaDeOrdemConfirmTitle,
   getDelegateInOrderConfirmDescription,
@@ -93,6 +97,14 @@ function AtendimentoPage() {
   const shift = useShiftStart(funcionarioId, sessionToken);
   const draft = useFechamentoDraft();
   const { reset: resetDraft } = draft;
+  // Conclusão gerencial: a separate draft instance from the employee's own
+  // closing draft above — a manager/admin viewing this page never has their
+  // own Atendimento in 'finalizando' at the same time they're completing
+  // someone else's (the two flows are mutually exclusive in the render
+  // below), but keeping the state fully separate avoids any risk of one
+  // flow's in-progress form bleeding into the other's.
+  const gerencialDraft = useFechamentoDraft();
+  const { reset: resetGerencialDraft } = gerencialDraft;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [delegateAlvo, setDelegateAlvo] = useState<{ id: string; nome: string } | null>(null);
@@ -100,6 +112,16 @@ function AtendimentoPage() {
   const [delegateForaDeOrdemOpen, setDelegateForaDeOrdemOpen] = useState(false);
   const [removerAlvo, setRemoverAlvo] = useState<{ id: string; nome: string } | null>(null);
   const [removerOpen, setRemoverOpen] = useState(false);
+  const [gerencialAlvo, setGerencialAlvo] = useState<{
+    idAtendimento: string;
+    nome: string;
+  } | null>(null);
+  const [gerencialConfirmOpen, setGerencialConfirmOpen] = useState(false);
+  const [gerencialPendingAlvo, setGerencialPendingAlvo] = useState<{
+    idAtendimento: string;
+    nome: string;
+    status: "em_atendimento" | "finalizando";
+  } | null>(null);
 
   // Milestone 2D: previous-day recovery reuses the same closing form/draft
   // as an ordinary Finalizando (section 12), so both statuses count as "in
@@ -184,10 +206,14 @@ function AtendimentoPage() {
   // soon as the query invalidation triggered inside actions.* resolves,
   // which races with (and could otherwise beat) reading draft.clientes
   // after the await. Reading it here, before any await, is immune to that.
-  const capturarCategoriasClientes = (): MotivoCategoria[] =>
-    draft.clientes
+  // Takes the source draft's clientes explicitly (rather than always closing
+  // over `draft`) so the same logic covers both the employee's own closing
+  // draft and the separate gerencialDraft used for conclusão gerencial.
+  const capturarCategoriasClientesDe = (clientes: typeof draft.clientes): MotivoCategoria[] =>
+    clientes
       .map((cliente) => cliente.categoria)
       .filter((categoria): categoria is MotivoCategoria => categoria !== null);
+  const capturarCategoriasClientes = () => capturarCategoriasClientesDe(draft.clientes);
 
   // Milestone 2E: reinforcement is shown only when the backend RPC actually
   // reports success (section 1/5/14) — never speculatively, never on a
@@ -219,6 +245,96 @@ function AtendimentoPage() {
     const categorias = capturarCategoriasClientes();
     const success = await actions.concluirPendente(clientes, checklist);
     if (success) showAtendimentoReinforcement(categorias);
+  };
+
+  // Conclusão gerencial (required behavior 1/2): opens a lightweight
+  // confirmation naming the target employee before entering the completion
+  // form — mirrors the existing delegate-start confirmation pattern
+  // (handleIniciarParaClick) rather than jumping straight into the form,
+  // since completing on someone else's behalf is consequential. status is
+  // carried through so the confirm handler knows whether an
+  // em_atendimento -> finalizando takeover is needed first (20260923
+  // correction — the incident that motivated this feature is a salesperson
+  // stuck in em_atendimento, not one who already reached finalizando
+  // themselves).
+  const handleConcluirGerencialClick = (
+    idAtendimento: string,
+    nome: string,
+    status: "em_atendimento" | "finalizando",
+  ) => {
+    setGerencialPendingAlvo({ idAtendimento, nome, status });
+    setGerencialConfirmOpen(true);
+  };
+
+  const handleConfirmGerencial = async () => {
+    if (!gerencialPendingAlvo) return;
+    setGerencialConfirmOpen(false);
+    const alvo = gerencialPendingAlvo;
+    setGerencialPendingAlvo(null);
+
+    if (alvo.status === "em_atendimento") {
+      // Performs the salesperson's own "Concluir atendimento" transition on
+      // their behalf (stops the timer server-side, same finalizando_em
+      // semantics as the normal flow). A failure here (someone else already
+      // advanced or completed it, or a permission race) surfaces via
+      // actions.errorMessage on the Lista da Vez card — the closing form is
+      // never opened for a takeover that didn't actually happen.
+      const success = await actions.iniciarFechamentoComoGerente(alvo.idAtendimento);
+      if (!success) return;
+    }
+
+    resetGerencialDraft();
+    setGerencialAlvo({ idAtendimento: alvo.idAtendimento, nome: alvo.nome });
+  };
+
+  // No RPC call here — unlike the employee's own "Voltar ao atendimento"
+  // (actions.voltarAoAtendimento(), a real status change back to 'ativo'),
+  // there is no analogous state to return to for a manager: the target
+  // Atendimento is still exactly 'finalizando', owned by the original
+  // salesperson, untouched by opening/closing this view.
+  const handleCancelarGerencial = () => {
+    setGerencialAlvo(null);
+    resetGerencialDraft();
+  };
+
+  const handleConcluirGerencial = async (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => {
+    if (!gerencialAlvo) return;
+    const categorias = capturarCategoriasClientesDe(gerencialDraft.clientes);
+    const success = await actions.concluirComoGerente(
+      gerencialAlvo.idAtendimento,
+      clientes,
+      checklist,
+    );
+    if (success) {
+      showAtendimentoReinforcement(categorias);
+      setGerencialAlvo(null);
+      resetGerencialDraft();
+    }
+  };
+
+  // Conclusão gerencial exception: same success handling as
+  // handleConcluirGerencial above — only the RPC called differs
+  // (concluirComoGerenteSemValidarChecklist records checklist_validado =
+  // false server-side instead of enforcing full completion).
+  const handleConcluirGerencialSemValidar = async (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => {
+    if (!gerencialAlvo) return;
+    const categorias = capturarCategoriasClientesDe(gerencialDraft.clientes);
+    const success = await actions.concluirComoGerenteSemValidarChecklist(
+      gerencialAlvo.idAtendimento,
+      clientes,
+      checklist,
+    );
+    if (success) {
+      showAtendimentoReinforcement(categorias);
+      setGerencialAlvo(null);
+      resetGerencialDraft();
+    }
   };
 
   const handleStartClick = async () => {
@@ -341,7 +457,37 @@ function AtendimentoPage() {
         */}
         <PendingChecklistIndicator funcionarioId={funcionarioId} sessionToken={sessionToken} />
 
-        {isPendingRecovery ? (
+        {gerencialAlvo ? (
+          // Conclusão gerencial takes precedence over every other branch,
+          // same reasoning as isPendingRecovery below — a manager/admin
+          // mid-way through completing another employee's Atendimento must
+          // not have that view replaced by their own ativo/finalizando state
+          // (in practice these never coincide, since an admin doesn't run
+          // their own Atendimentos, but this keeps the guarantee explicit
+          // regardless). Reuses the same closing form as an ordinary
+          // Finalizando (required behavior 2), with its own draft instance
+          // and no router-level unsaved-data blocker (out of scope for V1 —
+          // this is a short, single-purpose intervention, not a multi-step
+          // flow worth guarding against navigation).
+          <FechamentoAtendimento
+            gerencialNome={gerencialAlvo.nome}
+            draft={gerencialDraft}
+            motivos={motivosQuery.data ?? []}
+            motivosLoading={motivosQuery.isLoading}
+            checklistItens={checklistQuery.data ?? []}
+            checklistLoading={checklistQuery.isLoading}
+            checklistPolicy={undefined}
+            checklistObrigatorio={null}
+            submitting={actions.submitting}
+            errorMessage={actions.errorMessage}
+            onVoltar={handleCancelarGerencial}
+            onConcluir={(clientes, checklist) => void handleConcluirGerencial(clientes, checklist)}
+            onConcluirSemValidarChecklist={(clientes, checklist) =>
+              void handleConcluirGerencialSemValidar(clientes, checklist)
+            }
+            onFareiDepois={() => {}}
+          />
+        ) : isPendingRecovery ? (
           // Milestone 2D: previous-day recovery takes precedence over every
           // normal Atendimento operation (section 10) — no Iniciar
           // atendimento, no Lista da Vez actions, no bypass. Reuses the same
@@ -479,7 +625,7 @@ function AtendimentoPage() {
           </Card>
         )}
 
-        {!isPendingRecovery && (
+        {!isPendingRecovery && !gerencialAlvo && (
           <Card className="flex flex-col gap-4 p-6 shadow-card">
             <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
 
@@ -585,6 +731,10 @@ function AtendimentoPage() {
                     }
                     cancelando={actions.submitting}
                     onCancelarInicio={handleCancelarDelegado}
+                    podeConcluirComoGerente={
+                      isManagerOrAdmin && entry.id_funcionario !== funcionarioId
+                    }
+                    onConcluirComoGerente={handleConcluirGerencialClick}
                   />
                 ))}
               </ol>
@@ -668,6 +818,29 @@ function AtendimentoPage() {
               onClick={handleConfirmRemover}
             >
               {REMOVER_LISTA_DA_VEZ_ACCEPT_LABEL}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={gerencialConfirmOpen} onOpenChange={setGerencialConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {gerencialPendingAlvo
+                ? getConcluirGerencialConfirmTitle(gerencialPendingAlvo.nome)
+                : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {gerencialPendingAlvo
+                ? getConcluirGerencialConfirmDescription(gerencialPendingAlvo.nome)
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{CANCELAR_GERENCIAL_LABEL}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleConfirmGerencial()}>
+              {CONCLUIR_GERENCIAL_LABEL}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
