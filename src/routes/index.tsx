@@ -9,6 +9,7 @@ import { PinDisplay } from "@/components/auth/PinDisplay";
 import { VerifyingOverlay } from "@/components/auth/VerifyingOverlay";
 import { PIN_LENGTH } from "@/config/constants";
 import { useLogin } from "@/hooks/useLogin";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,8 +25,11 @@ export const Route = createFileRoute("/")({
 });
 
 function LoginPage() {
+  const { ready } = useRedirectIfAuthenticated();
   const login = useLogin();
   const showKeypad = login.stage !== "selecting";
+
+  if (!ready) return null;
 
   return (
     <main className="min-h-screen bg-background">
