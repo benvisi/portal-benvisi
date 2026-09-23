@@ -11,8 +11,13 @@ export interface AuthSessionData {
   session_token: string;
 }
 
+// Persisted in localStorage (not sessionStorage) so a login survives tab
+// close/reopen, new tabs, and browser/app restarts on the same device — the
+// session's real lifetime is still enforced server-side (expira_em /
+// revogado_em / funcionarios.is_active in get_valid_employee_session_context),
+// this only controls how long the browser remembers the token locally.
 function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
 function isAuthSessionData(value: unknown): value is AuthSessionData {
@@ -37,7 +42,7 @@ function isAuthSessionData(value: unknown): value is AuthSessionData {
 export const AuthSession = {
   get(): AuthSessionData | null {
     if (!isBrowser()) return null;
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     try {
       const parsed: unknown = JSON.parse(raw);
@@ -45,18 +50,24 @@ export const AuthSession = {
     } catch {
       // fall through to clear
     }
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     return null;
   },
 
   save(data: AuthSessionData): void {
     if (!isBrowser()) return;
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Storage unavailable/blocked/full (e.g. locked-down private mode) —
+      // the RPC-issued session_token still works for this page load, it
+      // just won't be remembered next launch. Never let this crash login.
+    }
   },
 
   clear(): void {
     if (!isBrowser()) return;
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
   },
 
   isAuthenticated(): boolean {
