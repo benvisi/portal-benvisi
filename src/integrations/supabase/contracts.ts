@@ -1048,3 +1048,313 @@ export function isLimpezaSyncPendencia(value: unknown): value is LimpezaSyncPend
     (candidate.motivo === null || typeof candidate.motivo === "string")
   );
 }
+
+// =============================================================================
+// Treinamento V1 (Slice 1 — database/runtime contract)
+//
+// Shapes returned by the Treinamento RPCs in
+// supabase/migrations/20260923021020_add_treinamento_v1_foundation.sql. No hooks
+// or components consume these yet; they are here so Slice 1 and Slice 2 agree
+// on one definition rather than two.
+// =============================================================================
+
+export type TreinamentoBlocoTipo = "texto" | "cenario";
+
+/** Machine values, never UI wording. Labels live in config/constants.ts. */
+export type TreinamentoClassificacao = "best" | "acceptable" | "needs_improvement";
+
+const TREINAMENTO_CLASSIFICACOES: readonly TreinamentoClassificacao[] = [
+  "best",
+  "acceptable",
+  "needs_improvement",
+];
+
+export function isTreinamentoClassificacao(value: unknown): value is TreinamentoClassificacao {
+  return (
+    typeof value === "string" &&
+    TREINAMENTO_CLASSIFICACOES.includes(value as TreinamentoClassificacao)
+  );
+}
+
+/** Block-level principle ids — the same ids as config/principios.ts. */
+export const TREINAMENTO_PRINCIPIO_IDS = [
+  "integridade",
+  "foco-no-cliente",
+  "colaboracao",
+  "transparencia",
+  "qualidade",
+] as const;
+
+export type TreinamentoPrincipioId = (typeof TREINAMENTO_PRINCIPIO_IDS)[number];
+
+export interface TreinamentoConteudoTexto {
+  titulo?: string;
+  paragrafos: string[];
+  destaques?: string[];
+}
+
+/**
+ * `classificacao` and `feedback` are absent until this attempt has answered the
+ * block — abrir_treinamento strips them from unanswered scenarios server-side.
+ */
+export interface TreinamentoOpcao {
+  id: string;
+  texto: string;
+  classificacao?: TreinamentoClassificacao;
+  feedback?: string;
+}
+
+export interface TreinamentoConteudoCenario {
+  situacao: string;
+  pergunta: string;
+  opcoes: TreinamentoOpcao[];
+  /** Withheld until answered, same rule as the option fields above. */
+  fechamento?: string | null;
+}
+
+export interface TreinamentoRespostaRegistrada {
+  id_opcao: string;
+  classificacao: TreinamentoClassificacao;
+  respondido_em: string;
+}
+
+export interface TreinamentoBloco {
+  id: string;
+  ordem: number;
+  tipo: TreinamentoBlocoTipo;
+  principios: TreinamentoPrincipioId[];
+  conteudo: TreinamentoConteudoTexto | TreinamentoConteudoCenario;
+  /** null while unanswered in this attempt. */
+  resposta: TreinamentoRespostaRegistrada | null;
+}
+
+/** get_treinamentos_disponiveis — one row per module with a current publication. */
+export type TreinamentoEstado = "nao_iniciado" | "em_andamento" | "concluido";
+
+export interface TreinamentoDisponivel {
+  id_modulo: string;
+  slug: string;
+  titulo: string;
+  resumo: string | null;
+  duracao_estimada_min: number | null;
+  total_blocos: number;
+  id_versao_publicada: string;
+  estado: TreinamentoEstado;
+  concluido_em: string | null;
+}
+
+export function isTreinamentoDisponivel(value: unknown): value is TreinamentoDisponivel {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_modulo === "string" &&
+    candidate.id_modulo.length > 0 &&
+    typeof candidate.slug === "string" &&
+    candidate.slug.length > 0 &&
+    typeof candidate.titulo === "string" &&
+    (candidate.resumo === null || typeof candidate.resumo === "string") &&
+    (candidate.duracao_estimada_min === null ||
+      typeof candidate.duracao_estimada_min === "number") &&
+    typeof candidate.total_blocos === "number" &&
+    typeof candidate.id_versao_publicada === "string" &&
+    (candidate.estado === "nao_iniciado" ||
+      candidate.estado === "em_andamento" ||
+      candidate.estado === "concluido") &&
+    (candidate.concluido_em === null || typeof candidate.concluido_em === "string")
+  );
+}
+
+/**
+ * abrir_treinamento. `modo` is "revisao" when the employee already completed
+ * the current published version — the attempt is then read-only.
+ */
+export type TreinamentoModo = "andamento" | "revisao";
+
+export interface AbrirTreinamentoResult {
+  modulo: {
+    id: string;
+    slug: string;
+    titulo: string;
+    resumo: string | null;
+    duracao_estimada_min: number | null;
+  };
+  versao: { id: string; numero: number; status: string };
+  progresso: {
+    id: string;
+    tentativa: number;
+    status: "em_andamento" | "concluido";
+    id_bloco_atual: string | null;
+    iniciado_em: string;
+    concluido_em: string | null;
+  };
+  modo: TreinamentoModo;
+  blocos: TreinamentoBloco[];
+}
+
+export function isAbrirTreinamentoResult(value: unknown): value is AbrirTreinamentoResult {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const progresso = candidate.progresso as Record<string, unknown> | null | undefined;
+  return (
+    typeof candidate.modulo === "object" &&
+    candidate.modulo !== null &&
+    typeof candidate.versao === "object" &&
+    candidate.versao !== null &&
+    typeof progresso === "object" &&
+    progresso !== null &&
+    typeof progresso.id === "string" &&
+    (candidate.modo === "andamento" || candidate.modo === "revisao") &&
+    Array.isArray(candidate.blocos)
+  );
+}
+
+/** responder_cenario_treinamento — the evaluation withheld until now. */
+export interface ResponderCenarioResult {
+  id_bloco: string;
+  id_opcao: string;
+  classificacao: TreinamentoClassificacao;
+  feedback: string;
+  melhor: { id: string; texto: string; feedback: string };
+  fechamento: string | null;
+  /** true when this exact answer was already recorded (idempotent replay). */
+  ja_respondida: boolean;
+}
+
+export function isResponderCenarioResult(value: unknown): value is ResponderCenarioResult {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_bloco === "string" &&
+    typeof candidate.id_opcao === "string" &&
+    isTreinamentoClassificacao(candidate.classificacao) &&
+    typeof candidate.feedback === "string" &&
+    typeof candidate.melhor === "object" &&
+    candidate.melhor !== null &&
+    typeof candidate.ja_respondida === "boolean"
+  );
+}
+
+/** avancar_treinamento — `avancou` is false when the destination was behind. */
+export interface AvancarTreinamentoResult {
+  id_bloco_atual: string | null;
+  ordem: number;
+  avancou: boolean;
+}
+
+/** concluir_treinamento — drives the completion screen. */
+export interface ConcluirTreinamentoResult {
+  id_progresso: string;
+  concluido_em: string;
+  total_cenarios: number;
+  resumo: Record<TreinamentoClassificacao, number>;
+  ja_concluido: boolean;
+}
+
+// -----------------------------------------------------------------------------
+// Admin authoring (no UI in Slice 1 — that is Slice 3)
+// -----------------------------------------------------------------------------
+
+/** get_treinamentos_admin */
+export interface TreinamentoAdminRow {
+  id_modulo: string;
+  slug: string;
+  ordem_exibicao: number;
+  arquivado: boolean;
+  titulo_atual: string;
+  id_versao_publicada: string | null;
+  versao_publicada: number | null;
+  publicado_em: string | null;
+  publicado_por_nome: string | null;
+  id_versao_rascunho: string | null;
+  versao_rascunho: number | null;
+  rascunho_atualizado_em: string | null;
+  total_versoes: number;
+  total_concluidos: number;
+}
+
+export function isTreinamentoAdminRow(value: unknown): value is TreinamentoAdminRow {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id_modulo === "string" &&
+    candidate.id_modulo.length > 0 &&
+    typeof candidate.slug === "string" &&
+    typeof candidate.arquivado === "boolean" &&
+    typeof candidate.total_versoes === "number" &&
+    typeof candidate.total_concluidos === "number"
+  );
+}
+
+export type TreinamentoVersaoStatus = "rascunho" | "publicada" | "arquivada";
+
+/** get_treinamento_versao_admin — any version, nothing stripped. */
+export interface TreinamentoVersaoAdmin {
+  modulo: { id: string; slug: string; ordem_exibicao: number; arquivado: boolean };
+  versao: {
+    id: string;
+    numero: number;
+    status: TreinamentoVersaoStatus;
+    titulo: string;
+    resumo: string | null;
+    duracao_estimada_min: number | null;
+    derivada_de: string | null;
+    criado_em: string;
+    atualizado_em: string;
+    publicado_em: string | null;
+    arquivado_em: string | null;
+  };
+  blocos: Array<{
+    id: string;
+    ordem: number;
+    tipo: TreinamentoBlocoTipo;
+    principios: TreinamentoPrincipioId[];
+    conteudo: TreinamentoConteudoTexto | TreinamentoConteudoCenario;
+    origem_bloco_id: string | null;
+  }>;
+}
+
+/** salvar_rascunho_treinamento */
+export interface SalvarRascunhoTreinamentoResult {
+  id_versao: string;
+  total_blocos: number;
+  atualizado_em: string;
+}
+
+/**
+ * treinamento_processar_importacao — the same call validates (p_aplicar false)
+ * and applies (true), so the preview can never disagree with what is written.
+ */
+export interface TreinamentoImportacaoErro {
+  bloco: number | null;
+  campo: string;
+  codigo: string;
+}
+
+export interface TreinamentoImportacaoResult {
+  status: "pronto" | "aplicado" | "erro";
+  id_versao: string;
+  erros: TreinamentoImportacaoErro[];
+  avisos: string[];
+  previa: {
+    titulo: string;
+    resumo: string | null;
+    duracao_estimada_min: number | null;
+    total_blocos: number;
+    blocos: Array<{
+      ordem: number;
+      tipo: TreinamentoBlocoTipo;
+      principios: TreinamentoPrincipioId[];
+      titulo: string | null;
+    }>;
+  } | null;
+}
+
+/** publicar_rascunho_treinamento */
+export interface PublicarRascunhoTreinamentoResult {
+  id_versao: string;
+  versao: number;
+  publicado_em: string;
+  total_blocos: number;
+  /** The version archived by this publication; null on a first publication. */
+  versao_anterior: string | null;
+}
