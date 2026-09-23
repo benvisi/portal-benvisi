@@ -315,6 +315,28 @@ function AtendimentoPage() {
     }
   };
 
+  // Conclusão gerencial exception: same success handling as
+  // handleConcluirGerencial above — only the RPC called differs
+  // (concluirComoGerenteSemValidarChecklist records checklist_validado =
+  // false server-side instead of enforcing full completion).
+  const handleConcluirGerencialSemValidar = async (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => {
+    if (!gerencialAlvo) return;
+    const categorias = capturarCategoriasClientesDe(gerencialDraft.clientes);
+    const success = await actions.concluirComoGerenteSemValidarChecklist(
+      gerencialAlvo.idAtendimento,
+      clientes,
+      checklist,
+    );
+    if (success) {
+      showAtendimentoReinforcement(categorias);
+      setGerencialAlvo(null);
+      resetGerencialDraft();
+    }
+  };
+
   const handleStartClick = async () => {
     // Iniciar Atividades eligibility is checked first, before any Lista da
     // Vez / out-of-turn logic: an employee who hasn't started activities
@@ -460,6 +482,9 @@ function AtendimentoPage() {
             errorMessage={actions.errorMessage}
             onVoltar={handleCancelarGerencial}
             onConcluir={(clientes, checklist) => void handleConcluirGerencial(clientes, checklist)}
+            onConcluirSemValidarChecklist={(clientes, checklist) =>
+              void handleConcluirGerencialSemValidar(clientes, checklist)
+            }
             onFareiDepois={() => {}}
           />
         ) : isPendingRecovery ? (

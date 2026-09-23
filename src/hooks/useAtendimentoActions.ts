@@ -232,7 +232,10 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
   // access mid-shift). Ownership stays with the original employee — this
   // only ever changes who performed the action, server-side. No
   // p_adiar_checklist parameter, same reasoning as concluirPendente: Farei
-  // depois is never offered in the management flow.
+  // depois is never offered in the management flow. p_ignorar_checklist is
+  // explicit here (rather than relying on the RPC's default) so both this
+  // and the exception variant below read as two distinct, intentional
+  // calls rather than one call that happens to omit a flag.
   const concluirComoGerente = useCallback(
     (idAtendimento: string, clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
       runBooleanRpc(
@@ -242,8 +245,32 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_id_atendimento: idAtendimento,
           p_clientes: clientes,
           p_checklist: checklist,
+          p_ignorar_checklist: false,
         },
         "concluir_atendimento_gerencial",
+      ),
+    [runBooleanRpc, sessionToken],
+  );
+
+  // Conclusão gerencial exception: the manager explicitly could not
+  // validate the remaining checklist items (e.g. the employee is
+  // unreachable to confirm what was actually done). checklist here is
+  // whatever the manager genuinely ticked — never synthesized as complete
+  // client-side; the server records this as checklist_validado = false
+  // rather than silently accepting an incomplete checklist as if it were a
+  // normal validated completion.
+  const concluirComoGerenteSemValidarChecklist = useCallback(
+    (idAtendimento: string, clientes: ClienteOutcomeInput[], checklist: ChecklistRespostaInput[]) =>
+      runBooleanRpc(
+        "concluir_atendimento_gerencial",
+        {
+          p_session_token: sessionToken,
+          p_id_atendimento: idAtendimento,
+          p_clientes: clientes,
+          p_checklist: checklist,
+          p_ignorar_checklist: true,
+        },
+        "concluir_atendimento_gerencial (sem validar checklist)",
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -260,5 +287,6 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     concluirPendente,
     iniciarFechamentoComoGerente,
     concluirComoGerente,
+    concluirComoGerenteSemValidarChecklist,
   };
 }

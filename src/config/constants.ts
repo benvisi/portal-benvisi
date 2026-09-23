@@ -133,6 +133,13 @@ export const CHECKLIST_LOADING_MESSAGE = "Carregando checklist...";
 export const FAREI_DEPOIS_LABEL = "Farei depois";
 export const FAREI_DEPOIS_SUPPORT_TEXT = "Você poderá concluir este checklist depois.";
 
+// Conclusão gerencial exception: only ever shown to a Gerente/Administrador
+// completing another employee's Atendimento, when they can't personally
+// confirm the remaining checklist items (e.g. the employee is unreachable).
+export const CONCLUIR_SEM_VALIDAR_CHECKLIST_LABEL = "Concluir sem validar checklist";
+export const CONCLUIR_SEM_VALIDAR_CHECKLIST_SUPPORT_TEXT =
+  "Os itens não marcados ficam registrados como não validados pela gestão.";
+
 export function getChecklistPendenciasCountLabel(count: number): string {
   return count === 1 ? "1 checklist pendente" : `${count} checklists pendentes`;
 }

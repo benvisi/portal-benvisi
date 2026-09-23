@@ -15,6 +15,8 @@ import {
   CHECKLIST_OBRIGATORIO_PERIODICO_MESSAGE,
   CHECKLIST_SUBTITLE,
   CHECKLIST_TITLE,
+  CONCLUIR_SEM_VALIDAR_CHECKLIST_LABEL,
+  CONCLUIR_SEM_VALIDAR_CHECKLIST_SUPPORT_TEXT,
   FAREI_DEPOIS_LABEL,
   FAREI_DEPOIS_SUPPORT_TEXT,
   FECHAMENTO_SUBMIT_LABEL,
@@ -63,6 +65,17 @@ interface FechamentoAtendimentoProps {
   // no "active" state of the manager's own to return to). Never combined
   // with isPendingRecovery — those are mutually exclusive flows.
   gerencialNome?: string | null;
+  // Conclusão gerencial exception: only ever called when gerencialNome is
+  // set — a Gerente/Administrador explicitly recording that they could not
+  // validate the remaining checklist items themselves. checklist here is
+  // built from whatever the manager genuinely ticked (never auto-marked
+  // complete) — see concluir_atendimento_gerencial's p_ignorar_checklist.
+  // Omitted entirely for the normal self-completion and previous-day
+  // recovery flows, where the checklist gate always stays enforced.
+  onConcluirSemValidarChecklist?: (
+    clientes: ClienteOutcomeInput[],
+    checklist: ChecklistRespostaInput[],
+  ) => void;
   submitting: boolean;
   errorMessage: string | null;
   onVoltar: () => void;
@@ -89,6 +102,7 @@ export function FechamentoAtendimento({
   isPendingRecovery = false,
   diaOriginalFormatado = null,
   gerencialNome = null,
+  onConcluirSemValidarChecklist,
   submitting,
   errorMessage,
   onVoltar,
@@ -133,6 +147,18 @@ export function FechamentoAtendimento({
   // warning/destructive color, so it stays neutral/non-alarming per spec.
   const checklistObrigatorioPeriodico = checklistObrigatorio === true;
 
+  // Conclusão gerencial exception: only ever offered in gerencial mode, and
+  // only once it's actually needed (the checklist isn't already fully
+  // checked) — when checklistValido is already true, the normal Concluir
+  // button above does the job and this path stays hidden. Customer outcome
+  // data is still always required, exactly like every other completion
+  // path — this exception is scoped to the checklist gate alone.
+  const podeConcluirSemValidar =
+    Boolean(onConcluirSemValidarChecklist) &&
+    Boolean(gerencialNome) &&
+    clientesValidos &&
+    !checklistValido;
+
   const handleVoltarClick = () => {
     if (draft.isDirty) {
       setConfirmVoltarOpen(true);
@@ -147,20 +173,28 @@ export function FechamentoAtendimento({
       detalhe: c.detalhe.trim() || null,
     }));
 
+  // Shared by the normal submit and the gerencial "sem validar" exception —
+  // reflects whatever is actually checked in the draft right now, never
+  // synthesizes a true for an item the viewer didn't tick.
+  const checklistPayload = (): ChecklistRespostaInput[] =>
+    checklistItens.map((item) => ({
+      codigo: item.codigo,
+      concluido: draft.checklist[item.codigo] === true,
+    }));
+
   const handleSubmit = () => {
     if (!formValido || submitting) return;
-    onConcluir(
-      clientesPayload(),
-      checklistItens.map((item) => ({
-        codigo: item.codigo,
-        concluido: draft.checklist[item.codigo] === true,
-      })),
-    );
+    onConcluir(clientesPayload(), checklistPayload());
   };
 
   const handleFareiDepois = () => {
     if (!podeAdiar || submitting) return;
     onFareiDepois(clientesPayload());
+  };
+
+  const handleConcluirSemValidar = () => {
+    if (!podeConcluirSemValidar || submitting) return;
+    onConcluirSemValidarChecklist?.(clientesPayload(), checklistPayload());
   };
 
   return (
@@ -287,6 +321,27 @@ export function FechamentoAtendimento({
               {FAREI_DEPOIS_LABEL}
             </Button>
             <p className="text-center text-xs text-muted-foreground">{FAREI_DEPOIS_SUPPORT_TEXT}</p>
+          </div>
+        )}
+        {podeConcluirSemValidar && (
+          // Management-only exception (never rendered outside gerencial
+          // mode — podeConcluirSemValidar already requires gerencialNome).
+          // Warning-toned like Farei depois: this isn't a destructive
+          // action, just an explicit deviation from the normal path, kept
+          // visually distinct from the primary Concluir button above.
+          <div className="flex flex-col items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-touch w-full border-warning/40 text-warning hover:bg-warning/10"
+              disabled={submitting}
+              onClick={handleConcluirSemValidar}
+            >
+              {CONCLUIR_SEM_VALIDAR_CHECKLIST_LABEL}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              {CONCLUIR_SEM_VALIDAR_CHECKLIST_SUPPORT_TEXT}
+            </p>
           </div>
         )}
         {!isPendingRecovery && (
