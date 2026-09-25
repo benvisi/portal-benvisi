@@ -22,17 +22,38 @@ begin;
 --     of the newly-published month is synced — there is no narrower
 --     "affected" set for a month that previously had no schedule at all.
 --
--- In both cases, limpeza_sincronizar_datas_afetadas itself filters out any
--- date before today (Manaus) and isolates each remaining date's sync in its
--- own failure boundary. On top of that, THIS function wraps the whole call
--- in its own exception guard: a bug in Limpeza sync must never roll back or
--- block the Escala publication that already committed inside this same
--- transaction. If a Limpeza sync failure occurs, the Escala publish still
--- reports 'publicado' successfully; recovery is the Gerente/Administrador
--- "Sincronizar" fallback (limpeza_sincronizar_manual) in the Limpeza
--- Gerenciar tab. This asymmetry is deliberate: Escala is the older,
--- load-bearing system of record and must never be made less reliable by a
--- newer, less-proven dependent feature.
+-- TRANSACTION SEMANTICS (verified, not assumed): this whole function — the
+-- Escala writes above AND the Limpeza sync call below — executes inside a
+-- SINGLE outer transaction (the one Supabase/PostgREST opens for this one
+-- RPC call). The Escala INSERTs do NOT commit early just because they run
+-- first in program order; nothing commits until this function returns and
+-- the RPC call as a whole succeeds. What protects Escala is PL/pgSQL's
+-- SAVEPOINT mechanism, not an early commit:
+--   - limpeza_sincronizar_dia_com_registro (20260925_104) wraps each date's
+--     actual sync attempt in its own `begin ... exception when others ...
+--     end` block. Entering that block implicitly sets a SAVEPOINT; if the
+--     sync raises, Postgres automatically issues ROLLBACK TO SAVEPOINT
+--     (undoing ONLY that date's partial Limpeza writes — nothing from
+--     Escala, which ran earlier and outside this block), and the caught
+--     exception is converted into a limpeza_sync_falhas row instead of
+--     propagating further.
+--   - THIS function's own `begin ... exception when others ... end` around
+--     the call to limpeza_sincronizar_datas_afetadas is a second, outer
+--     SAVEPOINT boundary — belt-and-suspenders in case a bug inside the
+--     failure-recording path itself throws (e.g. the INSERT into
+--     limpeza_sync_falhas), which would otherwise be the one way a Limpeza
+--     failure could still escape the inner boundary.
+-- Because every Limpeza exception is caught by one of those two boundaries
+-- and NEVER re-raised, escala_processar_importacao always returns normally
+-- once its own Escala work is done, so the RPC call succeeds and the single
+-- outer transaction — Escala rows, any successful Limpeza sync, and any
+-- limpeza_sync_falhas rows — commits atomically together. A partially
+-- failed Limpeza sync attempt is rolled back to its savepoint (so no
+-- corrupted limpeza_atribuicoes row survives), while the Escala publication
+-- itself was never at risk, because no exception path from Limpeza can ever
+-- reach the top of this function unhandled. This asymmetry is deliberate:
+-- Escala is the older, load-bearing system of record and must never be made
+-- less reliable by a newer, less-proven dependent feature.
 -- =============================================================================
 
 create or replace function public.escala_processar_importacao(
@@ -380,8 +401,12 @@ begin
 
       perform public.limpeza_sincronizar_datas_afetadas(v_datas_afetadas);
     exception when others then
-      -- Never let a Limpeza sync failure roll back or fail an Escala
-      -- publication that already committed above. Recovery path:
+      -- Outer SAVEPOINT boundary (see header comment for the full
+      -- transaction-semantics explanation) — this and the inner one inside
+      -- limpeza_sincronizar_dia_com_registro are what keep a Limpeza
+      -- failure from ever reaching the top of this function unhandled, so
+      -- the Escala work above always reaches a normal, successful commit
+      -- with the rest of this transaction. Recovery path:
       -- limpeza_sincronizar_manual (Gerenciar tab "Sincronizar").
       null;
     end;
