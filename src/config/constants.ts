@@ -317,6 +317,20 @@ export const NOSSOS_PRINCIPIOS_PAGE_SUBTITLE =
 export const ATRIBUTOS_PESSOAIS_LABEL = "Atributos pessoais";
 export const VALORES_CULTURAIS_LABEL = "Valores culturais";
 
+// Footwear UK/BR size conversion (20260925): a direct card/page at the
+// Conhecimento & Cultura hub level (not a "Produtos" submenu — there is no
+// second product-reference item yet to justify that extra navigation
+// level). Reads the same shared mapping as Consulta de Estoque.
+export const TAMANHOS_CALCADOS_TITLE = "Tamanhos de calçados";
+export const TAMANHOS_CALCADOS_CARD_DESCRIPTION =
+  "Tabela de conversão de numeração de calçados do padrão UK (Linx) para o padrão BR.";
+export const TAMANHOS_CALCADOS_PAGE_SUBTITLE =
+  "Consulte a numeração equivalente em BR para os tamanhos de calçados registrados em UK.";
+export const TAMANHOS_CALCADOS_INFANTIL_AVISO =
+  "Conversão disponível apenas para os tamanhos abaixo; os demais ainda não têm equivalência BR definida.";
+export const TAMANHOS_CALCADOS_DISCLAIMER =
+  "Observação: a conversão de tamanhos pode variar conforme o modelo do calçado.";
+
 // Epic 4, Milestone 4A/4B: Operações module foundation.
 export const OPERACOES_TITLE = "Operações";
 export const OPERACOES_DASHBOARD_SUBTITLE =
@@ -597,6 +611,16 @@ export const ESTOQUE_FRESHNESS_ERRO_MESSAGE =
 
 export const ESTOQUE_COR_COLUNA_LABEL = "Cor";
 export const ESTOQUE_COR_NAO_MAPEADA_LABEL = "Cor não mapeada";
+
+// Footwear UK/BR size conversion (20260925): for footwear matrices only,
+// two header rows replace the single size-header row — UK (Linx/source
+// sizing, normalized for display only) and BR (the Brazilian consumer-size
+// equivalent, from the shared src/lib/conversaoTamanhoCalcado mapping). A
+// size with no supplied BR mapping shows ESTOQUE_TAMANHO_BR_AUSENTE_LABEL,
+// never an invented conversion. Non-footwear matrices are unaffected.
+export const ESTOQUE_TAMANHO_UK_LABEL = "UK";
+export const ESTOQUE_TAMANHO_BR_LABEL = "BR";
+export const ESTOQUE_TAMANHO_BR_AUSENTE_LABEL = "—";
 
 // Price V1 — employee-facing label is deliberately just "Preço", never the
 // internal Linx/pricing terminology (R3, tabela de preço, PRECO1, "preço

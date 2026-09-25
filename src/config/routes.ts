@@ -10,6 +10,7 @@ export const ROUTES = {
   ADMINISTRATIVO_TERMOS_BUSCA: "/administrativo/termos-busca",
   CONHECIMENTO_CULTURA: "/conhecimento-cultura",
   CONHECIMENTO_CULTURA_PRINCIPIOS: "/conhecimento-cultura/principios",
+  CONHECIMENTO_CULTURA_TAMANHOS_CALCADOS: "/conhecimento-cultura/tamanhos-calcados",
   OPERACOES: "/operacoes",
   OPERACOES_LINKS_IMPORTANTES: "/operacoes/links-importantes",
   OPERACOES_MENSAGENS_WHATSAPP: "/operacoes/mensagens-whatsapp",

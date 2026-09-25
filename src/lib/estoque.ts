@@ -1,4 +1,5 @@
 import { ESTOQUE_COR_NAO_MAPEADA_LABEL, LOCALE_PT_BR, MANAUS_TIMEZONE } from "@/config/constants";
+import { classificarSegmentoCalcado, type Segmento } from "@/lib/conversaoTamanhoCalcado";
 import type { EstoqueProdutoDetalheLinha } from "@/integrations/supabase/contracts";
 
 /**
@@ -46,6 +47,13 @@ export interface EstoqueMatriz {
   descProduto: string | null;
   tipoProduto: string | null;
   linha: string | null;
+  /**
+   * Footwear UK/BR conversion: the Linx size-grade code, or null. Derived
+   * segmentoCalcado is null for every non-footwear produto — the matrix
+   * component uses that to render the existing single-row header unchanged.
+   */
+  grade: string | null;
+  segmentoCalcado: Segmento | null;
   syncConcluidoEm: string | null;
   tamanhos: EstoqueTamanhoColuna[];
   cores: EstoqueCorLinha[];
@@ -95,6 +103,8 @@ export function buildEstoqueMatriz(
     descProduto: first.desc_produto,
     tipoProduto: first.tipo_produto,
     linha: first.linha,
+    grade: first.grade,
+    segmentoCalcado: classificarSegmentoCalcado(first.grade),
     syncConcluidoEm: first.sync_concluido_em,
     tamanhos,
     cores: [...coresPorCodigo.values()],

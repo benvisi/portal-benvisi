@@ -22,6 +22,7 @@ import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoe
 import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
 import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
+import { Route as ConhecimentoCulturaTamanhosCalcadosRouteImport } from './routes/conhecimento-cultura/tamanhos-calcados'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
 import { Route as AdministrativoTermosBuscaRouteImport } from './routes/administrativo/termos-busca'
 import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
@@ -96,6 +97,12 @@ const OperacoesContagemEmbalagensRoute =
     path: '/operacoes/contagem-embalagens',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ConhecimentoCulturaTamanhosCalcadosRoute =
+  ConhecimentoCulturaTamanhosCalcadosRouteImport.update({
+    id: '/conhecimento-cultura/tamanhos-calcados',
+    path: '/conhecimento-cultura/tamanhos-calcados',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ConhecimentoCulturaPrincipiosRoute =
   ConhecimentoCulturaPrincipiosRouteImport.update({
     id: '/conhecimento-cultura/principios',
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
@@ -149,6 +157,7 @@ export interface FileRoutesByTo {
   '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
@@ -169,6 +178,7 @@ export interface FileRoutesById {
   '/administrativo/escala': typeof AdministrativoEscalaRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
+  '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/administrativo/escala'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/limpeza'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/administrativo/escala'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/limpeza'
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/administrativo/escala'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
+    | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
     | '/operacoes/limpeza'
@@ -248,6 +261,7 @@ export interface RootRouteChildren {
   AdministrativoEscalaRoute: typeof AdministrativoEscalaRoute
   AdministrativoTermosBuscaRoute: typeof AdministrativoTermosBuscaRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
+  ConhecimentoCulturaTamanhosCalcadosRoute: typeof ConhecimentoCulturaTamanhosCalcadosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
   OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
@@ -351,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesContagemEmbalagensRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conhecimento-cultura/tamanhos-calcados': {
+      id: '/conhecimento-cultura/tamanhos-calcados'
+      path: '/conhecimento-cultura/tamanhos-calcados'
+      fullPath: '/conhecimento-cultura/tamanhos-calcados'
+      preLoaderRoute: typeof ConhecimentoCulturaTamanhosCalcadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/conhecimento-cultura/principios': {
       id: '/conhecimento-cultura/principios'
       path: '/conhecimento-cultura/principios'
@@ -392,6 +413,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdministrativoEscalaRoute: AdministrativoEscalaRoute,
   AdministrativoTermosBuscaRoute: AdministrativoTermosBuscaRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
+  ConhecimentoCulturaTamanhosCalcadosRoute:
+    ConhecimentoCulturaTamanhosCalcadosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
   OperacoesLimpezaRoute: OperacoesLimpezaRoute,

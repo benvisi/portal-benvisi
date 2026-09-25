@@ -521,11 +521,19 @@ export function isEstoqueProdutoBusca(value: unknown): value is EstoqueProdutoBu
 // colour, same precedent as desc_produto/cor_nome_portal). null means no R3
 // price was found for this produto/cor; the UI shows "—", never a
 // manufactured value.
+//
+// Footwear UK/BR size conversion (20260925): `grade` is the Linx size-grade
+// code (e.g. "F1"), repeated on every row of the same produto. It is the
+// structured signal that both identifies footwear AND its
+// Masculino/Feminino/Infantil segmento (see src/lib/conversaoTamanhoCalcado)
+// — never inferred from `linha`/`desc_produto` text. null/unrecognized
+// grades simply never classify as footwear.
 export interface EstoqueProdutoDetalheLinha {
   produto: string;
   desc_produto: string | null;
   tipo_produto: string | null;
   linha: string | null;
+  grade: string | null;
   cor_codigo: string;
   cor_nome_portal: string | null;
   cor_familia: string | null;
@@ -545,6 +553,7 @@ export function isEstoqueProdutoDetalheLinha(value: unknown): value is EstoquePr
     (candidate.desc_produto === null || typeof candidate.desc_produto === "string") &&
     (candidate.tipo_produto === null || typeof candidate.tipo_produto === "string") &&
     (candidate.linha === null || typeof candidate.linha === "string") &&
+    (candidate.grade === null || typeof candidate.grade === "string") &&
     typeof candidate.cor_codigo === "string" &&
     candidate.cor_codigo.length > 0 &&
     (candidate.cor_nome_portal === null || typeof candidate.cor_nome_portal === "string") &&
