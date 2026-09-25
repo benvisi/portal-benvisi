@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Compass } from "lucide-react";
+import { ArrowLeft, Compass, Footprints } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -9,6 +9,8 @@ import {
   CONHECIMENTO_CULTURA_TITLE,
   NOSSOS_PRINCIPIOS_CARD_DESCRIPTION,
   NOSSOS_PRINCIPIOS_TITLE,
+  TAMANHOS_CALCADOS_CARD_DESCRIPTION,
+  TAMANHOS_CALCADOS_TITLE,
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
@@ -27,9 +29,11 @@ export const Route = createFileRoute("/conhecimento-cultura/")({
 
 // Milestone 3A: this is the content hub for the module, not a one-off link
 // straight to Nossos Princípios — future categories (section — Conhecimento
-// & Cultura, Blueprint) will be added here as their own cards. Only one
-// category exists today, so a single card is shown rather than several
-// disabled placeholders.
+// & Cultura, Blueprint) will be added here as their own cards.
+//
+// Footwear UK/BR size conversion (20260925): "Tamanhos de calçados" is added
+// as a direct card here, not under a new "Produtos" submenu — one reference
+// table does not justify an extra navigation level (see discovery report).
 //
 // variant="brand-level-2": this hub is one level below the Dashboard, so
 // its tiles use the softer navigation-depth tier (Blueprint section 14.8)
@@ -67,6 +71,13 @@ function ConhecimentoCulturaPage() {
             description={NOSSOS_PRINCIPIOS_CARD_DESCRIPTION}
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.CONHECIMENTO_CULTURA_PRINCIPIOS })}
+          />
+          <ModuleCard
+            icon={Footprints}
+            title={TAMANHOS_CALCADOS_TITLE}
+            description={TAMANHOS_CALCADOS_CARD_DESCRIPTION}
+            variant="brand-level-2"
+            onClick={() => void navigate({ to: ROUTES.CONHECIMENTO_CULTURA_TAMANHOS_CALCADOS })}
           />
         </div>
       </div>
