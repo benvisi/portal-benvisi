@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Boxes, CalendarDays, Link2, MessageCircle } from "lucide-react";
+import { ArrowLeft, Boxes, CalendarDays, Link2, MessageCircle, Sparkles } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -9,6 +9,8 @@ import {
   CONTAGEM_EMBALAGENS_TITLE,
   ESCALA_CARD_DESCRIPTION,
   ESCALA_TITLE,
+  LIMPEZA_CARD_DESCRIPTION,
+  LIMPEZA_TITLE,
   LINKS_IMPORTANTES_CARD_DESCRIPTION,
   LINKS_IMPORTANTES_TITLE,
   MENSAGENS_WHATSAPP_CARD_DESCRIPTION,
@@ -98,6 +100,13 @@ function OperacoesPage() {
             description={LINKS_IMPORTANTES_CARD_DESCRIPTION}
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_LINKS_IMPORTANTES })}
+          />
+          <ModuleCard
+            icon={Sparkles}
+            title={LIMPEZA_TITLE}
+            description={LIMPEZA_CARD_DESCRIPTION}
+            variant="brand-level-2"
+            onClick={() => void navigate({ to: ROUTES.OPERACOES_LIMPEZA })}
           />
         </div>
       </div>
