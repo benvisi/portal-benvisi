@@ -53,6 +53,14 @@ Never modify production data without explicit approval.
 
 Prefer RPCs over exposing tables directly.
 
+Browser database access is RPC-first / RPC-only unless explicitly designed and documented otherwise.
+
+`public` tables receive no blanket `anon` or `authenticated` table privileges; new table migrations must make any required Data API/table grant explicit rather than relying on Supabase defaults.
+
+Any migration requiring direct table access must explicitly grant only the required operations to the required role. `service_role` direct table access must also be explicit and least-privilege.
+
+Do not copy generic Supabase examples that grant CRUD to `authenticated` into Portal migrations — Portal uses its own PIN/session model, not Supabase Auth sessions, so `authenticated` is not the app's real access role.
+
 ## Coding Standards
 
 Prefer existing project patterns.
