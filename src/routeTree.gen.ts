@@ -19,6 +19,7 @@ import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecime
 import { Route as AdministrativoIndexRouteImport } from './routes/administrativo/index'
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
+import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
 import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
 import { Route as ConhecimentoCulturaTamanhosCalcadosRouteImport } from './routes/conhecimento-cultura/tamanhos-calcados'
@@ -80,6 +81,11 @@ const OperacoesLinksImportantesRoute =
     path: '/operacoes/links-importantes',
     getParentRoute: () => rootRouteImport,
   } as any)
+const OperacoesLimpezaRoute = OperacoesLimpezaRouteImport.update({
+  id: '/operacoes/limpeza',
+  path: '/operacoes/limpeza',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OperacoesEscalaRoute = OperacoesEscalaRouteImport.update({
   id: '/operacoes/escala',
   path: '/operacoes/escala',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo/': typeof AdministrativoIndexRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo': typeof AdministrativoIndexRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo/': typeof AdministrativoIndexRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo/'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo/'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   ConhecimentoCulturaTamanhosCalcadosRoute: typeof ConhecimentoCulturaTamanhosCalcadosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
+  OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
   AdministrativoIndexRoute: typeof AdministrativoIndexRoute
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesLinksImportantesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operacoes/limpeza': {
+      id: '/operacoes/limpeza'
+      path: '/operacoes/limpeza'
+      fullPath: '/operacoes/limpeza'
+      preLoaderRoute: typeof OperacoesLimpezaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operacoes/escala': {
       id: '/operacoes/escala'
       path: '/operacoes/escala'
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
     ConhecimentoCulturaTamanhosCalcadosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
+  OperacoesLimpezaRoute: OperacoesLimpezaRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,
   AdministrativoIndexRoute: AdministrativoIndexRoute,
