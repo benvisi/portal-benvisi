@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { LimpezaTarefa, LimpezaTurno } from "@/integrations/supabase/contracts";
+import { limpezaAtribuicoesMesQueryKey } from "@/hooks/useLimpezaAtribuicoesMes";
 import { limpezaDiaQueryKey } from "@/hooks/useLimpezaDia";
 import { limpezaGerencialMesQueryKey } from "@/hooks/useLimpezaGerencialMes";
 import { limpezaMesQueryKey } from "@/hooks/useLimpezaMes";
@@ -43,6 +44,7 @@ export function useLimpezaAtribuirManual(sessionToken: string | null, mes: strin
         await queryClient.invalidateQueries({ queryKey: limpezaDiaQueryKey(data) });
         await queryClient.invalidateQueries({ queryKey: limpezaMesQueryKey(mes) });
         await queryClient.invalidateQueries({ queryKey: limpezaGerencialMesQueryKey(mes) });
+        await queryClient.invalidateQueries({ queryKey: limpezaAtribuicoesMesQueryKey(mes) });
         return true;
       } catch (error) {
         if (handleSessionError(error)) return false;

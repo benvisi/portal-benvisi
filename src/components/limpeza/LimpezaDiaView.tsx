@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Check, Loader2 } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LimpezaTarefaChip } from "@/components/limpeza/LimpezaTarefaChip";
 import {
   LIMPEZA_CARREGANDO_MESSAGE,
   LIMPEZA_CONCLUINDO_LABEL,
@@ -15,7 +16,6 @@ import {
   LIMPEZA_MANUAL_LABEL,
   LIMPEZA_PROXIMO_DIA_LABEL,
   LIMPEZA_SEM_CANDIDATO_LABEL,
-  LIMPEZA_TAREFA_LABELS,
   LIMPEZA_TURNO_LABELS,
   getLimpezaConcluidoLabel,
   getLimpezaConcluidoPorLabel,
@@ -160,11 +160,15 @@ function LimpezaTurnoGrupo({
 
           return (
             <div key={atribuicao.id} className="flex items-center justify-between gap-3 p-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground">
-                  {LIMPEZA_TAREFA_LABELS[atribuicao.tarefa]}
-                  {atribuicao.funcionario_apelido && ` — ${atribuicao.funcionario_apelido}`}
-                </span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <LimpezaTarefaChip tarefa={atribuicao.tarefa} />
+                  {atribuicao.funcionario_apelido && (
+                    <span className="text-sm font-medium text-foreground">
+                      {atribuicao.funcionario_apelido}
+                    </span>
+                  )}
+                </div>
                 {atribuicao.status === "concluida" && atribuicao.concluido_em && (
                   <span className="text-xs text-muted-foreground">
                     {atribuicao.concluido_por_apelido &&

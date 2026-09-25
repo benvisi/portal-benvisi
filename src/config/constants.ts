@@ -750,6 +750,13 @@ export const LIMPEZA_TAREFA_LABELS: Record<"varrer" | "passar_pano", string> = {
   passar_pano: "Passar pano",
 };
 
+// Icons are always paired with the text label above (LIMPEZA_TAREFA_LABELS)
+// — never rely on the icon alone to convey which task it is.
+export const LIMPEZA_TAREFA_ICONS: Record<"varrer" | "passar_pano", string> = {
+  varrer: "🧹",
+  passar_pano: "🧽",
+};
+
 export const LIMPEZA_TURNO_LABELS: Record<"manha" | "tarde", string> = {
   manha: "Manhã",
   tarde: "Tarde",
@@ -790,25 +797,45 @@ export const LIMPEZA_ATRIBUICAO_SEM_FUNCIONARIO_MESSAGE =
 export const LIMPEZA_ATRIBUICAO_EM_CONFLITO_MESSAGE =
   "Esta atribuição está em conflito e precisa ser resolvida pela gestão antes de ser concluída.";
 
-// Mês (transparency summary) column labels.
+// Mês (transparency summary). Mobile layout: two columns — "Distribuição"
+// (varrer/pano/total) and "Execução" (concluídos/não concluídos).
+export const LIMPEZA_MES_DISTRIBUICAO_TITLE = "Distribuição";
+export const LIMPEZA_MES_EXECUCAO_TITLE = "Execução";
 export const LIMPEZA_MES_VARRER_COLUNA_LABEL = "Varrer atribuídos";
-export const LIMPEZA_MES_PASSAR_PANO_COLUNA_LABEL = "Passar pano atribuídos";
+export const LIMPEZA_MES_PASSAR_PANO_COLUNA_LABEL = "Pano atribuídos";
 export const LIMPEZA_MES_TOTAL_COLUNA_LABEL = "Total";
 export const LIMPEZA_MES_CONCLUIDOS_COLUNA_LABEL = "Concluídos";
-export const LIMPEZA_MES_PENDENTES_COLUNA_LABEL = "Pendentes";
+// Renamed from "Pendentes" (misleading — implied every open assignment,
+// including future ones, was overdue). Counts only past, not-yet-completed
+// assignments; see get_limpeza_mes's nao_concluidos column.
+export const LIMPEZA_MES_NAO_CONCLUIDOS_COLUNA_LABEL = "Não concluídos";
+export const LIMPEZA_MES_NAO_CONCLUIDOS_HINT = "Não concluídos considera somente dias anteriores.";
 export const LIMPEZA_MES_VAZIO_MESSAGE = "Nenhum funcionário elegível para limpeza este mês.";
 
-// Gerenciar tab (exceptions + manual override).
-export const LIMPEZA_GERENCIAL_TITLE = "Exceções de limpeza";
+// Gerenciar tab: "Atribuições do mês" (every assignment, with Alterar) is
+// the primary management surface; "Exceções" (conflicts, sync failures,
+// missed) is a separate, secondary section below it.
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_TITLE = "Atribuições do mês";
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_VAZIO_MESSAGE =
+  "Nenhuma atribuição de limpeza este mês.";
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_ERRO_MESSAGE =
+  "Não foi possível carregar as atribuições do mês. Tente novamente.";
+export const LIMPEZA_GERENCIAL_TITLE = "Exceções";
 export const LIMPEZA_GERENCIAL_VAZIO_MESSAGE = "Nenhuma exceção este mês.";
 export const LIMPEZA_GERENCIAL_ERRO_MESSAGE =
   "Não foi possível carregar as exceções. Tente novamente.";
 export const LIMPEZA_GERENCIAL_ATRASADA_LABEL = "Atrasada";
-export const LIMPEZA_GERENCIAL_ALTERAR_LABEL = "Alterar responsável";
+export const LIMPEZA_GERENCIAL_ALTERAR_LABEL = "Alterar";
 export const LIMPEZA_GERENCIAL_SALVANDO_LABEL = "Salvando...";
 export const LIMPEZA_GERENCIAL_SALVAR_LABEL = "Salvar";
 export const LIMPEZA_GERENCIAL_CANCELAR_LABEL = "Cancelar";
 export const LIMPEZA_GERENCIAL_SELECIONE_FUNCIONARIO_LABEL = "Selecione um funcionário";
+export function getLimpezaGerencialDataTurnoLabel(
+  dataFormatada: string,
+  turnoLabel: string,
+): string {
+  return `${dataFormatada} · ${turnoLabel}`;
+}
 
 // Fallback manual resync (limpeza_sincronizar_manual) — recovery path if the
 // Escala-publish-time sync ever failed silently. Not the primary sync path.

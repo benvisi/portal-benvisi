@@ -81,6 +81,13 @@ function OperacoesPage() {
             onClick={() => void navigate({ to: ROUTES.OPERACOES_ESCALA })}
           />
           <ModuleCard
+            icon={Sparkles}
+            title={LIMPEZA_TITLE}
+            description={LIMPEZA_CARD_DESCRIPTION}
+            variant="brand-level-2"
+            onClick={() => void navigate({ to: ROUTES.OPERACOES_LIMPEZA })}
+          />
+          <ModuleCard
             icon={MessageCircle}
             title={MENSAGENS_WHATSAPP_TITLE}
             description={MENSAGENS_WHATSAPP_CARD_DESCRIPTION}
@@ -100,13 +107,6 @@ function OperacoesPage() {
             description={LINKS_IMPORTANTES_CARD_DESCRIPTION}
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_LINKS_IMPORTANTES })}
-          />
-          <ModuleCard
-            icon={Sparkles}
-            title={LIMPEZA_TITLE}
-            description={LIMPEZA_CARD_DESCRIPTION}
-            variant="brand-level-2"
-            onClick={() => void navigate({ to: ROUTES.OPERACOES_LIMPEZA })}
           />
         </div>
       </div>

@@ -898,6 +898,9 @@ export function isLimpezaAtribuicaoDia(value: unknown): value is LimpezaAtribuic
 }
 
 // get_limpeza_mes — one row per currently-eligible funcionario, alphabetical.
+// nao_concluidos counts only past (data < hoje Manaus), not-yet-completed
+// assignments — future/today's still-open assignments never count as
+// "não concluído" (they are not overdue).
 export interface LimpezaResumoMensal {
   funcionario_id: string;
   funcionario_nome: string;
@@ -906,7 +909,7 @@ export interface LimpezaResumoMensal {
   passar_pano_atribuidos: number;
   total: number;
   concluidos: number;
-  pendentes: number;
+  nao_concluidos: number;
 }
 
 export function isLimpezaResumoMensal(value: unknown): value is LimpezaResumoMensal {
@@ -920,7 +923,43 @@ export function isLimpezaResumoMensal(value: unknown): value is LimpezaResumoMen
     typeof candidate.passar_pano_atribuidos === "number" &&
     typeof candidate.total === "number" &&
     typeof candidate.concluidos === "number" &&
-    typeof candidate.pendentes === "number"
+    typeof candidate.nao_concluidos === "number"
+  );
+}
+
+// get_limpeza_atribuicoes_mes — Gerente/Administrador only: every assignment
+// for the month (not just exceptions), for the Gerenciar "Atribuições do
+// mês" management list.
+export interface LimpezaAtribuicaoMes {
+  id: string;
+  data: string;
+  turno: LimpezaTurno;
+  tarefa: LimpezaTarefa;
+  funcionario_id: string | null;
+  funcionario_apelido: string | null;
+  origem: "automatica" | "manual";
+  bloqueada: boolean;
+  status: LimpezaStatus;
+}
+
+export function isLimpezaAtribuicaoMes(value: unknown): value is LimpezaAtribuicaoMes {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.data === "string" &&
+    typeof candidate.turno === "string" &&
+    LIMPEZA_TURNOS.includes(candidate.turno as LimpezaTurno) &&
+    typeof candidate.tarefa === "string" &&
+    LIMPEZA_TAREFAS.includes(candidate.tarefa as LimpezaTarefa) &&
+    optionalString(candidate.funcionario_id) &&
+    optionalString(candidate.funcionario_apelido) &&
+    (candidate.origem === "automatica" || candidate.origem === "manual") &&
+    typeof candidate.bloqueada === "boolean" &&
+    typeof candidate.status === "string" &&
+    LIMPEZA_STATUS.includes(candidate.status as LimpezaStatus)
   );
 }
 
