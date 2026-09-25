@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   ESTOQUE_TAMANHO_BR_LABEL,
   ESTOQUE_TAMANHO_UK_LABEL,
+  TAMANHOS_CALCADOS_DISCLAIMER,
   TAMANHOS_CALCADOS_INFANTIL_AVISO,
   TAMANHOS_CALCADOS_PAGE_SUBTITLE,
   TAMANHOS_CALCADOS_TITLE,
@@ -125,6 +126,8 @@ function TamanhosCalcadosPage() {
             );
           })}
         </div>
+
+        <p className="text-xs text-muted-foreground">{TAMANHOS_CALCADOS_DISCLAIMER}</p>
       </div>
 
       <AuthUtilityBar />

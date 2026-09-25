@@ -328,6 +328,8 @@ export const TAMANHOS_CALCADOS_PAGE_SUBTITLE =
   "Consulte a numeração equivalente em BR para os tamanhos de calçados registrados em UK.";
 export const TAMANHOS_CALCADOS_INFANTIL_AVISO =
   "Conversão disponível apenas para os tamanhos abaixo; os demais ainda não têm equivalência BR definida.";
+export const TAMANHOS_CALCADOS_DISCLAIMER =
+  "Observação: a conversão de tamanhos pode variar conforme o modelo do calçado.";
 
 // Epic 4, Milestone 4A/4B: Operações module foundation.
 export const OPERACOES_TITLE = "Operações";
