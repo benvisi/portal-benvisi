@@ -810,6 +810,12 @@ export const LIMPEZA_GERENCIAL_SALVAR_LABEL = "Salvar";
 export const LIMPEZA_GERENCIAL_CANCELAR_LABEL = "Cancelar";
 export const LIMPEZA_GERENCIAL_SELECIONE_FUNCIONARIO_LABEL = "Selecione um funcionário";
 
+// Fallback manual resync (limpeza_sincronizar_manual) — recovery path if the
+// Escala-publish-time sync ever failed silently. Not the primary sync path.
+export const LIMPEZA_SINCRONIZAR_LABEL = "Sincronizar";
+export const LIMPEZA_SINCRONIZANDO_LABEL = "Sincronizando...";
+export const LIMPEZA_SINCRONIZAR_SUCESSO_MESSAGE = "Limpeza sincronizada com a escala atual.";
+
 export const LIMPEZA_MANUAL_ERRO_GENERICO_MESSAGE =
   "Não foi possível salvar a alteração. Tente novamente.";
 export const LIMPEZA_SEM_PERMISSAO_LIMPEZA_MESSAGE =

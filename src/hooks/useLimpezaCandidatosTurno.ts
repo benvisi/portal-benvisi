@@ -6,10 +6,13 @@ import type { LimpezaTurno } from "@/integrations/supabase/contracts";
 
 /**
  * Candidates for a Gerente/Administrador manual override: every funcionario
- * actually scheduled 'trabalho' on this date whose shift classifies as this
- * turno (reuses get_escala_periodo, already granted to anon — no new Escala
- * read RPC needed). The server-side RPC re-validates eligibility regardless
- * of what this list shows.
+ * actually scheduled 'trabalho' on this date whose shift is compatible with
+ * this cleaning turno (reuses get_escala_periodo, already granted to anon —
+ * no new Escala read RPC needed). A funcionario classified 'intermediario'
+ * is compatible with BOTH manhã and tarde slots — mirrors the server-side
+ * limpeza_funcionario_escalado_turno rule exactly, since a manual override
+ * is validated against that same schedule-only check. The server-side RPC
+ * re-validates eligibility regardless of what this list shows.
  */
 export function useLimpezaCandidatosTurno(
   sessionToken: string | null,
@@ -28,7 +31,7 @@ export function useLimpezaCandidatosTurno(
       if (error) throw error;
       const entradas = Array.isArray(rows) ? rows.filter(isEscalaEntradaPeriodo) : [];
       return entradas
-        .filter((entrada) => entrada.secao === turno)
+        .filter((entrada) => entrada.secao === turno || entrada.secao === "intermediario")
         .map((entrada) => ({ id: entrada.id_funcionario, apelido: entrada.apelido }))
         .sort((a, b) => a.apelido.localeCompare(b.apelido, "pt-BR"));
     },

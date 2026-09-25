@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ import {
   LIMPEZA_GERENCIAL_VAZIO_MESSAGE,
   LIMPEZA_MANUAL_LABEL,
   LIMPEZA_SEM_CANDIDATO_LABEL,
+  LIMPEZA_SINCRONIZANDO_LABEL,
+  LIMPEZA_SINCRONIZAR_LABEL,
   LIMPEZA_TAREFA_LABELS,
   LIMPEZA_TURNO_LABELS,
 } from "@/config/constants";
@@ -31,6 +33,7 @@ import { formatEscalaDiaCompacto } from "@/lib/escala";
 import { useLimpezaAtribuirManual } from "@/hooks/useLimpezaAtribuirManual";
 import { useLimpezaCandidatosTurno } from "@/hooks/useLimpezaCandidatosTurno";
 import { useLimpezaGerencialMes } from "@/hooks/useLimpezaGerencialMes";
+import { useLimpezaSincronizarManual } from "@/hooks/useLimpezaSincronizarManual";
 
 interface LimpezaGerencialViewProps {
   sessionToken: string | null;
@@ -46,9 +49,27 @@ export function LimpezaGerencialView({
   const query = useLimpezaGerencialMes(sessionToken, mesSelecionado, ativo);
   const itens = query.data ?? [];
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const {
+    syncing,
+    errorMessage: syncErrorMessage,
+    sincronizar,
+  } = useLimpezaSincronizarManual(sessionToken, mesSelecionado);
 
   return (
     <div className="flex flex-col gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-touch w-fit gap-2 self-end"
+        disabled={syncing}
+        onClick={() => void sincronizar()}
+      >
+        <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} aria-hidden />
+        {syncing ? LIMPEZA_SINCRONIZANDO_LABEL : LIMPEZA_SINCRONIZAR_LABEL}
+      </Button>
+      {syncErrorMessage && <p className="text-xs text-destructive">{syncErrorMessage}</p>}
+
       {query.isLoading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
