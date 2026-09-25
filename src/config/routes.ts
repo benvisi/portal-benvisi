@@ -15,6 +15,7 @@ export const ROUTES = {
   OPERACOES_MENSAGENS_WHATSAPP: "/operacoes/mensagens-whatsapp",
   OPERACOES_ESCALA: "/operacoes/escala",
   OPERACOES_CONTAGEM_EMBALAGENS: "/operacoes/contagem-embalagens",
+  OPERACOES_LIMPEZA: "/operacoes/limpeza",
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

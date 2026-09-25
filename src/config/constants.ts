@@ -731,3 +731,133 @@ export const TERMOS_BUSCA_STATUS_REJEITADO_LABEL = "Rejeitado";
 export const TERMOS_BUSCA_STATUS_DESATIVADO_LABEL = "Desativado";
 export const TERMOS_BUSCA_STATUS_PENDENTE_LABEL = "Aguardando aprovação";
 export const TERMOS_BUSCA_ORIGEM_ADMIN_LABEL = "Adicionado pela gestão";
+
+// -----------------------------------------------------------------------------
+// Limpeza V1 (Operações → Limpeza) — Varrer / Passar pano automated cleaning
+// assignments, generated from Escala. Gerenciar tab is only shown to
+// Gerente/Administrador (see MANAGER_CARGO/ADMINISTRATOR_CARGO).
+// -----------------------------------------------------------------------------
+export const LIMPEZA_TITLE = "Limpeza";
+export const LIMPEZA_CARD_DESCRIPTION = "Varrer e passar pano, distribuídos pela escala do dia.";
+export const LIMPEZA_PAGE_SUBTITLE = "Responsáveis por varrer e passar pano, a partir da escala.";
+
+export const LIMPEZA_TAB_HOJE_LABEL = "Hoje";
+export const LIMPEZA_TAB_MES_LABEL = "Mês";
+export const LIMPEZA_TAB_GERENCIAR_LABEL = "Gerenciar";
+
+export const LIMPEZA_TAREFA_LABELS: Record<"varrer" | "passar_pano", string> = {
+  varrer: "Varrer",
+  passar_pano: "Passar pano",
+};
+
+// Icons are always paired with the text label above (LIMPEZA_TAREFA_LABELS)
+// — never rely on the icon alone to convey which task it is.
+export const LIMPEZA_TAREFA_ICONS: Record<"varrer" | "passar_pano", string> = {
+  varrer: "🧹",
+  passar_pano: "🧽",
+};
+
+export const LIMPEZA_TURNO_LABELS: Record<"manha" | "tarde", string> = {
+  manha: "Manhã",
+  tarde: "Tarde",
+};
+
+export const LIMPEZA_DIA_ANTERIOR_LABEL = "Dia anterior";
+export const LIMPEZA_PROXIMO_DIA_LABEL = "Próximo dia";
+export const LIMPEZA_HOJE_LABEL = "Hoje";
+export const LIMPEZA_MES_ANTERIOR_LABEL = "Mês anterior";
+export const LIMPEZA_PROXIMO_MES_LABEL = "Próximo mês";
+
+export const LIMPEZA_CARREGANDO_MESSAGE = "Carregando limpeza...";
+export const LIMPEZA_ERRO_MESSAGE = "Não foi possível carregar a limpeza. Tente novamente.";
+export const LIMPEZA_DIA_VAZIO_MESSAGE =
+  "Nenhuma atribuição de limpeza para este dia (verifique se a escala do mês já foi publicada).";
+
+export const LIMPEZA_SEM_CANDIDATO_LABEL = "Sem funcionário elegível";
+export const LIMPEZA_CONFLITO_LABEL = "Conflito — requer atenção da gestão";
+export const LIMPEZA_MANUAL_LABEL = "Atribuição manual";
+
+export const LIMPEZA_CONCLUIR_LABEL = "Concluído";
+export const LIMPEZA_CONCLUINDO_LABEL = "Concluindo...";
+export function getLimpezaConcluidoLabel(horaFormatada: string): string {
+  return `Concluído às ${horaFormatada}`;
+}
+export function getLimpezaConcluidoPorLabel(apelido: string, horaFormatada: string): string {
+  return `Concluído por ${apelido} às ${horaFormatada}`;
+}
+
+export const LIMPEZA_CONCLUIR_ERRO_GENERICO_MESSAGE =
+  "Não foi possível concluir agora. Tente novamente.";
+export const LIMPEZA_ATRIBUICAO_NAO_ENCONTRADA_MESSAGE =
+  "Esta atribuição não foi encontrada. Atualize a página.";
+export const LIMPEZA_SEM_PERMISSAO_CONCLUIR_MESSAGE =
+  "Você não tem permissão para concluir esta tarefa.";
+export const LIMPEZA_ATRIBUICAO_SEM_FUNCIONARIO_MESSAGE =
+  "Nenhum funcionário está atribuído a esta tarefa ainda.";
+export const LIMPEZA_ATRIBUICAO_EM_CONFLITO_MESSAGE =
+  "Esta atribuição está em conflito e precisa ser resolvida pela gestão antes de ser concluída.";
+
+// Mês (transparency summary). Mobile layout: two columns — "Distribuição"
+// (varrer/pano/total) and "Execução" (concluídos/não concluídos).
+export const LIMPEZA_MES_DISTRIBUICAO_TITLE = "Distribuição";
+export const LIMPEZA_MES_EXECUCAO_TITLE = "Execução";
+export const LIMPEZA_MES_VARRER_COLUNA_LABEL = "Varrer atribuídos";
+export const LIMPEZA_MES_PASSAR_PANO_COLUNA_LABEL = "Pano atribuídos";
+export const LIMPEZA_MES_TOTAL_COLUNA_LABEL = "Total";
+export const LIMPEZA_MES_CONCLUIDOS_COLUNA_LABEL = "Concluídos";
+// Renamed from "Pendentes" (misleading — implied every open assignment,
+// including future ones, was overdue). Counts only past, not-yet-completed
+// assignments; see get_limpeza_mes's nao_concluidos column.
+export const LIMPEZA_MES_NAO_CONCLUIDOS_COLUNA_LABEL = "Não concluídos";
+export const LIMPEZA_MES_NAO_CONCLUIDOS_HINT = "Não concluídos considera somente dias anteriores.";
+export const LIMPEZA_MES_VAZIO_MESSAGE = "Nenhum funcionário elegível para limpeza este mês.";
+
+// Gerenciar tab: "Atribuições do mês" (every assignment, with Alterar) is
+// the primary management surface; "Exceções" (conflicts, sync failures,
+// missed) is a separate, secondary section below it.
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_TITLE = "Atribuições do mês";
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_VAZIO_MESSAGE =
+  "Nenhuma atribuição de limpeza este mês.";
+export const LIMPEZA_GERENCIAL_ATRIBUICOES_ERRO_MESSAGE =
+  "Não foi possível carregar as atribuições do mês. Tente novamente.";
+export const LIMPEZA_GERENCIAL_TITLE = "Exceções";
+export const LIMPEZA_GERENCIAL_VAZIO_MESSAGE = "Nenhuma exceção este mês.";
+export const LIMPEZA_GERENCIAL_ERRO_MESSAGE =
+  "Não foi possível carregar as exceções. Tente novamente.";
+export const LIMPEZA_GERENCIAL_ATRASADA_LABEL = "Atrasada";
+export const LIMPEZA_GERENCIAL_ALTERAR_LABEL = "Alterar";
+export const LIMPEZA_GERENCIAL_SALVANDO_LABEL = "Salvando...";
+export const LIMPEZA_GERENCIAL_SALVAR_LABEL = "Salvar";
+export const LIMPEZA_GERENCIAL_CANCELAR_LABEL = "Cancelar";
+export const LIMPEZA_GERENCIAL_SELECIONE_FUNCIONARIO_LABEL = "Selecione um funcionário";
+export function getLimpezaGerencialDataTurnoLabel(
+  dataFormatada: string,
+  turnoLabel: string,
+): string {
+  return `${dataFormatada} · ${turnoLabel}`;
+}
+
+// Fallback manual resync (limpeza_sincronizar_manual) — recovery path if the
+// Escala-publish-time sync ever failed silently. Not the primary sync path.
+export const LIMPEZA_SINCRONIZAR_LABEL = "Sincronizar";
+export const LIMPEZA_SINCRONIZANDO_LABEL = "Sincronizando...";
+export const LIMPEZA_SINCRONIZAR_SUCESSO_MESSAGE = "Limpeza sincronizada com a escala atual.";
+
+// Sync failure visibility (Gerente/Administrador only) — surfaces a
+// synchronization that was swallowed to protect Escala publication.
+export function getLimpezaSyncPendenciaMessage(dataFormatada: string): string {
+  return `Limpeza não sincronizada com a Escala em ${dataFormatada}.`;
+}
+export const LIMPEZA_SYNC_PENDENCIAS_ERRO_MESSAGE =
+  "Não foi possível verificar pendências de sincronização.";
+
+export const LIMPEZA_MANUAL_ERRO_GENERICO_MESSAGE =
+  "Não foi possível salvar a alteração. Tente novamente.";
+export const LIMPEZA_SEM_PERMISSAO_LIMPEZA_MESSAGE =
+  "Você não tem permissão para gerenciar a limpeza.";
+export const LIMPEZA_FUNCIONARIO_INDISPONIVEL_MESSAGE =
+  "Este funcionário não está escalado para trabalhar neste turno.";
+export const LIMPEZA_CONFLITO_MESMA_PESSOA_MESSAGE =
+  "Este funcionário já está atribuído à outra tarefa deste turno.";
+export const LIMPEZA_ATRIBUICAO_CONCLUIDA_MESSAGE =
+  "Esta atribuição já foi concluída e não pode mais ser alterada.";

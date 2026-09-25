@@ -833,3 +833,209 @@ export function isTermoBuscaAdmin(value: unknown): value is TermoBuscaAdmin {
     optionalString(candidate.reativado_em)
   );
 }
+
+// =============================================================================
+// Limpeza V1 — Varrer / Passar pano automated cleaning assignments. See
+// supabase/migrations/20260925_101_add_limpeza_schema.sql and
+// 20260925_102_add_limpeza_rpcs.sql.
+// =============================================================================
+
+export type LimpezaTurno = "manha" | "tarde";
+export type LimpezaTarefa = "varrer" | "passar_pano";
+export type LimpezaStatus = "pendente" | "concluida" | "conflito" | "sem_candidato";
+
+const LIMPEZA_TURNOS: readonly LimpezaTurno[] = ["manha", "tarde"];
+const LIMPEZA_TAREFAS: readonly LimpezaTarefa[] = ["varrer", "passar_pano"];
+const LIMPEZA_STATUS: readonly LimpezaStatus[] = [
+  "pendente",
+  "concluida",
+  "conflito",
+  "sem_candidato",
+];
+
+// get_limpeza_dia — one calendar day's four slots (manha/tarde x
+// varrer/passar_pano). funcionario_* are null only when status is
+// sem_candidato (generation found nobody eligible that shift).
+export interface LimpezaAtribuicaoDia {
+  id: string;
+  data: string;
+  turno: LimpezaTurno;
+  tarefa: LimpezaTarefa;
+  funcionario_id: string | null;
+  funcionario_nome: string | null;
+  funcionario_apelido: string | null;
+  origem: "automatica" | "manual";
+  bloqueada: boolean;
+  status: LimpezaStatus;
+  concluido_por_apelido: string | null;
+  concluido_em: string | null;
+  conflito_motivo: string | null;
+}
+
+export function isLimpezaAtribuicaoDia(value: unknown): value is LimpezaAtribuicaoDia {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.data === "string" &&
+    typeof candidate.turno === "string" &&
+    LIMPEZA_TURNOS.includes(candidate.turno as LimpezaTurno) &&
+    typeof candidate.tarefa === "string" &&
+    LIMPEZA_TAREFAS.includes(candidate.tarefa as LimpezaTarefa) &&
+    optionalString(candidate.funcionario_id) &&
+    optionalString(candidate.funcionario_nome) &&
+    optionalString(candidate.funcionario_apelido) &&
+    (candidate.origem === "automatica" || candidate.origem === "manual") &&
+    typeof candidate.bloqueada === "boolean" &&
+    typeof candidate.status === "string" &&
+    LIMPEZA_STATUS.includes(candidate.status as LimpezaStatus) &&
+    optionalString(candidate.concluido_por_apelido) &&
+    optionalString(candidate.concluido_em) &&
+    optionalString(candidate.conflito_motivo)
+  );
+}
+
+// get_limpeza_mes — one row per currently-eligible funcionario, alphabetical.
+// nao_concluidos counts only past (data < hoje Manaus), not-yet-completed
+// assignments — future/today's still-open assignments never count as
+// "não concluído" (they are not overdue).
+export interface LimpezaResumoMensal {
+  funcionario_id: string;
+  funcionario_nome: string;
+  funcionario_apelido: string;
+  varrer_atribuidos: number;
+  passar_pano_atribuidos: number;
+  total: number;
+  concluidos: number;
+  nao_concluidos: number;
+}
+
+export function isLimpezaResumoMensal(value: unknown): value is LimpezaResumoMensal {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.funcionario_id === "string" &&
+    typeof candidate.funcionario_nome === "string" &&
+    typeof candidate.funcionario_apelido === "string" &&
+    typeof candidate.varrer_atribuidos === "number" &&
+    typeof candidate.passar_pano_atribuidos === "number" &&
+    typeof candidate.total === "number" &&
+    typeof candidate.concluidos === "number" &&
+    typeof candidate.nao_concluidos === "number"
+  );
+}
+
+// get_limpeza_atribuicoes_mes — Gerente/Administrador only: every assignment
+// for the month (not just exceptions), for the Gerenciar "Atribuições do
+// mês" management list.
+export interface LimpezaAtribuicaoMes {
+  id: string;
+  data: string;
+  turno: LimpezaTurno;
+  tarefa: LimpezaTarefa;
+  funcionario_id: string | null;
+  funcionario_apelido: string | null;
+  origem: "automatica" | "manual";
+  bloqueada: boolean;
+  status: LimpezaStatus;
+}
+
+export function isLimpezaAtribuicaoMes(value: unknown): value is LimpezaAtribuicaoMes {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.data === "string" &&
+    typeof candidate.turno === "string" &&
+    LIMPEZA_TURNOS.includes(candidate.turno as LimpezaTurno) &&
+    typeof candidate.tarefa === "string" &&
+    LIMPEZA_TAREFAS.includes(candidate.tarefa as LimpezaTarefa) &&
+    optionalString(candidate.funcionario_id) &&
+    optionalString(candidate.funcionario_apelido) &&
+    (candidate.origem === "automatica" || candidate.origem === "manual") &&
+    typeof candidate.bloqueada === "boolean" &&
+    typeof candidate.status === "string" &&
+    LIMPEZA_STATUS.includes(candidate.status as LimpezaStatus)
+  );
+}
+
+// get_limpeza_gerencial_mes — Gerente/Administrador exceptions list:
+// conflicts, manual overrides, sem_candidato slots, missed (past+pendente).
+export interface LimpezaGerencialItem {
+  id: string;
+  data: string;
+  turno: LimpezaTurno;
+  tarefa: LimpezaTarefa;
+  funcionario_apelido: string | null;
+  origem: "automatica" | "manual";
+  bloqueada: boolean;
+  status: LimpezaStatus;
+  conflito_motivo: string | null;
+  atrasada: boolean;
+}
+
+export function isLimpezaGerencialItem(value: unknown): value is LimpezaGerencialItem {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.data === "string" &&
+    typeof candidate.turno === "string" &&
+    LIMPEZA_TURNOS.includes(candidate.turno as LimpezaTurno) &&
+    typeof candidate.tarefa === "string" &&
+    LIMPEZA_TAREFAS.includes(candidate.tarefa as LimpezaTarefa) &&
+    optionalString(candidate.funcionario_apelido) &&
+    (candidate.origem === "automatica" || candidate.origem === "manual") &&
+    typeof candidate.bloqueada === "boolean" &&
+    typeof candidate.status === "string" &&
+    LIMPEZA_STATUS.includes(candidate.status as LimpezaStatus) &&
+    optionalString(candidate.conflito_motivo) &&
+    typeof candidate.atrasada === "boolean"
+  );
+}
+
+// limpeza_concluir_atribuicao — single-row result.
+export interface LimpezaConclusao {
+  id: string;
+  status: LimpezaStatus;
+  concluido_por_apelido: string | null;
+  concluido_em: string | null;
+}
+
+export function isLimpezaConclusao(value: unknown): value is LimpezaConclusao {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.status === "string" &&
+    LIMPEZA_STATUS.includes(candidate.status as LimpezaStatus) &&
+    optionalString(candidate.concluido_por_apelido) &&
+    optionalString(candidate.concluido_em)
+  );
+}
+
+// get_limpeza_sync_pendencias — Gerente/Administrador only: dates whose most
+// recent Escala-publish-triggered (or manual) sync attempt is unresolved.
+export interface LimpezaSyncPendencia {
+  data: string;
+  falhou_em: string;
+  motivo: string | null;
+}
+
+export function isLimpezaSyncPendencia(value: unknown): value is LimpezaSyncPendencia {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.data === "string" &&
+    typeof candidate.falhou_em === "string" &&
+    (candidate.motivo === null || typeof candidate.motivo === "string")
+  );
+}
