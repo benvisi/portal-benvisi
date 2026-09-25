@@ -192,6 +192,50 @@ export function isAtendimentoMotivo(value: unknown): value is AtendimentoMotivo 
   );
 }
 
+/**
+ * get_atendimento_resumo_hoje (Card #36) — one row per (vendedor ativo,
+ * atendimento concluído hoje, resultado de cliente). Flat/repeated-header
+ * shape, same idiom as ContagemDetalheLinha/EscalaEntradaPeriodo: a vendedor
+ * with zero concluded atendimentos today gets exactly one row with every
+ * atendimento/outcome field null; an atendimento with N atendimento_clientes
+ * outcomes repeats its own id/iniciado_em/concluido_em on N rows, one per
+ * outcome. Ordered server-side by vendedor (apelido asc, never by
+ * performance), then iniciado_em desc, then outcome insertion order — the
+ * frontend aggregates this into both the "Por vendedor" and "Por
+ * atendimento" views without a second RPC call (see
+ * src/lib/atendimentoResumoHoje.ts).
+ */
+export interface AtendimentoResumoHojeLinha {
+  funcionario_id: string;
+  funcionario_nome: string;
+  id_atendimento: string | null;
+  iniciado_em: string | null;
+  concluido_em: string | null;
+  id_atendimento_cliente: string | null;
+  categoria: MotivoCategoria | null;
+  motivo_rotulo: string | null;
+  detalhe: string | null;
+}
+
+export function isAtendimentoResumoHojeLinha(value: unknown): value is AtendimentoResumoHojeLinha {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.funcionario_id === "string" &&
+    candidate.funcionario_id.length > 0 &&
+    typeof candidate.funcionario_nome === "string" &&
+    optionalString(candidate.id_atendimento) &&
+    optionalString(candidate.iniciado_em) &&
+    optionalString(candidate.concluido_em) &&
+    optionalString(candidate.id_atendimento_cliente) &&
+    (candidate.categoria === null ||
+      MOTIVO_CATEGORIAS.includes(candidate.categoria as MotivoCategoria)) &&
+    optionalString(candidate.motivo_rotulo) &&
+    optionalString(candidate.detalhe)
+  );
+}
+
 export interface AtendimentoChecklistItem {
   id: string;
   versao: number;
