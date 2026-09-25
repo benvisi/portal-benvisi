@@ -982,3 +982,21 @@ export function isLimpezaConclusao(value: unknown): value is LimpezaConclusao {
     optionalString(candidate.concluido_em)
   );
 }
+
+// get_limpeza_sync_pendencias — Gerente/Administrador only: dates whose most
+// recent Escala-publish-triggered (or manual) sync attempt is unresolved.
+export interface LimpezaSyncPendencia {
+  data: string;
+  falhou_em: string;
+  motivo: string | null;
+}
+
+export function isLimpezaSyncPendencia(value: unknown): value is LimpezaSyncPendencia {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.data === "string" &&
+    typeof candidate.falhou_em === "string" &&
+    (candidate.motivo === null || typeof candidate.motivo === "string")
+  );
+}

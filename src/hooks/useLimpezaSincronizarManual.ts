@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { limpezaGerencialMesQueryKey } from "@/hooks/useLimpezaGerencialMes";
 import { limpezaMesQueryKey } from "@/hooks/useLimpezaMes";
+import { limpezaSyncPendenciasQueryKey } from "@/hooks/useLimpezaSyncPendencias";
 import { useSessionErrorHandler } from "@/hooks/useSessionErrorHandler";
 import { getLimpezaManualErrorMessage } from "@/lib/limpeza";
 
@@ -35,6 +36,7 @@ export function useLimpezaSincronizarManual(sessionToken: string | null, mes: st
       await queryClient.invalidateQueries({ queryKey: ["limpeza-dia"] });
       await queryClient.invalidateQueries({ queryKey: limpezaMesQueryKey(mes) });
       await queryClient.invalidateQueries({ queryKey: limpezaGerencialMesQueryKey(mes) });
+      await queryClient.invalidateQueries({ queryKey: limpezaSyncPendenciasQueryKey });
       return true;
     } catch (error) {
       if (handleSessionError(error)) return false;

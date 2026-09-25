@@ -816,6 +816,14 @@ export const LIMPEZA_SINCRONIZAR_LABEL = "Sincronizar";
 export const LIMPEZA_SINCRONIZANDO_LABEL = "Sincronizando...";
 export const LIMPEZA_SINCRONIZAR_SUCESSO_MESSAGE = "Limpeza sincronizada com a escala atual.";
 
+// Sync failure visibility (Gerente/Administrador only) — surfaces a
+// synchronization that was swallowed to protect Escala publication.
+export function getLimpezaSyncPendenciaMessage(dataFormatada: string): string {
+  return `Limpeza não sincronizada com a Escala em ${dataFormatada}.`;
+}
+export const LIMPEZA_SYNC_PENDENCIAS_ERRO_MESSAGE =
+  "Não foi possível verificar pendências de sincronização.";
+
 export const LIMPEZA_MANUAL_ERRO_GENERICO_MESSAGE =
   "Não foi possível salvar a alteração. Tente novamente.";
 export const LIMPEZA_SEM_PERMISSAO_LIMPEZA_MESSAGE =

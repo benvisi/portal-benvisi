@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,16 @@ import {
   LIMPEZA_SINCRONIZAR_LABEL,
   LIMPEZA_TAREFA_LABELS,
   LIMPEZA_TURNO_LABELS,
+  getLimpezaSyncPendenciaMessage,
 } from "@/config/constants";
 import type { LimpezaGerencialItem } from "@/integrations/supabase/contracts";
+import { formatDiaCurto } from "@/lib/datetime";
 import { formatEscalaDiaCompacto } from "@/lib/escala";
 import { useLimpezaAtribuirManual } from "@/hooks/useLimpezaAtribuirManual";
 import { useLimpezaCandidatosTurno } from "@/hooks/useLimpezaCandidatosTurno";
 import { useLimpezaGerencialMes } from "@/hooks/useLimpezaGerencialMes";
 import { useLimpezaSincronizarManual } from "@/hooks/useLimpezaSincronizarManual";
+import { useLimpezaSyncPendencias } from "@/hooks/useLimpezaSyncPendencias";
 
 interface LimpezaGerencialViewProps {
   sessionToken: string | null;
@@ -54,9 +57,22 @@ export function LimpezaGerencialView({
     errorMessage: syncErrorMessage,
     sincronizar,
   } = useLimpezaSincronizarManual(sessionToken, mesSelecionado);
+  const pendenciasQuery = useLimpezaSyncPendencias(sessionToken, ativo);
+  const pendencias = pendenciasQuery.data ?? [];
 
   return (
     <div className="flex flex-col gap-3">
+      {pendencias.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          {pendencias.map((pendencia) => (
+            <div key={pendencia.data} className="flex items-start gap-2 text-sm text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{getLimpezaSyncPendenciaMessage(formatDiaCurto(pendencia.data))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Button
         type="button"
         variant="outline"
