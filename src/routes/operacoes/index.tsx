@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Boxes, CalendarDays, Link2, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Boxes, CalendarDays, Layers, Link2, MessageCircle, Sparkles } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -9,6 +9,8 @@ import {
   CONTAGEM_EMBALAGENS_TITLE,
   ESCALA_CARD_DESCRIPTION,
   ESCALA_TITLE,
+  ESTOQUE_ORGANIZACAO_CARD_DESCRIPTION,
+  ESTOQUE_ORGANIZACAO_TITLE,
   LIMPEZA_CARD_DESCRIPTION,
   LIMPEZA_TITLE,
   LINKS_IMPORTANTES_CARD_DESCRIPTION,
@@ -86,6 +88,13 @@ function OperacoesPage() {
             description={LIMPEZA_CARD_DESCRIPTION}
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_LIMPEZA })}
+          />
+          <ModuleCard
+            icon={Layers}
+            title={ESTOQUE_ORGANIZACAO_TITLE}
+            description={ESTOQUE_ORGANIZACAO_CARD_DESCRIPTION}
+            variant="brand-level-2"
+            onClick={() => void navigate({ to: ROUTES.OPERACOES_ESTOQUE_ORGANIZACAO_SEMANAL })}
           />
           <ModuleCard
             icon={MessageCircle}

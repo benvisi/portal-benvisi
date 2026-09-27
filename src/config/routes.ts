@@ -17,6 +17,7 @@ export const ROUTES = {
   OPERACOES_ESCALA: "/operacoes/escala",
   OPERACOES_CONTAGEM_EMBALAGENS: "/operacoes/contagem-embalagens",
   OPERACOES_LIMPEZA: "/operacoes/limpeza",
+  OPERACOES_ESTOQUE_ORGANIZACAO_SEMANAL: "/operacoes/estoque-organizacao-semanal",
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
