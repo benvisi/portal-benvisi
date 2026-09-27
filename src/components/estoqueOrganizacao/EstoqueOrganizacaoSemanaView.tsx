@@ -51,7 +51,9 @@ export function EstoqueOrganizacaoSemanaView({
           {ESTOQUE_ORGANIZACAO_CARREGANDO_MESSAGE}
         </div>
       ) : query.isError ? (
-        <p className="py-8 text-center text-sm text-destructive">{ESTOQUE_ORGANIZACAO_ERRO_MESSAGE}</p>
+        <p className="py-8 text-center text-sm text-destructive">
+          {ESTOQUE_ORGANIZACAO_ERRO_MESSAGE}
+        </p>
       ) : atribuicoes.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           {ESTOQUE_ORGANIZACAO_SEMANA_VAZIA_MESSAGE}
@@ -112,7 +114,9 @@ function EstoqueOrganizacaoLinha({
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-foreground">{atribuicao.funcionario_apelido}</span>
+          <span className="text-sm font-medium text-foreground">
+            {atribuicao.funcionario_apelido}
+          </span>
           <span className="text-xs text-muted-foreground">
             {getEstoqueOrganizacaoEstanteLabel(atribuicao.numero_estante)}
           </span>
@@ -138,7 +142,11 @@ function EstoqueOrganizacaoLinha({
 
       {podeEditar && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1" role="group" aria-label={getEstoqueOrganizacaoPrateleirasLabel(atribuicao.prateleiras_concluidas)}>
+          <div
+            className="flex gap-1"
+            role="group"
+            aria-label={getEstoqueOrganizacaoPrateleirasLabel(atribuicao.prateleiras_concluidas)}
+          >
             {[1, 2, 3, 4, 5].map((n) => {
               const preenchida = n <= atribuicao.prateleiras_concluidas;
               return (
@@ -151,7 +159,12 @@ function EstoqueOrganizacaoLinha({
                   disabled={salvando}
                   aria-pressed={preenchida}
                   aria-label={`${n}/5`}
-                  onClick={() => onAtualizarProgresso(atribuicao.id, n === atribuicao.prateleiras_concluidas ? n - 1 : n)}
+                  onClick={() =>
+                    onAtualizarProgresso(
+                      atribuicao.id,
+                      n === atribuicao.prateleiras_concluidas ? n - 1 : n,
+                    )
+                  }
                 >
                   {n}
                 </Button>
@@ -167,7 +180,9 @@ function EstoqueOrganizacaoLinha({
               disabled={salvando}
               onClick={() => onConcluir(atribuicao.id)}
             >
-              {salvando ? ESTOQUE_ORGANIZACAO_CONCLUINDO_LABEL : ESTOQUE_ORGANIZACAO_CONCLUIR_ESTANTE_LABEL}
+              {salvando
+                ? ESTOQUE_ORGANIZACAO_CONCLUINDO_LABEL
+                : ESTOQUE_ORGANIZACAO_CONCLUIR_ESTANTE_LABEL}
             </Button>
           )}
         </div>

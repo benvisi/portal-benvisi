@@ -1,5 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Boxes, CalendarDays, Layers, Link2, MessageCircle, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Boxes,
+  CalendarDays,
+  Layers,
+  Link2,
+  MessageCircle,
+  Sparkles,
+} from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";

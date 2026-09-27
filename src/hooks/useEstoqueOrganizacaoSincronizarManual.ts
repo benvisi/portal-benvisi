@@ -3,9 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { estoqueOrganizacaoSemanaQueryKey } from "@/hooks/useEstoqueOrganizacaoSemana";
-import {
-  estoqueOrganizacaoSyncPendenciasQueryKey,
-} from "@/hooks/useEstoqueOrganizacaoSyncPendencias";
+import { estoqueOrganizacaoSyncPendenciasQueryKey } from "@/hooks/useEstoqueOrganizacaoSyncPendencias";
 import { useSessionErrorHandler } from "@/hooks/useSessionErrorHandler";
 import { getEstoqueOrganizacaoManualErrorMessage } from "@/lib/estoqueOrganizacao";
 import { monthStartISO } from "@/lib/escala";

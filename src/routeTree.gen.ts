@@ -147,8 +147,8 @@ export interface FileRoutesByFullPath {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
-  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo/': typeof AdministrativoIndexRoute
@@ -168,8 +168,8 @@ export interface FileRoutesByTo {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
-  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo': typeof AdministrativoIndexRoute
@@ -190,8 +190,8 @@ export interface FileRoutesById {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
-  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
+  '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
   '/administrativo/': typeof AdministrativoIndexRoute
@@ -213,8 +213,8 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
-    | '/operacoes/limpeza'
     | '/operacoes/estoque-organizacao-semanal'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo/'
@@ -234,8 +234,8 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
-    | '/operacoes/limpeza'
     | '/operacoes/estoque-organizacao-semanal'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo'
@@ -255,8 +255,8 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
-    | '/operacoes/limpeza'
     | '/operacoes/estoque-organizacao-semanal'
+    | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
     | '/administrativo/'
@@ -277,8 +277,8 @@ export interface RootRouteChildren {
   ConhecimentoCulturaTamanhosCalcadosRoute: typeof ConhecimentoCulturaTamanhosCalcadosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
-  OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
   OperacoesEstoqueOrganizacaoSemanalRoute: typeof OperacoesEstoqueOrganizacaoSemanalRoute
+  OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
   AdministrativoIndexRoute: typeof AdministrativoIndexRoute
@@ -438,8 +438,9 @@ const rootRouteChildren: RootRouteChildren = {
     ConhecimentoCulturaTamanhosCalcadosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
+  OperacoesEstoqueOrganizacaoSemanalRoute:
+    OperacoesEstoqueOrganizacaoSemanalRoute,
   OperacoesLimpezaRoute: OperacoesLimpezaRoute,
-  OperacoesEstoqueOrganizacaoSemanalRoute: OperacoesEstoqueOrganizacaoSemanalRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,
   AdministrativoIndexRoute: AdministrativoIndexRoute,

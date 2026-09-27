@@ -1,4 +1,11 @@
-import { ArrowLeft, ArrowRight, AlertTriangle, CalendarDays, Loader2, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  AlertTriangle,
+  CalendarDays,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,8 +49,11 @@ export function EstoqueOrganizacaoGerencialView({
 }: EstoqueOrganizacaoGerencialViewProps) {
   const semanaAtual = weekStartISO(getManausDateISO());
   const query = useEstoqueOrganizacaoGerencialSemana(sessionToken, semanaSelecionada, ativo);
-  const { syncing, errorMessage: syncErrorMessage, sincronizar } =
-    useEstoqueOrganizacaoSincronizarManual(sessionToken);
+  const {
+    syncing,
+    errorMessage: syncErrorMessage,
+    sincronizar,
+  } = useEstoqueOrganizacaoSincronizarManual(sessionToken);
   const pendenciasQuery = useEstoqueOrganizacaoSyncPendencias(sessionToken, ativo);
   const pendencias = pendenciasQuery.data ?? [];
   const atribuicoes = query.data ?? [];
@@ -58,10 +68,15 @@ export function EstoqueOrganizacaoGerencialView({
       {pendencias.length > 0 && (
         <div className="flex flex-col gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
           {pendencias.map((pendencia) => (
-            <div key={pendencia.semana_inicio} className="flex items-start gap-2 text-sm text-destructive">
+            <div
+              key={pendencia.semana_inicio}
+              className="flex items-start gap-2 text-sm text-destructive"
+            >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
-                {getEstoqueOrganizacaoSyncPendenciaMessage(formatSemanaLabel(pendencia.semana_inicio))}
+                {getEstoqueOrganizacaoSyncPendenciaMessage(
+                  formatSemanaLabel(pendencia.semana_inicio),
+                )}
               </span>
             </div>
           ))}
