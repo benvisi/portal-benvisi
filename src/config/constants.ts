@@ -229,6 +229,35 @@ export function getFinalizandoEmNomeDeLabel(nome: string): string {
   return `Finalizando em nome de ${nome}`;
 }
 
+// Card #36 — Atendimento: resumo dos atendimentos de hoje. Store-wide,
+// read-only, strictly "hoje" (see src/lib/atendimentoResumoHoje.ts).
+export const ATENDIMENTO_RESUMO_HOJE_TITLE = "Atendimentos de hoje";
+export const ATENDIMENTO_RESUMO_HOJE_EMPTY_MESSAGE = "Nenhum atendimento concluído hoje.";
+export const ATENDIMENTO_RESUMO_HOJE_LOADING_MESSAGE = "Carregando resumo de hoje...";
+export const ATENDIMENTO_RESUMO_HOJE_POR_VENDEDOR_LABEL = "Por vendedor";
+export const ATENDIMENTO_RESUMO_HOJE_POR_ATENDIMENTO_LABEL = "Por atendimento";
+export const ATENDIMENTO_RESUMO_HOJE_POR_ATENDIMENTO_VAZIO_MESSAGE =
+  "Nenhum atendimento concluído hoje.";
+
+export function getAtendimentoResumoHojeHeadline(
+  atendimentos: number,
+  convertidos: number,
+  conversaoPercentual: number | null,
+): string {
+  const atendimentosLabel = atendimentos === 1 ? "atendimento" : "atendimentos";
+  const convertidosLabel = convertidos === 1 ? "convertido" : "convertidos";
+  const base = `${atendimentos} ${atendimentosLabel} · ${convertidos} ${convertidosLabel}`;
+  return conversaoPercentual === null ? base : `${base} · ${conversaoPercentual}% conversão`;
+}
+
+export function getAtendimentoResumoHojeResultadosLabel(
+  total: number,
+  convertidos: number,
+): string {
+  const convertidosLabel = convertidos === 1 ? "convertido" : "convertidos";
+  return `${total} resultados · ${convertidos} ${convertidosLabel}`;
+}
+
 export const SAIR_LISTA_DA_VEZ_LABEL = "Sair da Lista da Vez";
 export const ENTRAR_LISTA_DA_VEZ_LABEL = "Entrar na Lista da Vez";
 export const LISTA_DA_VEZ_FORA_TITLE = "Você está fora da Lista da Vez.";

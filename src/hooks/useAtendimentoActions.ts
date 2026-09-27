@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ATENDIMENTO_GENERIC_ERROR_MESSAGE } from "@/config/constants";
 import { isAtendimentoIniciado } from "@/integrations/supabase/contracts";
 import { atendimentoAtivoQueryKey } from "@/hooks/useAtendimentoAtivo";
+import { atendimentoResumoHojeQueryKey } from "@/hooks/useAtendimentoResumoHoje";
 import { checklistPendenciasCountQueryKey } from "@/hooks/useChecklistPendenciasCount";
 import { listaVezQueryKey } from "@/hooks/useListaVez";
 import { useSessionErrorHandler } from "@/hooks/useSessionErrorHandler";
@@ -68,11 +69,23 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
     });
   }, [queryClient, funcionarioId]);
 
+  // Card #36: only the finalization RPCs below (concluir/adiarChecklist/
+  // concluirPendente/concluirComoGerente*) actually create a new concluded
+  // Atendimento — start/cancel/enter-closing/voltar never do, so this is
+  // invoked separately from invalidate() above rather than folded into it.
+  // Scoped to the caller's own cached query only; the resumo-hoje card
+  // otherwise refreshes for everyone via its own 60s poll.
+  const invalidateResumoHoje = useCallback(() => {
+    if (!funcionarioId) return;
+    void queryClient.invalidateQueries({ queryKey: atendimentoResumoHojeQueryKey(funcionarioId) });
+  }, [queryClient, funcionarioId]);
+
   const runBooleanRpc = useCallback(
     async (
       rpcName: string,
       params: Record<string, unknown>,
       errorLabel: string,
+      alsoInvalidateResumoHoje = false,
     ): Promise<boolean> => {
       if (submitting || !sessionToken) return false;
       setSubmitting(true);
@@ -83,6 +96,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
         if (error) throw error;
         if (data !== true) throw new Error(`${rpcName} did not report success`);
         invalidate();
+        if (alsoInvalidateResumoHoje) invalidateResumoHoje();
         return true;
       } catch (error) {
         console.error(`[useAtendimentoActions] ${errorLabel} failed:`, error);
@@ -93,7 +107,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
         setSubmitting(false);
       }
     },
-    [submitting, sessionToken, invalidate, handleSessionError],
+    [submitting, sessionToken, invalidate, invalidateResumoHoje, handleSessionError],
   );
 
   const iniciar = useCallback(
@@ -170,6 +184,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_adiar_checklist: false,
         },
         "concluir_atendimento",
+        true,
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -188,6 +203,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_adiar_checklist: true,
         },
         "concluir_atendimento (adiar checklist)",
+        true,
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -205,6 +221,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_checklist: checklist,
         },
         "concluir_atendimento_pendente",
+        true,
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -248,6 +265,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_ignorar_checklist: false,
         },
         "concluir_atendimento_gerencial",
+        true,
       ),
     [runBooleanRpc, sessionToken],
   );
@@ -271,6 +289,7 @@ export function useAtendimentoActions(funcionarioId: string | null, sessionToken
           p_ignorar_checklist: true,
         },
         "concluir_atendimento_gerencial (sem validar checklist)",
+        true,
       ),
     [runBooleanRpc, sessionToken],
   );

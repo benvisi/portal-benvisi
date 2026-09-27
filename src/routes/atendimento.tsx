@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2, UserMinus, UserPlus } from "lucide-react";
 
 import { AtendimentoAtivoCard } from "@/components/atendimento/AtendimentoAtivoCard";
+import { AtendimentoResumoHojeCard } from "@/components/atendimento/AtendimentoResumoHojeCard";
 import { EmAtendimentoRow } from "@/components/atendimento/EmAtendimentoRow";
 import { FechamentoAtendimento } from "@/components/atendimento/FechamentoAtendimento";
 import { UnsavedDataConfirmDialog } from "@/components/atendimento/UnsavedDataConfirmDialog";
@@ -66,6 +67,7 @@ import {
 import { useAtendimentoAtivo } from "@/hooks/useAtendimentoAtivo";
 import { useAtendimentoChecklist } from "@/hooks/useAtendimentoChecklist";
 import { useAtendimentoMotivos } from "@/hooks/useAtendimentoMotivos";
+import { useAtendimentoResumoHoje } from "@/hooks/useAtendimentoResumoHoje";
 import { useChecklistPolicy } from "@/hooks/useChecklistPolicy";
 import { useFechamentoDraft } from "@/hooks/useFechamentoDraft";
 import { useGoBack } from "@/hooks/useGoBack";
@@ -89,6 +91,7 @@ function AtendimentoPage() {
 
   const ativoQuery = useAtendimentoAtivo(funcionarioId, sessionToken);
   const listaQuery = useListaVez(funcionarioId, sessionToken);
+  const resumoHojeQuery = useAtendimentoResumoHoje(funcionarioId, sessionToken);
   const motivosQuery = useAtendimentoMotivos(sessionToken);
   const checklistQuery = useAtendimentoChecklist(sessionToken);
   const checklistPolicyQuery = useChecklistPolicy(sessionToken);
@@ -626,10 +629,11 @@ function AtendimentoPage() {
         )}
 
         {!isPendingRecovery && !gerencialAlvo && (
-          <Card className="flex flex-col gap-4 p-6 shadow-card">
-            <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
+          <>
+            <Card className="flex flex-col gap-4 p-6 shadow-card">
+              <h2 className="text-base font-semibold text-foreground">{LISTA_DA_VEZ_TITLE}</h2>
 
-            {/*
+              {/*
             Delegate-start/delegate-cancel actions (Milestone 2A.1) originate
             from this card, not from the ativo/finalizando/start card above,
             which has its own errorMessage display for its own actions — an
@@ -637,109 +641,118 @@ function AtendimentoPage() {
             silently (e.g. the target became unavailable between the confirm
             dialog and the RPC call).
           */}
-            {actions.errorMessage && (
-              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
-                {actions.errorMessage}
-              </p>
-            )}
-            {listaActions.errorMessage && (
-              <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
-                {listaActions.errorMessage}
-              </p>
-            )}
+              {actions.errorMessage && (
+                <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                  {actions.errorMessage}
+                </p>
+              )}
+              {listaActions.errorMessage && (
+                <p role="alert" aria-live="polite" className="text-sm font-medium text-destructive">
+                  {listaActions.errorMessage}
+                </p>
+              )}
 
-            {listaQuery.isLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
-              </div>
-            ) : lista.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_EMPTY_MESSAGE}</p>
-            ) : (
-              <ol className="flex flex-col gap-2">
-                {disponiveis.map((entry) => {
-                  const souEu = entry.id_funcionario === funcionarioId;
-                  return (
-                    <li
-                      key={entry.id_funcionario}
-                      className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
-                        {entry.ordem}
-                      </span>
-                      <span className="text-sm font-medium text-foreground">{entry.nome}</span>
-                      {souEu ? (
-                        <Badge variant="outline" className="ml-auto">
-                          {LISTA_DA_VEZ_VOCE_LABEL}
-                        </Badge>
-                      ) : (
-                        <div className="ml-auto flex items-center gap-1">
-                          {isManagerOrAdmin && (
-                            // Manager/admin exception action (Milestone 2A.2,
-                            // section 15) — UserMinus is deliberately a
-                            // different silhouette from Iniciar atendimento's
-                            // UserPlus below (they looked too similar at
-                            // mobile icon sizes with a shared UserX/UserPlus
-                            // pairing), and destructive-red by default (not
-                            // just on hover) so this reads as the cautionary
-                            // action at a glance. Never shown on the
-                            // employee's own row (that's what Sair da Lista
-                            // da Vez, above, is for) or on Em
-                            // atendimento/Finalizando rows (those render via
-                            // EmAtendimentoRow instead, not this branch).
+              {listaQuery.isLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
+                </div>
+              ) : lista.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{LISTA_DA_VEZ_EMPTY_MESSAGE}</p>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {disponiveis.map((entry) => {
+                    const souEu = entry.id_funcionario === funcionarioId;
+                    return (
+                      <li
+                        key={entry.id_funcionario}
+                        className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+                      >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">
+                          {entry.ordem}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">{entry.nome}</span>
+                        {souEu ? (
+                          <Badge variant="outline" className="ml-auto">
+                            {LISTA_DA_VEZ_VOCE_LABEL}
+                          </Badge>
+                        ) : (
+                          <div className="ml-auto flex items-center gap-1">
+                            {isManagerOrAdmin && (
+                              // Manager/admin exception action (Milestone 2A.2,
+                              // section 15) — UserMinus is deliberately a
+                              // different silhouette from Iniciar atendimento's
+                              // UserPlus below (they looked too similar at
+                              // mobile icon sizes with a shared UserX/UserPlus
+                              // pairing), and destructive-red by default (not
+                              // just on hover) so this reads as the cautionary
+                              // action at a glance. Never shown on the
+                              // employee's own row (that's what Sair da Lista
+                              // da Vez, above, is for) or on Em
+                              // atendimento/Finalizando rows (those render via
+                              // EmAtendimentoRow instead, not this branch).
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="min-touch h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() =>
+                                  handleRemoverClick({ id: entry.id_funcionario, nome: entry.nome })
+                                }
+                                aria-label={getRemoverAriaLabel(entry.nome)}
+                              >
+                                <UserMinus className="h-4 w-4" aria-hidden />
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="min-touch h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              className="min-touch h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                               onClick={() =>
-                                handleRemoverClick({ id: entry.id_funcionario, nome: entry.nome })
+                                handleIniciarParaClick({
+                                  id: entry.id_funcionario,
+                                  nome: entry.nome,
+                                })
                               }
-                              aria-label={getRemoverAriaLabel(entry.nome)}
+                              aria-label={getIniciarParaAriaLabel(entry.nome)}
                             >
-                              <UserMinus className="h-4 w-4" aria-hidden />
+                              <UserPlus className="h-4 w-4" aria-hidden />
                             </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="min-touch h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                              handleIniciarParaClick({ id: entry.id_funcionario, nome: entry.nome })
-                            }
-                            aria-label={getIniciarParaAriaLabel(entry.nome)}
-                          >
-                            <UserPlus className="h-4 w-4" aria-hidden />
-                          </Button>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-                {ocupados.map((entry) => (
-                  <EmAtendimentoRow
-                    key={entry.id_funcionario}
-                    nome={entry.nome}
-                    status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
-                    iniciadoEm={entry.iniciado_em}
-                    souEu={entry.id_funcionario === funcionarioId}
-                    idAtendimento={entry.id_atendimento}
-                    prazoProvisorioEm={entry.prazo_provisorio_em}
-                    podeCancelarComoIniciador={
-                      entry.id_funcionario_iniciador === funcionarioId &&
-                      entry.id_funcionario_iniciador !== entry.id_funcionario
-                    }
-                    cancelando={actions.submitting}
-                    onCancelarInicio={handleCancelarDelegado}
-                    podeConcluirComoGerente={
-                      isManagerOrAdmin && entry.id_funcionario !== funcionarioId
-                    }
-                    onConcluirComoGerente={handleConcluirGerencialClick}
-                  />
-                ))}
-              </ol>
-            )}
-          </Card>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {ocupados.map((entry) => (
+                    <EmAtendimentoRow
+                      key={entry.id_funcionario}
+                      nome={entry.nome}
+                      status={entry.status === "finalizando" ? "finalizando" : "em_atendimento"}
+                      iniciadoEm={entry.iniciado_em}
+                      souEu={entry.id_funcionario === funcionarioId}
+                      idAtendimento={entry.id_atendimento}
+                      prazoProvisorioEm={entry.prazo_provisorio_em}
+                      podeCancelarComoIniciador={
+                        entry.id_funcionario_iniciador === funcionarioId &&
+                        entry.id_funcionario_iniciador !== entry.id_funcionario
+                      }
+                      cancelando={actions.submitting}
+                      onCancelarInicio={handleCancelarDelegado}
+                      podeConcluirComoGerente={
+                        isManagerOrAdmin && entry.id_funcionario !== funcionarioId
+                      }
+                      onConcluirComoGerente={handleConcluirGerencialClick}
+                    />
+                  ))}
+                </ol>
+              )}
+            </Card>
+
+            <AtendimentoResumoHojeCard
+              linhas={resumoHojeQuery.data ?? []}
+              isLoading={resumoHojeQuery.isLoading}
+            />
+          </>
         )}
       </div>
 
