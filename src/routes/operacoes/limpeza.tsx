@@ -25,7 +25,7 @@ import { getManausDateISO, monthStartISO } from "@/lib/escala";
 
 export const Route = createFileRoute("/operacoes/limpeza")({
   head: () => ({
-    meta: [{ title: "Limpeza — Portal Benvisi" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Escala de Limpeza — Portal Benvisi" }, { name: "robots", content: "noindex" }],
   }),
   component: LimpezaPage,
 });

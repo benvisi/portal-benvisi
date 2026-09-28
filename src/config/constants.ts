@@ -790,7 +790,7 @@ export const TERMOS_BUSCA_ORIGEM_ADMIN_LABEL = "Adicionado pela gestão";
 // assignments, generated from Escala. Gerenciar tab is only shown to
 // Gerente/Administrador (see MANAGER_CARGO/ADMINISTRATOR_CARGO).
 // -----------------------------------------------------------------------------
-export const LIMPEZA_TITLE = "Limpeza";
+export const LIMPEZA_TITLE = "Escala de Limpeza";
 export const LIMPEZA_CARD_DESCRIPTION = "Varrer e passar pano, distribuídos pela escala do dia.";
 export const LIMPEZA_PAGE_SUBTITLE = "Responsáveis por varrer e passar pano, a partir da escala.";
 
