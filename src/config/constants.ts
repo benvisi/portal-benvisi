@@ -914,3 +914,111 @@ export const LIMPEZA_CONFLITO_MESMA_PESSOA_MESSAGE =
   "Este funcionário já está atribuído à outra tarefa deste turno.";
 export const LIMPEZA_ATRIBUICAO_CONCLUIDA_MESSAGE =
   "Esta atribuição já foi concluída e não pode mais ser alterada.";
+
+// -----------------------------------------------------------------------------
+// Estoque — Organização Semanal V1 (Operações → Organização Semanal) — one
+// estante (1-41) per week per eligible employee, generated from Escala.
+// Gerenciar tab is only shown to Gerente/Administrador (see
+// MANAGER_CARGO/ADMINISTRATOR_CARGO). No manual reassignment or
+// manager-completes-on-behalf in V1 — see the RPC migrations for why.
+// -----------------------------------------------------------------------------
+export const ESTOQUE_ORGANIZACAO_TITLE = "Organização Semanal";
+export const ESTOQUE_ORGANIZACAO_CARD_DESCRIPTION =
+  "Uma estante por semana, em rodízio, a partir da escala.";
+export const ESTOQUE_ORGANIZACAO_PAGE_SUBTITLE =
+  "Sua estante da semana e as diretrizes de organização.";
+
+export const ESTOQUE_ORGANIZACAO_SEMANA_HEADER_PREFIX = "Semana de";
+
+export const ESTOQUE_ORGANIZACAO_TAB_SEMANA_LABEL = "Semana";
+export const ESTOQUE_ORGANIZACAO_TAB_GERENCIAR_LABEL = "Gerenciar";
+
+export const ESTOQUE_ORGANIZACAO_CARREGANDO_MESSAGE = "Carregando organização semanal...";
+export const ESTOQUE_ORGANIZACAO_ERRO_MESSAGE =
+  "Não foi possível carregar a organização semanal. Tente novamente.";
+export const ESTOQUE_ORGANIZACAO_SEMANA_VAZIA_MESSAGE =
+  "Nenhuma estante atribuída esta semana (verifique se a escala já foi publicada).";
+
+export function getEstoqueOrganizacaoEstanteLabel(numeroEstante: number): string {
+  return `Estante ${numeroEstante}`;
+}
+export function getEstoqueOrganizacaoPrateleirasLabel(prateleirasConcluidas: number): string {
+  return `${prateleirasConcluidas}/5 prateleiras`;
+}
+export function getEstoqueOrganizacaoConcluidoLabel(horaFormatada: string): string {
+  return `Concluído às ${horaFormatada}`;
+}
+export function getEstoqueOrganizacaoConcluidoPorLabel(
+  apelido: string,
+  horaFormatada: string,
+): string {
+  return `Concluído por ${apelido} às ${horaFormatada}`;
+}
+export const ESTOQUE_ORGANIZACAO_CONCLUIR_ESTANTE_LABEL = "Concluir estante";
+export const ESTOQUE_ORGANIZACAO_CONCLUINDO_LABEL = "Concluindo...";
+
+// Guidance shown alongside every assignment as informational text, never as
+// checkboxes — the employee's own 0-5 progress is the only interactive
+// control (product decision).
+export const ESTOQUE_ORGANIZACAO_DIRETRIZES_TITLE = "Diretrizes de organização";
+export const ESTOQUE_ORGANIZACAO_DIRETRIZES: readonly { titulo: string; texto: string }[] = [
+  {
+    titulo: "Conferência de Mix",
+    texto: "Validar se os produtos em cada pilha correspondem exatamente à sinalização da placa.",
+  },
+  {
+    titulo: "Visibilidade da Referência/Tamanho",
+    texto:
+      "Posicionar a etiqueta de modo que fique visível e centralizada na parte superior da dobra/sacola.",
+  },
+  {
+    titulo: "Padronização Cromática",
+    texto: "Repor as peças mantendo a organização por cores.",
+  },
+];
+
+export const ESTOQUE_ORGANIZACAO_PROGRESSO_ERRO_GENERICO_MESSAGE =
+  "Não foi possível salvar o progresso agora. Tente novamente.";
+export const ESTOQUE_ORGANIZACAO_ATRIBUICAO_NAO_ENCONTRADA_MESSAGE =
+  "Esta atribuição não foi encontrada. Atualize a página.";
+export const ESTOQUE_ORGANIZACAO_SEM_PERMISSAO_PROGRESSO_MESSAGE =
+  "Você só pode atualizar o progresso da sua própria estante.";
+export const ESTOQUE_ORGANIZACAO_SEMANA_ENCERRADA_MESSAGE =
+  "Esta semana já foi encerrada e não pode mais ser alterada.";
+export const ESTOQUE_ORGANIZACAO_PROGRESSO_INVALIDO_MESSAGE =
+  "Progresso inválido. Escolha um valor entre 0 e 5.";
+
+// Gerenciar tab: week selector + read-only team table. No manual
+// reassignment and no monthly/quarterly analytics in V1 (Blueprint scope).
+export const ESTOQUE_ORGANIZACAO_SEMANA_ANTERIOR_LABEL = "Semana anterior";
+export const ESTOQUE_ORGANIZACAO_PROXIMA_SEMANA_LABEL = "Próxima semana";
+export const ESTOQUE_ORGANIZACAO_SEMANA_ATUAL_LABEL = "Semana atual";
+
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_TITLE = "Estantes da semana";
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_VAZIO_MESSAGE =
+  "Nenhuma estante atribuída nesta semana.";
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_ERRO_MESSAGE =
+  "Não foi possível carregar as estantes desta semana. Tente novamente.";
+
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_ATRIBUIDAS_LABEL = "Atribuídas";
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_CONCLUIDAS_LABEL = "Concluídas";
+// "Pendentes" for the current (still-open) week; "Não concluídas" once the
+// week has closed — same underlying count (prateleiras_concluidas < 5),
+// different framing depending on whether the week can still change.
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_PENDENTES_LABEL = "Pendentes";
+export const ESTOQUE_ORGANIZACAO_GERENCIAL_NAO_CONCLUIDAS_LABEL = "Não concluídas";
+
+export const ESTOQUE_ORGANIZACAO_SEM_PERMISSAO_GERENCIAL_MESSAGE =
+  "Você não tem permissão para gerenciar a organização semanal.";
+
+// Fallback manual resync (estoque_organizacao_sincronizar_manual) — recovery
+// path if the Escala-publish-time sync ever failed silently, mirroring
+// Limpeza's own "Sincronizar" action.
+export const ESTOQUE_ORGANIZACAO_SINCRONIZAR_LABEL = "Sincronizar";
+export const ESTOQUE_ORGANIZACAO_SINCRONIZANDO_LABEL = "Sincronizando...";
+export const ESTOQUE_ORGANIZACAO_MANUAL_ERRO_GENERICO_MESSAGE =
+  "Não foi possível sincronizar agora. Tente novamente.";
+
+export function getEstoqueOrganizacaoSyncPendenciaMessage(semanaFormatada: string): string {
+  return `Organização semanal não sincronizada com a Escala na semana de ${semanaFormatada}.`;
+}

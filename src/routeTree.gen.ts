@@ -20,6 +20,7 @@ import { Route as AdministrativoIndexRouteImport } from './routes/administrativo
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
+import { Route as OperacoesEstoqueOrganizacaoSemanalRouteImport } from './routes/operacoes/estoque-organizacao-semanal'
 import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
 import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
 import { Route as ConhecimentoCulturaTamanhosCalcadosRouteImport } from './routes/conhecimento-cultura/tamanhos-calcados'
@@ -86,6 +87,12 @@ const OperacoesLimpezaRoute = OperacoesLimpezaRouteImport.update({
   path: '/operacoes/limpeza',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OperacoesEstoqueOrganizacaoSemanalRoute =
+  OperacoesEstoqueOrganizacaoSemanalRouteImport.update({
+    id: '/operacoes/estoque-organizacao-semanal',
+    path: '/operacoes/estoque-organizacao-semanal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const OperacoesEscalaRoute = OperacoesEscalaRouteImport.update({
   id: '/operacoes/escala',
   path: '/operacoes/escala',
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -160,6 +168,7 @@ export interface FileRoutesByTo {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
   '/operacoes/contagem-embalagens': typeof OperacoesContagemEmbalagensRoute
   '/operacoes/escala': typeof OperacoesEscalaRoute
+  '/operacoes/estoque-organizacao-semanal': typeof OperacoesEstoqueOrganizacaoSemanalRoute
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/estoque-organizacao-semanal'
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/estoque-organizacao-semanal'
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -243,6 +255,7 @@ export interface FileRouteTypes {
     | '/conhecimento-cultura/tamanhos-calcados'
     | '/operacoes/contagem-embalagens'
     | '/operacoes/escala'
+    | '/operacoes/estoque-organizacao-semanal'
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
@@ -264,6 +277,7 @@ export interface RootRouteChildren {
   ConhecimentoCulturaTamanhosCalcadosRoute: typeof ConhecimentoCulturaTamanhosCalcadosRoute
   OperacoesContagemEmbalagensRoute: typeof OperacoesContagemEmbalagensRoute
   OperacoesEscalaRoute: typeof OperacoesEscalaRoute
+  OperacoesEstoqueOrganizacaoSemanalRoute: typeof OperacoesEstoqueOrganizacaoSemanalRoute
   OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
@@ -351,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesLimpezaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/operacoes/estoque-organizacao-semanal': {
+      id: '/operacoes/estoque-organizacao-semanal'
+      path: '/operacoes/estoque-organizacao-semanal'
+      fullPath: '/operacoes/estoque-organizacao-semanal'
+      preLoaderRoute: typeof OperacoesEstoqueOrganizacaoSemanalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/operacoes/escala': {
       id: '/operacoes/escala'
       path: '/operacoes/escala'
@@ -417,6 +438,8 @@ const rootRouteChildren: RootRouteChildren = {
     ConhecimentoCulturaTamanhosCalcadosRoute,
   OperacoesContagemEmbalagensRoute: OperacoesContagemEmbalagensRoute,
   OperacoesEscalaRoute: OperacoesEscalaRoute,
+  OperacoesEstoqueOrganizacaoSemanalRoute:
+    OperacoesEstoqueOrganizacaoSemanalRoute,
   OperacoesLimpezaRoute: OperacoesLimpezaRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,

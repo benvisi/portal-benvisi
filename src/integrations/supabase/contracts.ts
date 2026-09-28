@@ -1094,6 +1094,93 @@ export function isLimpezaSyncPendencia(value: unknown): value is LimpezaSyncPend
 }
 
 // =============================================================================
+// Estoque — Organização Semanal V1. See
+// supabase/migrations/20260927_101_add_estoque_organizacao_semanal_schema.sql
+// and 20260927_106_add_estoque_organizacao_progresso_rpcs.sql.
+// =============================================================================
+
+// Shared row shape returned by both get_estoque_organizacao_semana (always
+// the current week, everyone) and get_estoque_organizacao_gerencial_semana
+// (any week, Gerente/Administrador only).
+export interface EstoqueOrganizacaoAtribuicaoSemana {
+  id: string;
+  funcionario_id: string;
+  funcionario_nome: string;
+  funcionario_apelido: string;
+  numero_estante: number;
+  prateleiras_concluidas: number;
+  concluido_por_apelido: string | null;
+  concluido_em: string | null;
+  atualizado_em: string;
+  semana_inicio: string;
+}
+
+export function isEstoqueOrganizacaoAtribuicaoSemana(
+  value: unknown,
+): value is EstoqueOrganizacaoAtribuicaoSemana {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.funcionario_id === "string" &&
+    typeof candidate.funcionario_nome === "string" &&
+    typeof candidate.funcionario_apelido === "string" &&
+    typeof candidate.numero_estante === "number" &&
+    typeof candidate.prateleiras_concluidas === "number" &&
+    optionalString(candidate.concluido_por_apelido) &&
+    optionalString(candidate.concluido_em) &&
+    typeof candidate.atualizado_em === "string" &&
+    typeof candidate.semana_inicio === "string"
+  );
+}
+
+// estoque_organizacao_atualizar_progresso / estoque_organizacao_concluir_estante
+export interface EstoqueOrganizacaoProgresso {
+  id: string;
+  prateleiras_concluidas: number;
+  concluido_por_apelido: string | null;
+  concluido_em: string | null;
+  atualizado_em: string;
+}
+
+export function isEstoqueOrganizacaoProgresso(
+  value: unknown,
+): value is EstoqueOrganizacaoProgresso {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.prateleiras_concluidas === "number" &&
+    optionalString(candidate.concluido_por_apelido) &&
+    optionalString(candidate.concluido_em) &&
+    typeof candidate.atualizado_em === "string"
+  );
+}
+
+// get_estoque_organizacao_sync_pendencias — Gerente/Administrador only.
+export interface EstoqueOrganizacaoSyncPendencia {
+  semana_inicio: string;
+  falhou_em: string;
+  motivo: string | null;
+}
+
+export function isEstoqueOrganizacaoSyncPendencia(
+  value: unknown,
+): value is EstoqueOrganizacaoSyncPendencia {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.semana_inicio === "string" &&
+    typeof candidate.falhou_em === "string" &&
+    (candidate.motivo === null || typeof candidate.motivo === "string")
+  );
+}
+
+// =============================================================================
 // Treinamento V1 (Slice 1 — database/runtime contract)
 //
 // Shapes returned by the Treinamento RPCs in
