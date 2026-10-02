@@ -6,31 +6,44 @@
 //     [--filial 060420] [--dates 2026-09-30,2026-10-01]
 //
 // Publishes curated daily salesperson sales aggregates
-// (public.vendas_diarias_vendedor) for the Portal to read later via
+// (public.vendas_diarias_vendedor, public.vendas_diarias_loja,
+// public.vendas_diarias_anomalias) for the Portal to read later via
 // get_vendas_metricas_mtd. The browser never queries Linx directly — this
-// script is the only thing that does, and it is the only writer of
-// vendas_diarias_vendedor (through the vendas_diarias_substituir_dia RPC).
+// script is the only thing that does, and it is the only writer of these
+// tables (through the vendas_diarias_substituir_dia RPC).
 //
-// Reuses the LOCKED Linx extraction/classification logic from
-// scripts/sales-metrics-reconciliation/reconcile-vendas.mjs verbatim
-// (same query file, same classifyTicket/buildReport/groupBySalesperson) —
-// this script does not redefine ticket grain, attribution, cancellation, or
-// KPI rules. See that script's header comment for the full rationale.
+// Reuses the LOCKED Linx extraction/classification/KPI logic from
+// scripts/sales-metrics-reconciliation/reconcile-vendas.mjs verbatim (same
+// query file, same classifyTicket/computeKpis/groupBySalesperson) — this
+// script does not redefine ticket grain, attribution, cancellation, or KPI
+// rules. In particular, the store-level "Total" published here is
+// computeKpis(validRows) — the exact same overallKpis logic already
+// validated against Power BI by the reconciliation tool — never a sum of
+// mapped salesperson rows.
 //
 // Default behavior (no --dates given): refreshes TODAY and YESTERDAY
 // (America/Manaus calendar days), so late cancellations/corrections posted
 // in Linx after midnight are picked up by the next run. Each day is
 // resynced independently via vendas_diarias_substituir_dia, which deletes
-// and re-inserts that day's full row set in one transaction — safe to
-// rerun any number of times for the same day (idempotent).
+// and re-inserts that day's full row set (across all three tables, in one
+// transaction) — safe to rerun any number of times for the same day
+// (idempotent).
 //
-// Three categories of valid ticket are excluded from the published
-// aggregates, on purpose, and reported to stdout rather than guessed:
+// Three categories of valid ticket cannot be placed in a displayed
+// salesperson row. They are never guessed/allocated; instead their additive
+// totals are published to vendas_diarias_anomalias (pure diagnostics — the
+// Portal's "Outros" row is derived from Total minus mapped salespeople at
+// read time, not from this table) and logged to stdout:
 //   - zero-attribution anomaly  (no LOJA_VENDA_VENDEDORES row for the ticket)
 //   - multi-attribution anomaly (>1 distinct VENDEDOR for the ticket)
 //   - unmapped VENDEDOR code    (resolves to exactly one VENDEDOR, but that
 //                                 code has no funcionarios.codigo_vendedor_linx
 //                                 mapping yet — never guessed by name)
+//
+// VENDEDOR codes are text (dbo.LOJA_VENDA_VENDEDORES.VENDEDOR is CHAR(4) on
+// the live Linx schema — verified via sys.columns, not inferred from
+// sample values) — never coerced to a number anywhere in this pipeline, so
+// a future leading-zero code is never silently corrupted.
 //
 // --dry-run runs the full extract/classify/map pipeline and prints every
 // count, but never calls the write RPC (no durable Supabase writes). It
@@ -48,6 +61,7 @@ import process from "node:process";
 import {
   classifyTicket,
   detectDuplicateCanonicalKeys,
+  computeKpis,
   groupBySalesperson,
   assertReadOnlyQuery,
 } from "../sales-metrics-reconciliation/reconcile-vendas.mjs";
@@ -166,20 +180,27 @@ export function parseArgs(argv, { now = new Date() } = {}) {
 // -----------------------------------------------------------------------------
 // Mapping resolution (pure). Splits a day's per-salesperson report entries
 // into rows ready to write (mapped to a funcionario_id) and ones that must
-// be reported as unmapped instead — never guessed by name.
+// be reported as unmapped instead — never guessed by name. VENDEDOR codes
+// are compared as exact (trimmed) text — never coerced to a number, since
+// the live Linx column is CHAR(4), not numeric.
 // -----------------------------------------------------------------------------
+function normalizeCodigo(codigo) {
+  return String(codigo).trim();
+}
+
 export function resolveMappedRows(perSalesperson, mapaPorCodigo) {
   const mapeadas = [];
   const naoMapeadas = [];
   for (const sp of perSalesperson) {
-    const alvo = mapaPorCodigo.get(Number(sp.vendedorCodigo));
+    const codigo = normalizeCodigo(sp.vendedorCodigo);
+    const alvo = mapaPorCodigo.get(codigo);
     if (!alvo) {
       naoMapeadas.push(sp);
       continue;
     }
     mapeadas.push({
       funcionario_id: alvo.funcionarioId,
-      codigo_vendedor_linx: Number(sp.vendedorCodigo),
+      codigo_vendedor_linx: codigo,
       venda_liquida: sp.kpis.vendaLiquida,
       tickets: sp.kpis.tickets,
       pecas_brutas: sp.kpis.pecasBrutas,
@@ -193,9 +214,82 @@ export function buildMappingIndex(mappingRows) {
   const mapa = new Map();
   for (const r of mappingRows) {
     if (r.codigo_vendedor_linx == null) continue;
-    mapa.set(Number(r.codigo_vendedor_linx), { funcionarioId: r.funcionario_id, nome: r.nome });
+    mapa.set(normalizeCodigo(r.codigo_vendedor_linx), {
+      funcionarioId: r.funcionario_id,
+      nome: r.nome,
+    });
   }
   return mapa;
+}
+
+// Sums the additive KPI ingredients across a list of { kpis } entries (e.g.
+// the unmapped-vendedor entries from resolveMappedRows, each already
+// aggregated by groupBySalesperson). Pure arithmetic — no ticket-level
+// recomputation.
+export function sumKpis(entries) {
+  return entries.reduce(
+    (acc, entry) => ({
+      vendaLiquida: acc.vendaLiquida + entry.kpis.vendaLiquida,
+      tickets: acc.tickets + entry.kpis.tickets,
+      pecasBrutas: acc.pecasBrutas + entry.kpis.pecasBrutas,
+      pecasTroca: acc.pecasTroca + entry.kpis.pecasTroca,
+    }),
+    { vendaLiquida: 0, tickets: 0, pecasBrutas: 0, pecasTroca: 0 },
+  );
+}
+
+// Shapes a computeKpis()-style ingredient set into the jsonb payload the
+// vendas_diarias_substituir_dia RPC expects (store-total / anomaly-category
+// rows only carry the four additive ingredients, never the derived ratios).
+function toAdditivePayload(kpis) {
+  return {
+    venda_liquida: kpis.vendaLiquida,
+    tickets: kpis.tickets,
+    pecas_brutas: kpis.pecasBrutas,
+    pecas_troca: kpis.pecasTroca,
+  };
+}
+
+// Sums several additive ingredient sets (computeKpis() results and/or
+// sumKpis() results — both expose the same four fields) into one. Used here
+// to preview, locally, what get_vendas_metricas_mtd's Outros row will equal
+// for this day's contribution (zero-attribution + multi-attribution +
+// unmapped) — NOT used to compute the published Outros value itself, which
+// the RPC derives independently (Total minus mapped) at read time. This is
+// purely a same-run diagnostic preview/log signal.
+export function sumAdditive(kpisList) {
+  return kpisList.reduce(
+    (acc, k) => ({
+      vendaLiquida: acc.vendaLiquida + k.vendaLiquida,
+      tickets: acc.tickets + k.tickets,
+      pecasBrutas: acc.pecasBrutas + k.pecasBrutas,
+      pecasTroca: acc.pecasTroca + k.pecasTroca,
+    }),
+    { vendaLiquida: 0, tickets: 0, pecasBrutas: 0, pecasTroca: 0 },
+  );
+}
+
+export function hasNonZeroResidual(residual) {
+  return (
+    residual.vendaLiquida !== 0 ||
+    residual.tickets !== 0 ||
+    residual.pecasBrutas !== 0 ||
+    residual.pecasTroca !== 0
+  );
+}
+
+// Mirrors get_vendas_metricas_mtd's ratio formulas exactly (null — never 0
+// — when the relevant denominator is zero). Used for diagnostic logging of
+// the residual/Outros preview; the Portal reads the real ratios from the
+// RPC, not from this script.
+export function computeRatios({ vendaLiquida, tickets, pecasBrutas, pecasTroca }) {
+  const pecasLiquidas = pecasBrutas - pecasTroca;
+  return {
+    pecasLiquidas,
+    ticketMedio: tickets === 0 ? null : vendaLiquida / tickets,
+    pa: tickets === 0 ? null : pecasLiquidas / tickets,
+    pm: pecasLiquidas === 0 ? null : vendaLiquida / pecasLiquidas,
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -259,15 +353,24 @@ async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRu
 
   const validRows = classified.filter((r) => r.isValid);
   const cancelledCount = classified.length - validRows.length;
-  const zeroAttributionCount = validRows.filter((r) => r.isZeroAttribution).length;
-  const multiAttributionCount = validRows.filter((r) => r.isMultiAttribution).length;
+  const zeroRows = validRows.filter((r) => r.isZeroAttribution);
+  const multiRows = validRows.filter((r) => r.isMultiAttribution);
 
   const perSalesperson = groupBySalesperson(validRows);
   const { mapeadas, naoMapeadas } = resolveMappedRows(perSalesperson, mapaPorCodigo);
 
+  // Store-level Total ingredients: the SAME computeKpis(validRows) logic
+  // reconcile-vendas.mjs already validated against Power BI as "overallKpis"
+  // — never reconstructed from the mapped salesperson rows.
+  const totalLojaKpis = computeKpis(validRows);
+  const zeroKpis = computeKpis(zeroRows);
+  const multiKpis = computeKpis(multiRows);
+  const naoMapeadasKpis = sumKpis(naoMapeadas);
+
   log(
     `${dateStr}: examined=${classified.length} validas=${validRows.length} canceladas=${cancelledCount} ` +
-      `atribuicao_zero=${zeroAttributionCount} atribuicao_multipla=${multiAttributionCount} ` +
+      `venda_liquida_total=${totalLojaKpis.vendaLiquida.toFixed(2)} ` +
+      `atribuicao_zero=${zeroRows.length} atribuicao_multipla=${multiRows.length} ` +
       `vendedores_mapeados=${mapeadas.length} vendedores_nao_mapeados=${naoMapeadas.length} ` +
       `linx_query_ms=${linxElapsedMs}`,
   );
@@ -282,25 +385,51 @@ async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRu
     }
   }
 
+  const linhasAnomalias = [
+    { categoria: "zero_atribuicao", ...toAdditivePayload(zeroKpis) },
+    { categoria: "multipla_atribuicao", ...toAdditivePayload(multiKpis) },
+    { categoria: "nao_mapeado", ...toAdditivePayload(naoMapeadasKpis) },
+  ];
+
+  // Preview-only: not what the Portal shows (the RPC derives Outros as
+  // Total minus mapped salespeople independently), just a same-run signal
+  // for the operator running this script.
+  const residualPreview = sumAdditive([zeroKpis, multiKpis, naoMapeadasKpis]);
+  if (hasNonZeroResidual(residualPreview)) {
+    const ratios = computeRatios(residualPreview);
+    log(
+      `  Outros (preview): venda_liquida=${residualPreview.vendaLiquida.toFixed(2)} ` +
+        `tickets=${residualPreview.tickets} ticket_medio=${ratios.ticketMedio?.toFixed(2) ?? "—"} ` +
+        `pa=${ratios.pa?.toFixed(2) ?? "—"} pm=${ratios.pm?.toFixed(2) ?? "—"}`,
+    );
+  } else {
+    log("  Outros (preview): zero residual — Outros row will be omitted for this day");
+  }
+
   if (dryRun) {
-    log(`${dateStr}: dry-run — skipping write (${mapeadas.length} rows would be written)`);
+    log(
+      `${dateStr}: dry-run — skipping write (${mapeadas.length} salesperson rows would be written)`,
+    );
     return { dateStr, skipped: false, written: 0, dryRun: true };
   }
 
   const { data, error } = await supabase.rpc("vendas_diarias_substituir_dia", {
     p_codigo_filial: filial,
     p_data_venda: dateStr,
-    p_linhas: mapeadas,
+    p_linhas_vendedores: mapeadas,
+    p_total_loja: toAdditivePayload(totalLojaKpis),
+    p_linhas_anomalias: linhasAnomalias,
   });
   if (error)
     throw new Error(`vendas_diarias_substituir_dia failed for ${dateStr}: ${error.message}`);
 
   const resultado = Array.isArray(data) ? data[0] : data;
   log(
-    `${dateStr}: wrote ${resultado?.linhas_inseridas ?? mapeadas.length} rows ` +
-      `(removed ${resultado?.linhas_removidas ?? "?"} previous rows for this day)`,
+    `${dateStr}: wrote ${resultado?.vendedores_inseridos ?? mapeadas.length} salesperson rows ` +
+      `(removed ${resultado?.vendedores_removidos ?? "?"} previous), loja_gravada=${resultado?.loja_gravada ?? "?"}, ` +
+      `anomalias=${resultado?.anomalias_inseridas ?? linhasAnomalias.length}`,
   );
-  return { dateStr, skipped: false, written: resultado?.linhas_inseridas ?? mapeadas.length };
+  return { dateStr, skipped: false, written: resultado?.vendedores_inseridos ?? mapeadas.length };
 }
 
 // -----------------------------------------------------------------------------

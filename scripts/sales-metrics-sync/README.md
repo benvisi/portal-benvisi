@@ -1,7 +1,8 @@
 # Salesperson Metrics — production sync (Slice A)
 
 Publishes curated daily salesperson sales aggregates from Linx to Supabase
-(`public.vendas_diarias_vendedor`), for the Portal to read later via the
+(`public.vendas_diarias_vendedor`, `public.vendas_diarias_loja`,
+`public.vendas_diarias_anomalias`), for the Portal to read later via the
 `get_vendas_metricas_mtd` RPC. **The browser never queries Linx directly** —
 this script is the only thing that does.
 
@@ -21,13 +22,39 @@ verbatim rather than redefining it.
    valid vs. cancelled, zero/multi-attribution anomaly, cleanly-resolved.
 3. Groups cleanly-resolved valid tickets by salesperson for that day and
    maps each `VENDEDOR` code to a `funcionario_id`.
-4. Writes the day's rows via `vendas_diarias_substituir_dia` — a single
-   transaction that deletes and re-inserts that day's full row set, so
-   reruns are idempotent even if attribution for the day changed since the
-   last run (e.g. a late cancellation).
+4. Computes the store-level day total with the exact same `computeKpis()` /
+   `overallKpis` logic the reconciliation tool already validated against
+   Power BI — over ALL valid tickets, regardless of attribution outcome.
+5. Writes the day's rows via `vendas_diarias_substituir_dia` — one
+   transaction that deletes and re-inserts that day's full row set across
+   all three tables, so reruns are idempotent even if attribution for the
+   day changed since the last run (e.g. a late cancellation).
 
-Three categories of valid ticket are **excluded** from what gets published,
-and reported to stdout instead of guessed:
+`VENDEDOR` codes are **text**, never numbers, throughout this pipeline —
+verified against the live Linx schema (`dbo.LOJA_VENDA_VENDEDORES.VENDEDOR`
+is `CHAR(4)`), not inferred from sample data. Coercing to a number would
+silently corrupt any future leading-zero code.
+
+### Total vs. Outros vs. salesperson rows
+
+The Portal's `get_vendas_metricas_mtd` RPC (not this script) derives three
+kinds of rows for the UI:
+
+- **Total** = `SUM()` of `vendas_diarias_loja` for the period — the
+  store-level figure this script computed above. Never the sum of mapped
+  salesperson rows.
+- **Salesperson rows** = `SUM()` of `vendas_diarias_vendedor`, grouped by
+  `funcionario_id` — clean, mapped data only.
+- **Outros** = `Total − SUM(salesperson rows)`, computed elementwise per
+  additive metric, at read time, in the RPC. This guarantees
+  `SUM(salesperson rows) + Outros = Total` by construction and is never a
+  stored fake employee/salesperson row. The RPC omits the Outros row
+  entirely when every residual metric is exactly zero.
+
+Three categories of valid ticket feed that residual and are **excluded**
+from the salesperson rows — never guessed/allocated, and reported to stdout
+every run plus published (for diagnosis only, not for computing Outros) to
+`vendas_diarias_anomalias`:
 
 - zero-attribution anomaly (no `LOJA_VENDA_VENDEDORES` row for the ticket)
 - multi-attribution anomaly (>1 distinct `VENDEDOR` for the ticket)
@@ -48,7 +75,8 @@ cp scripts/sales-metrics-sync/.env.example scripts/sales-metrics-sync/.env
 
 Requires the `funcionarios.codigo_vendedor_linx` mapping to be populated for
 at least the salespeople you want published — an employee with no mapping
-will simply show up in the "UNMAPPED" log lines until mapped.
+will simply show up in the "UNMAPPED" log lines until mapped, and their
+sales fall into the Outros residual instead.
 
 ## Run
 
@@ -67,13 +95,14 @@ node scripts/sales-metrics-sync/sync-vendas-diarias.mjs --dates 2026-09-01,2026-
 node scripts/sales-metrics-sync/sync-vendas-diarias.mjs --filial 060421
 ```
 
-Every run logs, per day: rows examined/valid/cancelled, zero/multi
-attribution anomaly counts, mapped/unmapped vendedor counts (with each
-unmapped code/name/value listed), the Linx query duration, and the total
-sync duration — use these numbers to decide the real scheduling interval
-(5-minute vs. 1-minute) later. **No Task Scheduler wiring is part of this
-slice** — invoke manually (or via whatever ad-hoc mechanism you choose)
-until that decision is made.
+Every run logs, per day: rows examined/valid/cancelled, store-level total,
+zero/multi attribution anomaly counts, mapped/unmapped vendedor counts (with
+each unmapped code/name/value listed), a preview of what the Outros residual
+would be (and whether it would be shown or omitted), the Linx query
+duration, and the total sync duration — use these numbers to decide the real
+scheduling interval (5-minute vs. 1-minute) later. **No Task Scheduler
+wiring is part of this slice** — invoke manually (or via whatever ad-hoc
+mechanism you choose) until that decision is made.
 
 ## Tests
 
@@ -81,8 +110,12 @@ until that decision is made.
 node scripts/sales-metrics-sync/test-sync-vendas-diarias.mjs
 ```
 
-Covers this script's own added logic (Manaus date windowing, CLI parsing,
-mapping resolution). The underlying classification/KPI logic it reuses is
+Covers this script's own added logic: Manaus date windowing, CLI parsing,
+text-based mapping resolution (including leading-zero codes), and an
+end-to-end fixture exercising every ticket category (mapped, zero-
+attribution, multi-attribution, unmapped, cancelled) that asserts the
+`SUM(salesperson rows) + Outros = Total` invariant and the ratio/omission
+rules for Outros. The underlying classification/KPI logic it reuses is
 covered by
 [`test-reconcile-vendas.mjs`](../sales-metrics-reconciliation/test-reconcile-vendas.mjs).
 
@@ -92,7 +125,8 @@ Deliberately does **not**:
 
 - touch the Portal UI;
 - configure Windows Task Scheduler or any other scheduler;
-- reconcile the store-level total to Power BI (which includes anomalous
-  tickets by design — this feed only ever stores clean, attributed data,
-  see `get_vendas_metricas_mtd`'s migration header);
 - compute commissions/payroll.
+
+`Total` in `get_vendas_metricas_mtd` DOES reconcile to the same population
+Power BI's store-level report uses (all valid tickets for the
+filial/period) — see that migration's header for the exact equivalence.

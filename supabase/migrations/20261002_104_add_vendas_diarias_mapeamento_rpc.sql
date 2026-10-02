@@ -22,7 +22,7 @@ begin;
 create or replace function public.vendas_diarias_mapeamento_vendedores()
 returns table (
   funcionario_id uuid,
-  codigo_vendedor_linx integer,
+  codigo_vendedor_linx text,
   nome text
 )
 language plpgsql

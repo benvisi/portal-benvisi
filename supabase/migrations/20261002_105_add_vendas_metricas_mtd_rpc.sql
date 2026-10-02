@@ -3,28 +3,38 @@ begin;
 -- =============================================================================
 -- Salesperson Metrics Portal V1 — Slice A — authenticated MTD read RPC.
 --
--- public.get_vendas_metricas_mtd(p_session_token, p_codigo_filial) returns
--- one row per salesperson who has at least one vendas_diarias_vendedor row
--- this calendar month, PLUS one store-total row (eh_total = true), for the
--- future UI table: Vendedor | R$ | Ticket médio | PA | PM | Tickets | Peças
--- | Trocas | Peças líquidas. Every row also repeats atualizado_em (the most
--- recent sync timestamp among the included rows) as the freshness signal —
--- same flat/repeated-header idiom as get_atendimento_resumo_hoje.
+-- public.get_vendas_metricas_mtd(p_session_token, p_codigo_filial) returns,
+-- for the future UI table (Vendedor | R$ | Ticket médio | PA | PM | Tickets
+-- | Peças | Trocas | Peças líquidas):
+--   1. one row per salesperson with at least one vendas_diarias_vendedor
+--      row this calendar month (eh_total = false, eh_outros = false);
+--   2. one "Outros" row (eh_outros = true) — ONLY when at least one of its
+--      residual additive metrics is nonzero;
+--   3. one "Total" row (eh_total = true).
 --
--- MTD = SUM() over this table's additive daily rows for the current Manaus
--- calendar month to date — never stored separately (data grain decision for
--- this slice). Ticket médio / PA / PM are derived here, from the SUMMED
--- additive columns (not averaged per-day), using the same safe-division
--- rule as scripts/sales-metrics-reconciliation/reconcile-vendas.mjs: null
--- (not 0) when the denominator is zero.
+-- TOTAL = SUM() over vendas_diarias_loja for the period — the store-level,
+-- all-valid-tickets figure computed by the sync with the same
+-- computeKpis()/overallKpis logic reconcile-vendas.mjs already validated
+-- against Power BI. Total is NEVER the sum of the displayed salesperson
+-- rows.
 --
--- Store total = SUM() across every salesperson row returned here (i.e. only
--- clean, attributed data — the same tickets already excluded from this
--- table at sync time for being cancelled/anomalous/unmapped stay excluded
--- from the total too). This does NOT attempt to reconcile to the
--- store-level Power BI total, which includes anomalous tickets by design
--- (see linx-vendas-query.sql's header) — flagged as an open question in
--- this slice's report, not solved here.
+-- OUTROS = Total minus the SUM of the displayed (mapped) salesperson rows,
+-- computed elementwise per additive metric, here, at read time. This
+-- guarantees, by construction, for every additive metric:
+--     SUM(displayed salesperson rows) + Outros = Total
+-- regardless of how the residual breaks down internally. The detailed
+-- "why" (zero-attribution / multi-attribution / unmapped-code breakdown)
+-- is retained separately in vendas_diarias_anomalias for operational
+-- diagnosis — it is not read here and does not participate in this
+-- invariant, by design (two independent computations of the same number
+-- would risk silently drifting apart; subtraction cannot).
+--
+-- Outros is derived, never a stored fake employee/salesperson row: no
+-- synthetic funcionarios row, no synthetic vendas_diarias_vendedor row.
+--
+-- Ticket médio / PA / PM are derived from the summed additive columns for
+-- every row (salesperson, Outros, Total) using the same safe-division rule
+-- as reconcile-vendas.mjs: null (not 0) when the denominator is zero.
 --
 -- Store-wide, no role restriction (per the decision that V1 shows
 -- current-month team data to all authenticated employees) — the only
@@ -39,6 +49,7 @@ create or replace function public.get_vendas_metricas_mtd(
 returns table (
   funcionario_id uuid,
   vendedor_nome text,
+  eh_outros boolean,
   eh_total boolean,
   venda_liquida numeric,
   tickets integer,
@@ -68,7 +79,7 @@ begin
   v_inicio := date_trunc('month', v_fim)::date;
 
   return query
-    with periodo as (
+    with periodo_vendedor as (
       select v.*
       from public.vendas_diarias_vendedor v
       where v.codigo_filial = p_codigo_filial
@@ -79,6 +90,7 @@ begin
       select
         p.funcionario_id,
         coalesce(f.apelido, f.nome)::text as vendedor_nome,
+        false as eh_outros,
         false as eh_total,
         sum(p.venda_liquida)::numeric as venda_liquida,
         sum(p.tickets)::integer as tickets,
@@ -86,15 +98,12 @@ begin
         sum(p.pecas_troca)::integer as pecas_troca,
         sum(p.pecas_liquidas)::integer as pecas_liquidas,
         max(p.atualizado_em) as atualizado_em
-      from periodo p
+      from periodo_vendedor p
       join public.funcionarios f on f.id = p.funcionario_id
       group by p.funcionario_id, f.apelido, f.nome
     ),
-    total as (
+    mapeados_totais as (
       select
-        null::uuid as funcionario_id,
-        'Total da loja'::text as vendedor_nome,
-        true as eh_total,
         coalesce(sum(venda_liquida), 0)::numeric as venda_liquida,
         coalesce(sum(tickets), 0)::integer as tickets,
         coalesce(sum(pecas_brutas), 0)::integer as pecas_brutas,
@@ -102,10 +111,57 @@ begin
         coalesce(sum(pecas_liquidas), 0)::integer as pecas_liquidas,
         max(atualizado_em) as atualizado_em
       from por_vendedor
+    ),
+    loja_totais as (
+      select
+        coalesce(sum(venda_liquida), 0)::numeric as venda_liquida,
+        coalesce(sum(tickets), 0)::integer as tickets,
+        coalesce(sum(pecas_brutas), 0)::integer as pecas_brutas,
+        coalesce(sum(pecas_troca), 0)::integer as pecas_troca,
+        coalesce(sum(pecas_liquidas), 0)::integer as pecas_liquidas,
+        max(atualizado_em) as atualizado_em
+      from public.vendas_diarias_loja
+      where codigo_filial = p_codigo_filial
+        and data_venda >= v_inicio
+        and data_venda <= v_fim
+    ),
+    outros as (
+      select
+        null::uuid as funcionario_id,
+        'Outros'::text as vendedor_nome,
+        true as eh_outros,
+        false as eh_total,
+        (loja.venda_liquida - mapeados.venda_liquida) as venda_liquida,
+        (loja.tickets - mapeados.tickets) as tickets,
+        (loja.pecas_brutas - mapeados.pecas_brutas) as pecas_brutas,
+        (loja.pecas_troca - mapeados.pecas_troca) as pecas_troca,
+        (loja.pecas_liquidas - mapeados.pecas_liquidas) as pecas_liquidas,
+        greatest(loja.atualizado_em, mapeados.atualizado_em) as atualizado_em
+      from loja_totais loja, mapeados_totais mapeados
+      where (loja.venda_liquida - mapeados.venda_liquida) <> 0
+         or (loja.tickets - mapeados.tickets) <> 0
+         or (loja.pecas_brutas - mapeados.pecas_brutas) <> 0
+         or (loja.pecas_troca - mapeados.pecas_troca) <> 0
+         or (loja.pecas_liquidas - mapeados.pecas_liquidas) <> 0
+    ),
+    total as (
+      select
+        null::uuid as funcionario_id,
+        'Total da loja'::text as vendedor_nome,
+        false as eh_outros,
+        true as eh_total,
+        loja.venda_liquida,
+        loja.tickets,
+        loja.pecas_brutas,
+        loja.pecas_troca,
+        loja.pecas_liquidas,
+        loja.atualizado_em
+      from loja_totais loja
     )
     select
       c.funcionario_id,
       c.vendedor_nome,
+      c.eh_outros,
       c.eh_total,
       c.venda_liquida,
       c.tickets,
@@ -119,9 +175,11 @@ begin
     from (
       select * from por_vendedor
       union all
+      select * from outros
+      union all
       select * from total
     ) c
-    order by c.eh_total asc, c.venda_liquida desc;
+    order by c.eh_total asc, c.eh_outros asc, c.venda_liquida desc;
 end;
 $$;
 
