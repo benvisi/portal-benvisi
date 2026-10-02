@@ -14,15 +14,25 @@ complete real Linx → Supabase publish.
    grade positions (every real size, zero-stock sizes included; the unused
    `ES*` padding positions are dropped). Reads all 48 physical Linx positions
    — there is no hard-coded maximum grade size;
-3. validates locally: rows > 0, no duplicate `(produto, cor_codigo,
+3. normalizes any **negative** size-level `quantidade_estoque` to `0` before
+   validation (locked decision, 2026-10-02 — supersedes the prior
+   2026-09-09 "abort the run" stance). A negative available quantity is a
+   known Linx size-level data inconsistency (confirmed case: produto
+   `CH2932-23` / cor `2QB` / `tamanho_key 1` at `-1` while the
+   product/colour's aggregate Linx `ESTOQUE` was `3`) and is never useful to
+   a salesperson, so it no longer blocks the whole inventory refresh. Linx
+   itself is never modified. Every normalized row is logged as a WARNING
+   (produto, cor_codigo, tamanho_key, original and normalized value) and
+   counted (`negativos_normalizados` in the logged extraction stats) — the
+   anomaly is normalized, not silently discarded;
+4. validates locally: rows > 0, no duplicate `(produto, cor_codigo,
 tamanho_key)`, canonical keys populated, **`tamanho_venda` non-blank for
-   every row**, quantities are non-negative integers. **Size-level negative
-   quantities abort the run** with a count — there is no normalization rule
-   (locked decision, 2026-09-09);
-4. bulk-inserts every row tagged with the new `sync_id` (1 000-row chunks);
-5. confirms the Supabase row count for that `sync_id` matches the extraction
+   every row**, quantities are non-negative integers (guaranteed by the
+   normalization step above) and otherwise valid (e.g. integer-typed);
+5. bulk-inserts every row tagged with the new `sync_id` (1 000-row chunks);
+6. confirms the Supabase row count for that `sync_id` matches the extraction
    (uniqueness is enforced by the table's unique constraint);
-6. marks the execution `sucesso` with `concluido_em`, `linhas_extraidas`,
+7. marks the execution `sucesso` with `concluido_em`, `linhas_extraidas`,
    `linhas_publicadas`.
 
 If anything fails, the execution is marked `erro` and **the previous
