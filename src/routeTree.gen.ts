@@ -9,39 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermosRouteImport } from './routes/termos'
-import { Route as EstoqueRouteImport } from './routes/estoque'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AtendimentoRouteImport } from './routes/atendimento'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as OperacoesIndexRouteImport } from './routes/operacoes/index'
-import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
+import { Route as AtendimentoRouteImport } from './routes/atendimento'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AdministrativoIndexRouteImport } from './routes/administrativo/index'
-import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
-import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
-import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
-import { Route as OperacoesEstoqueOrganizacaoSemanalRouteImport } from './routes/operacoes/estoque-organizacao-semanal'
-import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
-import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
-import { Route as ConhecimentoCulturaTamanhosCalcadosRouteImport } from './routes/conhecimento-cultura/tamanhos-calcados'
-import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
-import { Route as AdministrativoTermosBuscaRouteImport } from './routes/administrativo/termos-busca'
-import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
 import { Route as AdministrativoAtendimentoRouteImport } from './routes/administrativo/atendimento'
+import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
+import { Route as AdministrativoTermosBuscaRouteImport } from './routes/administrativo/termos-busca'
+import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
+import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
+import { Route as ConhecimentoCulturaTamanhosCalcadosRouteImport } from './routes/conhecimento-cultura/tamanhos-calcados'
+import { Route as OperacoesIndexRouteImport } from './routes/operacoes/index'
+import { Route as OperacoesContagemEmbalagensRouteImport } from './routes/operacoes/contagem-embalagens'
+import { Route as OperacoesEscalaRouteImport } from './routes/operacoes/escala'
+import { Route as OperacoesEstoqueOrganizacaoSemanalRouteImport } from './routes/operacoes/estoque-organizacao-semanal'
+import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
+import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
+import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
 
-const TermosRoute = TermosRouteImport.update({
-  id: '/termos',
-  path: '/termos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EstoqueRoute = EstoqueRouteImport.update({
-  id: '/estoque',
-  path: '/estoque',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AtendimentoRoute = AtendimentoRouteImport.update({
@@ -49,65 +39,47 @@ const AtendimentoRoute = AtendimentoRouteImport.update({
   path: '/atendimento',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OperacoesIndexRoute = OperacoesIndexRouteImport.update({
-  id: '/operacoes/',
-  path: '/operacoes/',
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConhecimentoCulturaIndexRoute =
-  ConhecimentoCulturaIndexRouteImport.update({
-    id: '/conhecimento-cultura/',
-    path: '/conhecimento-cultura/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdministrativoIndexRoute = AdministrativoIndexRouteImport.update({
   id: '/administrativo/',
   path: '/administrativo/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OperacoesMensagensWhatsappRoute =
-  OperacoesMensagensWhatsappRouteImport.update({
-    id: '/operacoes/mensagens-whatsapp',
-    path: '/operacoes/mensagens-whatsapp',
+const AdministrativoAtendimentoRoute =
+  AdministrativoAtendimentoRouteImport.update({
+    id: '/administrativo/atendimento',
+    path: '/administrativo/atendimento',
     getParentRoute: () => rootRouteImport,
   } as any)
-const OperacoesLinksImportantesRoute =
-  OperacoesLinksImportantesRouteImport.update({
-    id: '/operacoes/links-importantes',
-    path: '/operacoes/links-importantes',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const OperacoesLimpezaRoute = OperacoesLimpezaRouteImport.update({
-  id: '/operacoes/limpeza',
-  path: '/operacoes/limpeza',
+const AdministrativoEscalaRoute = AdministrativoEscalaRouteImport.update({
+  id: '/administrativo/escala',
+  path: '/administrativo/escala',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OperacoesEstoqueOrganizacaoSemanalRoute =
-  OperacoesEstoqueOrganizacaoSemanalRouteImport.update({
-    id: '/operacoes/estoque-organizacao-semanal',
-    path: '/operacoes/estoque-organizacao-semanal',
+const AdministrativoTermosBuscaRoute =
+  AdministrativoTermosBuscaRouteImport.update({
+    id: '/administrativo/termos-busca',
+    path: '/administrativo/termos-busca',
     getParentRoute: () => rootRouteImport,
   } as any)
-const OperacoesEscalaRoute = OperacoesEscalaRouteImport.update({
-  id: '/operacoes/escala',
-  path: '/operacoes/escala',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OperacoesContagemEmbalagensRoute =
-  OperacoesContagemEmbalagensRouteImport.update({
-    id: '/operacoes/contagem-embalagens',
-    path: '/operacoes/contagem-embalagens',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ConhecimentoCulturaTamanhosCalcadosRoute =
-  ConhecimentoCulturaTamanhosCalcadosRouteImport.update({
-    id: '/conhecimento-cultura/tamanhos-calcados',
-    path: '/conhecimento-cultura/tamanhos-calcados',
+const ConhecimentoCulturaIndexRoute =
+  ConhecimentoCulturaIndexRouteImport.update({
+    id: '/conhecimento-cultura/',
+    path: '/conhecimento-cultura/',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ConhecimentoCulturaPrincipiosRoute =
@@ -116,21 +88,49 @@ const ConhecimentoCulturaPrincipiosRoute =
     path: '/conhecimento-cultura/principios',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AdministrativoTermosBuscaRoute =
-  AdministrativoTermosBuscaRouteImport.update({
-    id: '/administrativo/termos-busca',
-    path: '/administrativo/termos-busca',
+const ConhecimentoCulturaTamanhosCalcadosRoute =
+  ConhecimentoCulturaTamanhosCalcadosRouteImport.update({
+    id: '/conhecimento-cultura/tamanhos-calcados',
+    path: '/conhecimento-cultura/tamanhos-calcados',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AdministrativoEscalaRoute = AdministrativoEscalaRouteImport.update({
-  id: '/administrativo/escala',
-  path: '/administrativo/escala',
+const OperacoesIndexRoute = OperacoesIndexRouteImport.update({
+  id: '/operacoes/',
+  path: '/operacoes/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdministrativoAtendimentoRoute =
-  AdministrativoAtendimentoRouteImport.update({
-    id: '/administrativo/atendimento',
-    path: '/administrativo/atendimento',
+const OperacoesContagemEmbalagensRoute =
+  OperacoesContagemEmbalagensRouteImport.update({
+    id: '/operacoes/contagem-embalagens',
+    path: '/operacoes/contagem-embalagens',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const OperacoesEscalaRoute = OperacoesEscalaRouteImport.update({
+  id: '/operacoes/escala',
+  path: '/operacoes/escala',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperacoesEstoqueOrganizacaoSemanalRoute =
+  OperacoesEstoqueOrganizacaoSemanalRouteImport.update({
+    id: '/operacoes/estoque-organizacao-semanal',
+    path: '/operacoes/estoque-organizacao-semanal',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const OperacoesLimpezaRoute = OperacoesLimpezaRouteImport.update({
+  id: '/operacoes/limpeza',
+  path: '/operacoes/limpeza',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperacoesLinksImportantesRoute =
+  OperacoesLinksImportantesRouteImport.update({
+    id: '/operacoes/links-importantes',
+    path: '/operacoes/links-importantes',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const OperacoesMensagensWhatsappRoute =
+  OperacoesMensagensWhatsappRouteImport.update({
+    id: '/operacoes/mensagens-whatsapp',
+    path: '/operacoes/mensagens-whatsapp',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -288,25 +288,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/termos': {
-      id: '/termos'
-      path: '/termos'
-      fullPath: '/termos'
-      preLoaderRoute: typeof TermosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/estoque': {
-      id: '/estoque'
-      path: '/estoque'
-      fullPath: '/estoque'
-      preLoaderRoute: typeof EstoqueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/atendimento': {
@@ -316,25 +302,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtendimentoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/operacoes/': {
-      id: '/operacoes/'
-      path: '/operacoes'
-      fullPath: '/operacoes/'
-      preLoaderRoute: typeof OperacoesIndexRouteImport
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/conhecimento-cultura/': {
-      id: '/conhecimento-cultura/'
-      path: '/conhecimento-cultura'
-      fullPath: '/conhecimento-cultura/'
-      preLoaderRoute: typeof ConhecimentoCulturaIndexRouteImport
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/administrativo/': {
@@ -344,67 +330,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministrativoIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/operacoes/mensagens-whatsapp': {
-      id: '/operacoes/mensagens-whatsapp'
-      path: '/operacoes/mensagens-whatsapp'
-      fullPath: '/operacoes/mensagens-whatsapp'
-      preLoaderRoute: typeof OperacoesMensagensWhatsappRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operacoes/links-importantes': {
-      id: '/operacoes/links-importantes'
-      path: '/operacoes/links-importantes'
-      fullPath: '/operacoes/links-importantes'
-      preLoaderRoute: typeof OperacoesLinksImportantesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operacoes/limpeza': {
-      id: '/operacoes/limpeza'
-      path: '/operacoes/limpeza'
-      fullPath: '/operacoes/limpeza'
-      preLoaderRoute: typeof OperacoesLimpezaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operacoes/estoque-organizacao-semanal': {
-      id: '/operacoes/estoque-organizacao-semanal'
-      path: '/operacoes/estoque-organizacao-semanal'
-      fullPath: '/operacoes/estoque-organizacao-semanal'
-      preLoaderRoute: typeof OperacoesEstoqueOrganizacaoSemanalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operacoes/escala': {
-      id: '/operacoes/escala'
-      path: '/operacoes/escala'
-      fullPath: '/operacoes/escala'
-      preLoaderRoute: typeof OperacoesEscalaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operacoes/contagem-embalagens': {
-      id: '/operacoes/contagem-embalagens'
-      path: '/operacoes/contagem-embalagens'
-      fullPath: '/operacoes/contagem-embalagens'
-      preLoaderRoute: typeof OperacoesContagemEmbalagensRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/conhecimento-cultura/tamanhos-calcados': {
-      id: '/conhecimento-cultura/tamanhos-calcados'
-      path: '/conhecimento-cultura/tamanhos-calcados'
-      fullPath: '/conhecimento-cultura/tamanhos-calcados'
-      preLoaderRoute: typeof ConhecimentoCulturaTamanhosCalcadosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/conhecimento-cultura/principios': {
-      id: '/conhecimento-cultura/principios'
-      path: '/conhecimento-cultura/principios'
-      fullPath: '/conhecimento-cultura/principios'
-      preLoaderRoute: typeof ConhecimentoCulturaPrincipiosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/administrativo/termos-busca': {
-      id: '/administrativo/termos-busca'
-      path: '/administrativo/termos-busca'
-      fullPath: '/administrativo/termos-busca'
-      preLoaderRoute: typeof AdministrativoTermosBuscaRouteImport
+    '/administrativo/atendimento': {
+      id: '/administrativo/atendimento'
+      path: '/administrativo/atendimento'
+      fullPath: '/administrativo/atendimento'
+      preLoaderRoute: typeof AdministrativoAtendimentoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/administrativo/escala': {
@@ -414,11 +344,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministrativoEscalaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/administrativo/atendimento': {
-      id: '/administrativo/atendimento'
-      path: '/administrativo/atendimento'
-      fullPath: '/administrativo/atendimento'
-      preLoaderRoute: typeof AdministrativoAtendimentoRouteImport
+    '/administrativo/termos-busca': {
+      id: '/administrativo/termos-busca'
+      path: '/administrativo/termos-busca'
+      fullPath: '/administrativo/termos-busca'
+      preLoaderRoute: typeof AdministrativoTermosBuscaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conhecimento-cultura/': {
+      id: '/conhecimento-cultura/'
+      path: '/conhecimento-cultura'
+      fullPath: '/conhecimento-cultura/'
+      preLoaderRoute: typeof ConhecimentoCulturaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conhecimento-cultura/principios': {
+      id: '/conhecimento-cultura/principios'
+      path: '/conhecimento-cultura/principios'
+      fullPath: '/conhecimento-cultura/principios'
+      preLoaderRoute: typeof ConhecimentoCulturaPrincipiosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conhecimento-cultura/tamanhos-calcados': {
+      id: '/conhecimento-cultura/tamanhos-calcados'
+      path: '/conhecimento-cultura/tamanhos-calcados'
+      fullPath: '/conhecimento-cultura/tamanhos-calcados'
+      preLoaderRoute: typeof ConhecimentoCulturaTamanhosCalcadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/': {
+      id: '/operacoes/'
+      path: '/operacoes'
+      fullPath: '/operacoes/'
+      preLoaderRoute: typeof OperacoesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/contagem-embalagens': {
+      id: '/operacoes/contagem-embalagens'
+      path: '/operacoes/contagem-embalagens'
+      fullPath: '/operacoes/contagem-embalagens'
+      preLoaderRoute: typeof OperacoesContagemEmbalagensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/escala': {
+      id: '/operacoes/escala'
+      path: '/operacoes/escala'
+      fullPath: '/operacoes/escala'
+      preLoaderRoute: typeof OperacoesEscalaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/estoque-organizacao-semanal': {
+      id: '/operacoes/estoque-organizacao-semanal'
+      path: '/operacoes/estoque-organizacao-semanal'
+      fullPath: '/operacoes/estoque-organizacao-semanal'
+      preLoaderRoute: typeof OperacoesEstoqueOrganizacaoSemanalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/limpeza': {
+      id: '/operacoes/limpeza'
+      path: '/operacoes/limpeza'
+      fullPath: '/operacoes/limpeza'
+      preLoaderRoute: typeof OperacoesLimpezaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/links-importantes': {
+      id: '/operacoes/links-importantes'
+      path: '/operacoes/links-importantes'
+      fullPath: '/operacoes/links-importantes'
+      preLoaderRoute: typeof OperacoesLinksImportantesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operacoes/mensagens-whatsapp': {
+      id: '/operacoes/mensagens-whatsapp'
+      path: '/operacoes/mensagens-whatsapp'
+      fullPath: '/operacoes/mensagens-whatsapp'
+      preLoaderRoute: typeof OperacoesMensagensWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

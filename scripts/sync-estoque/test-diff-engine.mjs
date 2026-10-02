@@ -12,7 +12,12 @@
 // =============================================================================
 
 import { hashAllGroups, diffGroups, hashGroup, groupKey } from "./estoque-hash.mjs";
-import { normalizeExtraction, finalizeCanonicalRow } from "./sync-estoque.mjs";
+import {
+  normalizeExtraction,
+  finalizeCanonicalRow,
+  normalizeNegativeQuantities,
+  validateExtraction,
+} from "./sync-estoque.mjs";
 import {
   buildPriceMap,
   diffPrices,
@@ -448,6 +453,123 @@ console.log("\nestoque-price-diff.mjs (Price V1)");
   check(
     "buildPriceMap key matches groupKey(produto, cor_codigo)",
     map.has(groupKey("TH6709-23", "001")),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 22-28. normalizeNegativeQuantities / validateExtraction — negative
+// size-level quantity handling (locked decision, 2026-10-02). Confirmed
+// production case: produto CH2932-23 / cor_codigo 2QB / tamanho_key 1,
+// quantidade_estoque -1, aggregate Linx ESTOQUE 3.
+// ---------------------------------------------------------------------------
+
+// 22. a negative quantity is normalized to 0
+{
+  const rows = group("CH2932", "2QB", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: -1 },
+  ]).map(finalizeCanonicalRow);
+  const result = normalizeNegativeQuantities(rows);
+  check(
+    "negative quantidade_estoque (-1) normalized to 0",
+    result.rows[0].quantidade_estoque === 0,
+    `got ${result.rows[0].quantidade_estoque}`,
+  );
+  check("only the negative field changes, other row fields untouched", result.rows[0].produto === "CH2932" && result.rows[0].cor_codigo === "2QB" && result.rows[0].tamanho_key === 1);
+}
+
+// 23. normalization is counted and emits one warning identifying the row
+{
+  const rows = group("CH2932", "2QB", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: -1 },
+  ]).map(finalizeCanonicalRow);
+  const result = normalizeNegativeQuantities(rows);
+  check("negativeNormalizedCount = 1", result.negativeNormalizedCount === 1);
+  check("exactly one warning emitted", result.warnings.length === 1);
+  const w = result.warnings[0] || "";
+  check(
+    "warning identifies produto, cor_codigo, tamanho_key, original value, and normalized value",
+    w.includes("produto=CH2932") &&
+      w.includes("cor_codigo=2QB") &&
+      w.includes("tamanho_key=1") &&
+      w.includes("quantidade_estoque_original=-1") &&
+      w.includes("quantidade_estoque_normalizada=0"),
+    w,
+  );
+}
+
+// 24. multiple negative rows are each normalized, counted, and warned about
+{
+  const rows = group("CH2932", "2QB", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: -1 },
+    { tamanho_key: 2, tamanho_venda: "M", quantidade_estoque: -3 },
+    { tamanho_key: 3, tamanho_venda: "G", quantidade_estoque: 5 },
+  ]).map(finalizeCanonicalRow);
+  const result = normalizeNegativeQuantities(rows);
+  check("negativeNormalizedCount = 2 (only the two negative rows)", result.negativeNormalizedCount === 2);
+  check("one warning per negative row", result.warnings.length === 2);
+  check(
+    "both negative rows normalized to 0, positive row untouched",
+    result.rows[0].quantidade_estoque === 0 &&
+      result.rows[1].quantidade_estoque === 0 &&
+      result.rows[2].quantidade_estoque === 5,
+  );
+}
+
+// 25. zero and positive quantities pass through unchanged, no warnings, no count
+{
+  const rows = group("PH4012", "23", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: 0 },
+    { tamanho_key: 2, tamanho_venda: "M", quantidade_estoque: 7 },
+  ]).map(finalizeCanonicalRow);
+  const result = normalizeNegativeQuantities(rows);
+  check("negativeNormalizedCount = 0 when nothing is negative", result.negativeNormalizedCount === 0);
+  check("no warnings when nothing is negative", result.warnings.length === 0);
+  check(
+    "zero and positive quantities are byte-for-byte unchanged",
+    result.rows[0].quantidade_estoque === 0 && result.rows[1].quantidade_estoque === 7,
+  );
+}
+
+// 26. end-to-end: a negative quantity no longer makes validateExtraction fatal
+// once normalizeNegativeQuantities has run first (the real sync's own order)
+{
+  const rows = group("CH2932", "2QB", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: -1 },
+  ]).map(finalizeCanonicalRow);
+  const normalized = normalizeNegativeQuantities(rows).rows;
+  const v = validateExtraction(normalized);
+  check(
+    "validateExtraction PASSES after upstream negative normalization",
+    v.ok === true,
+    JSON.stringify(v.problems),
+  );
+  check("tamanhos_negativos stat reads 0 post-normalization", v.stats.tamanhos_negativos === 0);
+}
+
+// 27. existing validation protections are unchanged: duplicate canonical key
+// is still fatal, independent of the negative-quantity change
+{
+  const rows = group("PH4012", "23", {}, [
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: 1 },
+    { tamanho_key: 1, tamanho_venda: "P", quantidade_estoque: 2 },
+  ]).map(finalizeCanonicalRow);
+  const v = validateExtraction(normalizeNegativeQuantities(rows).rows);
+  check(
+    "duplicate (produto, cor_codigo, tamanho_key) is still fatal",
+    !v.ok && v.problems.some((p) => p.includes("duplicate")),
+  );
+}
+
+// 28. existing validation protections are unchanged: a blank tamanho_venda
+// label is still fatal, independent of the negative-quantity change
+{
+  const rows = group("PH4012", "23", {}, [
+    { tamanho_key: 1, tamanho_venda: "", quantidade_estoque: 1 },
+  ]).map(finalizeCanonicalRow);
+  const v = validateExtraction(normalizeNegativeQuantities(rows).rows);
+  check(
+    "blank tamanho_venda is still fatal",
+    !v.ok && v.problems.some((p) => p.includes("tamanho_venda")),
   );
 }
 

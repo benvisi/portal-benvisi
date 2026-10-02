@@ -11,8 +11,10 @@
 //      execution at a time; a second run gets BUSY and exits cleanly.
 //   2. FULL extraction from Linx.
 //   3. normalize (dash-only placeholder handling, unchanged) + finalize
-//      (mojibake repair, trimming) + local validation (unchanged fatal
-//      rules).
+//      (mojibake repair, trimming) + normalize negative size-level
+//      quantities to 0 (locked decision, 2026-10-02 — superseding the prior
+//      "no normalization rule" stance; see normalizeNegativeQuantities) +
+//      local validation (unchanged fatal rules otherwise).
 //   4. group by produto+cor_codigo, compute a deterministic SHA-256 content
 //      hash per group (scripts/sync-estoque/estoque-hash.mjs).
 //   5. read the compact current group hashes from estoque_atual_grupos
@@ -300,8 +302,59 @@ export function finalizeCanonicalRow(r) {
 }
 
 // ---------------------------------------------------------------------------
+// Negative size-level quantity normalization.
+//
+// Locked decision (Joshua, 2026-10-02) — SUPERSEDES the prior 2026-09-09
+// "no normalization rule, abort on any negative" stance. Confirmed
+// production case: produto CH2932-23 / cor_codigo 2QB / tamanho_key 1 had
+// quantidade_estoque = -1 while the product/colour's aggregate Linx ESTOQUE
+// was 3 (i.e. a Linx size-level data inconsistency, not a Portal bug). A
+// negative available quantity is never useful to a salesperson, and this
+// class of source inconsistency must not block the entire inventory
+// refresh.
+//
+// Rule: any row with quantidade_estoque < 0 is normalized to 0 for Portal
+// publication. Linx itself is never touched. Every normalized row is
+// logged as a WARNING (produto, cor_codigo, tamanho_key, original negative
+// value, normalized value) and counted, so the anomaly stays visible in
+// the sync's own logs/stats rather than being silently absorbed — it is
+// normalized, not discarded.
+//
+// Runs AFTER finalizeCanonicalRow (so quantidade_estoque is already the
+// coerced Number) and BEFORE validateExtraction, so validateExtraction only
+// ever sees non-negative quantities in the normal flow. Does not touch any
+// other field, and does not mask a genuinely non-integer quantity (e.g.
+// NaN) — that remains a separate, unrelated validateExtraction concern.
+// ---------------------------------------------------------------------------
+export function normalizeNegativeQuantities(rows) {
+  const warnings = [];
+  let negativeNormalizedCount = 0;
+
+  const normalizedRows = rows.map((r) => {
+    const qty = Number(r.quantidade_estoque);
+    if (!(qty < 0)) return r; // also leaves NaN/non-numeric rows untouched — not this function's concern
+    negativeNormalizedCount += 1;
+    warnings.push(
+      `Negative size-level quantidade_estoque normalized to 0: produto=${r.produto} ` +
+        `cor_codigo=${r.cor_codigo} tamanho_key=${r.tamanho_key} ` +
+        `quantidade_estoque_original=${qty} quantidade_estoque_normalizada=0`,
+    );
+    return { ...r, quantidade_estoque: 0 };
+  });
+
+  return { rows: normalizedRows, negativeNormalizedCount, warnings };
+}
+
+// ---------------------------------------------------------------------------
 // Local validation of the (already normalized + finalized) canonical rows.
-// Unchanged rules from V1.
+// Unchanged rules from V1, EXCEPT negative size-level quantities (see
+// normalizeNegativeQuantities above, locked 2026-10-02): they are no longer
+// fatal here on their own, because they are normalized to 0 upstream before
+// this function ever runs. tamanhos_negativos below is kept as a defensive
+// visibility count (should always read 0 in the normal flow) and is
+// deliberately NOT pushed into `problems` — a residual negative value
+// reaching this function unnormalized is unexpected, but per the locked
+// rule it must not be fatal by itself.
 // ---------------------------------------------------------------------------
 export function validateExtraction(rows) {
   const problems = [];
@@ -342,15 +395,11 @@ export function validateExtraction(rows) {
   if (badQty) problems.push(`${badQty} row(s) with a non-integer quantidade_estoque`);
   if (dupKeys) problems.push(`${dupKeys} duplicate (produto, cor_codigo, tamanho_key) row(s)`);
 
-  // Locked decision (Joshua, 2026-09-09): negative size-level quantities are
-  // expected to be zero and there is NO normalization rule. If any appear,
-  // STOP and report the count rather than assuming a fix.
-  if (negativeSizes > 0) {
-    problems.push(
-      `${negativeSizes} size-level NEGATIVE quantity row(s) found — no normalization rule exists; ` +
-        `stopping so Joshua can decide how to handle them`,
-    );
-  }
+  // Negative size-level quantities are normalized to 0 upstream by
+  // normalizeNegativeQuantities (locked 2026-10-02) before this function
+  // ever runs — see that function's header. negativeSizes is kept purely as
+  // a defensive visibility count (expected to be 0 here) and is
+  // deliberately not fatal on its own.
 
   return {
     ok: problems.length === 0,
@@ -718,9 +767,22 @@ async function runDryRun(supabase, sql) {
   }
   for (const w of norm.warnings) log(`WARNING: ${w}`);
 
-  const canonicalRows = norm.rows.map(finalizeCanonicalRow);
+  let canonicalRows = norm.rows.map(finalizeCanonicalRow);
+
+  const negNorm = normalizeNegativeQuantities(canonicalRows);
+  canonicalRows = negNorm.rows; // downstream (hashing/staging) must see the normalized (>=0) quantities
+  if (negNorm.negativeNormalizedCount > 0) {
+    log(
+      `normalized ${negNorm.negativeNormalizedCount} negative size-level quantidade_estoque row(s) to 0`,
+    );
+  }
+  for (const w of negNorm.warnings) log(`WARNING: ${w}`);
+
   const v = validateExtraction(canonicalRows);
-  log("extraction stats:", JSON.stringify(v.stats));
+  log(
+    "extraction stats:",
+    JSON.stringify({ ...v.stats, negativos_normalizados: negNorm.negativeNormalizedCount }),
+  );
   if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
     log(
       `WARNING: canonical rows (${v.stats.linhas}) differ from the reconciliation baseline ` +
@@ -834,9 +896,22 @@ async function runReal(supabase, sql) {
     }
     for (const w of norm.warnings) log(`WARNING: ${w}`);
 
-    const canonicalRows = norm.rows.map(finalizeCanonicalRow);
+    let canonicalRows = norm.rows.map(finalizeCanonicalRow);
+
+    const negNorm = normalizeNegativeQuantities(canonicalRows);
+    canonicalRows = negNorm.rows; // downstream (hashing/staging) must see the normalized (>=0) quantities
+    if (negNorm.negativeNormalizedCount > 0) {
+      log(
+        `normalized ${negNorm.negativeNormalizedCount} negative size-level quantidade_estoque row(s) to 0`,
+      );
+    }
+    for (const w of negNorm.warnings) log(`WARNING: ${w}`);
+
     const v = validateExtraction(canonicalRows);
-    log("extraction stats:", JSON.stringify(v.stats));
+    log(
+      "extraction stats:",
+      JSON.stringify({ ...v.stats, negativos_normalizados: negNorm.negativeNormalizedCount }),
+    );
     if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
       log(
         `WARNING: canonical rows (${v.stats.linhas}) differ from the reconciliation baseline ` +
