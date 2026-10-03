@@ -1,0 +1,23 @@
+# Schema fingerprint allowlist — differences that are EXPECTED between a
+# reference and a candidate, each with a written reason.
+#
+# Format: one entry per line, 4 TAB-separated fields:
+#   section<TAB>category<TAB>object_key<TAB>reason
+#
+# Rules (enforced by compare.mjs):
+#   - section must be "app" or "platform" ("info" never fails, so it is never
+#     allowlisted; "meta" is validated, not compared).
+#   - object_key must match EXACTLY. There are no wildcards and no
+#     category-wide entries — every tolerated difference is named.
+#   - reason is mandatory.
+#   - Entries that matched nothing in a comparison are reported as stale so
+#     the list stays narrow.
+#
+# Intentionally EMPTY. No entry is added on speculation: the first real
+# comparison against a freshly built environment (baseline phase) will show
+# which platform-managed objects genuinely differ (e.g. platform extension
+# versions on a newer Supabase project), and each one is added here, with
+# its reason, only after it has been observed and reviewed.
+#
+# Example (commented out — not active):
+# platform	extension	wrappers	Supabase-managed; version differs on newer projects (observed YYYY-MM-DD)
