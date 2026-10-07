@@ -44,18 +44,6 @@ try {
   report("sharp", false, String(err));
 }
 
-// --- tfjs-node + coco-ssd: import + confirm the backend initializes -------
-try {
-  const tf = await import("@tensorflow/tfjs-node");
-  const backend = tf.getBackend();
-  // Importing coco-ssd itself (not loading the model — that would fetch
-  // weights over the network, out of scope for this no-network slice).
-  await import("@tensorflow-models/coco-ssd");
-  report("@tensorflow/tfjs-node + coco-ssd", backend === "tensorflow", `backend: ${backend}`);
-} catch (err) {
-  report("@tensorflow/tfjs-node + coco-ssd", false, String(err));
-}
-
 // --- Anthropic SDK: import + instantiate client (no API call) -------------
 try {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;

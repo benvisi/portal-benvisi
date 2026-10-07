@@ -8,11 +8,11 @@ there.
 
 ## Why isolated
 
-Playwright (bundles a full Chromium download), Sharp (per-platform native
-bindings), and `@tensorflow/tfjs-node` (also native bindings) are heavy,
-platform-specific, ops-only dependencies with no reason to exist in Portal's
-browser bundle, Vercel build, or the root lockfile every contributor
-installs. This repo's existing ops-script precedent
+Playwright (bundles a full Chromium download) and Sharp (per-platform
+native bindings) are heavy, platform-specific, ops-only dependencies with no
+reason to exist in Portal's browser bundle, Vercel build, or the root
+lockfile every contributor installs. This repo's existing ops-script
+precedent
 ([`scripts/sync-estoque`](../sync-estoque)) puts its one dependency
 (`mssql`) in the root `package.json` as a devDependency — acceptable for a
 slim SQL driver, not for this set. This worker gets its own `node_modules`
@@ -54,12 +54,11 @@ cp .env.example .env
 npm run check
 ```
 
-This imports every worker dependency (Playwright, Sharp, `tfjs-node` +
-`coco-ssd`, the Anthropic SDK) and reports pass/fail per library, plus
-confirms a Chromium browser binary is installed for Playwright. It makes
-**no network calls** — no Lacoste navigation, no Anthropic API call, no
-Supabase connection. See the script's own output for exact results on this
-machine.
+This imports every worker dependency (Playwright, Sharp, the Anthropic SDK)
+and reports pass/fail per library, plus confirms a Chromium browser binary
+is installed for Playwright. It makes **no network calls** — no Lacoste
+navigation, no Anthropic API call, no Supabase connection. See the script's
+own output for exact results on this machine.
 
 ## Dependencies (current versions, pinned loosely via `^`)
 
@@ -67,8 +66,16 @@ machine.
 | --- | --- | --- |
 | `playwright` | headed Chromium automation against lacoste.com.br | acquisition |
 | `sharp` | image resize/optimize (webp) before publish | publish |
-| `@tensorflow-models/coco-ssd` + `@tensorflow/tfjs-node` | local, offline person detection (Tier 1 candidate scoring — zero cost, zero external data) | scoring |
-| `@anthropic-ai/sdk` | bounded vision calls for complete-vs-crop and front/back materiality judgments only (Tier 2 — the narrow cases Tier 1 and structured metadata can't answer) | scoring |
+| `@anthropic-ai/sdk` | bounded vision calls for ALL candidate visual judgments structured metadata can't answer — person/model present, complete-vs-crop, likely front/back/other view, and whether a plausible secondary view is materially useful — advisory candidate scoring only, never auto-publishing | scoring |
+
+A local TensorFlow (`tfjs-node` + `coco-ssd`) person-detection tier was
+evaluated and dropped before this dependency set was finalized: `tfjs-node`
+requires a native build toolchain (Visual Studio "Desktop development with
+C++") that isn't present on the target Windows worker machine, and
+installing it was explicitly ruled out rather than pursued. The bounded
+Anthropic vision step now covers person/model detection too, not just the
+front/back materiality judgment it was always going to handle — still
+advisory-only, still gated by mandatory human approval.
 
 ## What's next (not this slice)
 
