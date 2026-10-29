@@ -39,6 +39,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
   const flags = parseFlags(argv);
 
   const dryRun = flags['dry-run'] === true || flags['dry-run'] === 'true';
+  const persist = flags.persist === true || flags.persist === 'true';
 
   let limit = DEFAULT_LIMIT;
   if (flags.limit !== undefined) {
@@ -73,5 +74,5 @@ export function parseArgs(argv = process.argv.slice(2)) {
     truncated = true;
   }
 
-  return { items, limit, dryRun, truncated, requestedCount: parsedItems.length };
+  return { items, limit, dryRun, persist, truncated, requestedCount: parsedItems.length };
 }

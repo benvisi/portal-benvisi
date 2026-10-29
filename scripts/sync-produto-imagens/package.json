@@ -11,7 +11,7 @@
     "check": "node src/check-dependencies.mjs",
     "acquire": "node src/acquire.mjs",
     "score": "node src/score.mjs",
-    "test": "node --test test/scoring.test.mjs test/score.test.mjs"
+    "test": "node --test test/scoring.test.mjs test/score.test.mjs test/persist.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",

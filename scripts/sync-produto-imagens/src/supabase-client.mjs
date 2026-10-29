@@ -88,3 +88,10 @@ export async function insertCandidate(supabase, { execucaoId, produto, corCodigo
   }
   return { id: data.id };
 }
+
+// Persists advisory scoring via the narrow SECURITY DEFINER RPC (Slice 4A);
+// service_role has no table-level UPDATE on candidates by design.
+export async function registrarPontuacao(supabase, params) {
+  const { error } = await supabase.rpc('registrar_pontuacao_candidato', params);
+  if (error) throw new Error(`registrar_pontuacao_candidato failed: ${error.message}`);
+}

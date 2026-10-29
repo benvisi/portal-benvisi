@@ -117,3 +117,28 @@ export function validateScoring(input, gallery) {
     limitations: input.limitations,
   };
 }
+
+// Maps a validated scoring result to the RPC parameters. No image payloads;
+// scoring_notes carries the per-image evaluation and run metadata only.
+export function buildPersistParams(candidateId, scored, { model, usage, imageCount }) {
+  const { result } = scored;
+  return {
+    p_candidato_id: candidateId,
+    p_primary_url: result.primary.url,
+    p_primary_reason: result.primary.index === null ? null : result.primary.reason,
+    p_secondary_url: result.secondary.url,
+    p_secondary_reason: result.secondary.index === null ? null : result.secondary.reason,
+    p_scoring_notes: {
+      model,
+      scored_at: new Date().toISOString(),
+      confidence: result.confidence,
+      primary_index: result.primary.index,
+      secondary_index: result.secondary.index,
+      no_primary_reason: result.primary.index === null ? result.primary.reason : null,
+      image_count: imageCount,
+      usage: { input_tokens: usage?.input_tokens ?? null, output_tokens: usage?.output_tokens ?? null },
+      images: result.images,
+    },
+    p_limitacoes: result.limitations,
+  };
+}
