@@ -75,6 +75,15 @@ export function buildPromptText(candidate) {
   return `Product: ${candidate.lacoste_product_name} (ref ${candidate.produto}, color ${candidate.lacoste_color_label} / ${candidate.cor_codigo}). Evaluate the gallery as a set and respond ONLY by calling the report_gallery_scoring tool.`;
 }
 
+// Contradictory model classifications (a person is visible yet the image is
+// called a product-only still). Reported verbatim, never auto-corrected; such
+// images are ineligible as primary/secondary (see validateScoring).
+export function findInconsistencies(images) {
+  return images
+    .filter((im) => im.has_person === true && im.product_only_still === true)
+    .map((im) => ({ index: im.index, issue: 'has_person=true contradicts product_only_still=true' }));
+}
+
 const isIdx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
 
 // Throws on any contract violation; returns a clean result otherwise.
@@ -105,7 +114,9 @@ export function validateScoring(input, gallery) {
   const byIndex = new Map(input.images.map((im) => [im.index, im]));
   for (const slot of ['primary', 'secondary']) {
     const i = input[slot].index;
-    if (i !== null && byIndex.get(i).has_person) throw new Error(`${slot} index ${i} was itself flagged has_person`);
+    const im = i === null ? null : byIndex.get(i);
+    if (im && im.has_person && im.product_only_still) throw new Error(`${slot} index ${i} has contradictory classification (has_person and product_only_still)`);
+    if (im && im.has_person) throw new Error(`${slot} index ${i} was itself flagged has_person`);
   }
   // Selections resolve to URLs from OUR gallery, never from model text.
   const url = (i) => (i === null ? null : gallery[i].url);
@@ -115,6 +126,7 @@ export function validateScoring(input, gallery) {
     secondary: { index: input.secondary.index, url: url(input.secondary.index), reason: input.secondary.reason },
     confidence: input.confidence,
     limitations: input.limitations,
+    diagnostics: findInconsistencies(input.images),
   };
 }
 
@@ -138,6 +150,7 @@ export function buildPersistParams(candidateId, scored, { model, usage, imageCou
       image_count: imageCount,
       usage: { input_tokens: usage?.input_tokens ?? null, output_tokens: usage?.output_tokens ?? null },
       images: result.images,
+      diagnostics: findInconsistencies(result.images),
     },
     p_limitacoes: result.limitations,
   };
