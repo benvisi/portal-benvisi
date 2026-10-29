@@ -45,7 +45,7 @@ export async function closeSession(session) {
   await session.browser.close().catch(() => {});
 }
 
-async function fetchPartialsData(page, origin, produto, cor) {
+export async function fetchPartialsData(page, origin, produto, cor) {
   const url = `${origin}${PARTIALS_PATH}?pid=${encodeURIComponent(produto)}&color=${encodeURIComponent(cor)}&full=true`;
   const result = await page.evaluate(
     async ({ url, timeoutMs }) => {
@@ -152,4 +152,22 @@ export async function verifyAndAcquire(session, produto, cor) {
     galleryImageCount: galleryImages.length,
     galleryTotalCount: Array.isArray(product.gallery?.images) ? product.gallery.images.length : 0,
   };
+}
+
+// Image bytes for vision scoring. The CDN (Akamai) rejects non-navigation
+// requests (403, including context.request), so the image is loaded the way a
+// user would open it: a top-level navigation in the established headed
+// session. No header/fingerprint tweaks; a non-2xx response is surfaced, never
+// worked around. Memory-only.
+export async function fetchImageBytes(session, url, { timeoutMs = 20000, maxBytes = 8 * 1024 * 1024 } = {}) {
+  const page = await session.page.context().newPage();
+  try {
+    const resp = await page.goto(url, { timeout: timeoutMs });
+    if (!resp || !resp.ok()) throw new Error(`image http ${resp ? resp.status() : 'no-response'}`);
+    const buf = await resp.body();
+    if (buf.length > maxBytes) throw new Error('image too large');
+    return buf;
+  } finally {
+    await page.close().catch(() => {});
+  }
 }
