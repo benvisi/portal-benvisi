@@ -7,60 +7,93 @@ export const MAX_IMAGES = 10;
 // Strict allowlist: https only, host is lacoste.com or a true subdomain.
 export function assertLacosteImageUrl(url) {
   let u;
-  try { u = new URL(url); } catch { throw new Error('invalid image url'); }
-  if (u.protocol !== 'https:' || u.username || u.password || !/^([a-z0-9-]+\.)*lacoste\.com$/i.test(u.hostname)) {
-    throw new Error('refusing non-Lacoste image host');
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error("invalid image url");
+  }
+  if (
+    u.protocol !== "https:" ||
+    u.username ||
+    u.password ||
+    !/^([a-z0-9-]+\.)*lacoste\.com$/i.test(u.hostname)
+  ) {
+    throw new Error("refusing non-Lacoste image host");
   }
   return u;
 }
 
 export function normalizeGallery(galleryJson) {
-  if (!Array.isArray(galleryJson)) throw new Error('gallery_json is not an array');
+  if (!Array.isArray(galleryJson)) throw new Error("gallery_json is not an array");
   return galleryJson.slice(0, MAX_IMAGES).map((img, index) => {
-    const raw = typeof img?.desktopUrl === 'string' ? img.desktopUrl : '';
-    const url = raw.startsWith('//') ? `https:${raw}` : raw;
-    return { index, url, alt: typeof img?.alt === 'string' ? img.alt : '', type: img?.type ?? null };
+    const raw = typeof img?.desktopUrl === "string" ? img.desktopUrl : "";
+    const url = raw.startsWith("//") ? `https:${raw}` : raw;
+    return {
+      index,
+      url,
+      alt: typeof img?.alt === "string" ? img.alt : "",
+      type: img?.type ?? null,
+    };
   });
 }
 
-const ANGLES = ['front', 'back', 'side', 'top', 'three_quarter', 'detail', 'inside', 'lifestyle', 'other'];
+const ANGLES = [
+  "front",
+  "back",
+  "side",
+  "top",
+  "three_quarter",
+  "detail",
+  "inside",
+  "lifestyle",
+  "other",
+];
 
 const slotSchema = {
-  type: 'object',
+  type: "object",
   additionalProperties: false,
-  required: ['index', 'reason'],
-  properties: { index: { type: ['integer', 'null'] }, reason: { type: 'string' } },
+  required: ["index", "reason"],
+  properties: { index: { type: ["integer", "null"] }, reason: { type: "string" } },
 };
 
 export const SCORE_TOOL = {
-  name: 'report_gallery_scoring',
-  description: 'Report an advisory evaluation of the product image gallery. Refer to images ONLY by their 0-based index.',
+  name: "report_gallery_scoring",
+  description:
+    "Report an advisory evaluation of the product image gallery. Refer to images ONLY by their 0-based index.",
   input_schema: {
-    type: 'object',
+    type: "object",
     additionalProperties: false,
-    required: ['images', 'primary', 'secondary', 'confidence', 'limitations'],
+    required: ["images", "primary", "secondary", "confidence", "limitations"],
     properties: {
       images: {
-        type: 'array',
+        type: "array",
         items: {
-          type: 'object',
+          type: "object",
           additionalProperties: false,
-          required: ['index', 'has_person', 'shows_full_product', 'is_crop_or_detail', 'angle', 'product_only_still', 'notes'],
+          required: [
+            "index",
+            "has_person",
+            "shows_full_product",
+            "is_crop_or_detail",
+            "angle",
+            "product_only_still",
+            "notes",
+          ],
           properties: {
-            index: { type: 'integer' },
-            has_person: { type: 'boolean' },
-            shows_full_product: { type: 'boolean' },
-            is_crop_or_detail: { type: 'boolean' },
-            angle: { type: 'string', enum: ANGLES },
-            product_only_still: { type: 'boolean' },
-            notes: { type: 'string' },
+            index: { type: "integer" },
+            has_person: { type: "boolean" },
+            shows_full_product: { type: "boolean" },
+            is_crop_or_detail: { type: "boolean" },
+            angle: { type: "string", enum: ANGLES },
+            product_only_still: { type: "boolean" },
+            notes: { type: "string" },
           },
         },
       },
       primary: slotSchema,
       secondary: slotSchema,
-      confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-      limitations: { type: 'array', items: { type: 'string' } },
+      confidence: { type: "string", enum: ["high", "medium", "low"] },
+      limitations: { type: "array", items: { type: "string" } },
     },
   },
 };
@@ -81,7 +114,10 @@ export function buildPromptText(candidate) {
 export function findInconsistencies(images) {
   return images
     .filter((im) => im.has_person === true && im.product_only_still === true)
-    .map((im) => ({ index: im.index, issue: 'has_person=true contradicts product_only_still=true' }));
+    .map((im) => ({
+      index: im.index,
+      issue: "has_person=true contradicts product_only_still=true",
+    }));
 }
 
 const isIdx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
@@ -89,41 +125,61 @@ const isIdx = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
 // Throws on any contract violation; returns a clean result otherwise.
 export function validateScoring(input, gallery) {
   const n = gallery.length;
-  if (!input || typeof input !== 'object') throw new Error('scoring output is not an object');
-  if (!Array.isArray(input.images)) throw new Error('images must be an array');
+  if (!input || typeof input !== "object") throw new Error("scoring output is not an object");
+  if (!Array.isArray(input.images)) throw new Error("images must be an array");
   const seen = new Set();
   for (const im of input.images) {
-    if (!isIdx(im?.index, n)) throw new Error(`image evaluation has out-of-range index ${im?.index}`);
+    if (!isIdx(im?.index, n))
+      throw new Error(`image evaluation has out-of-range index ${im?.index}`);
     if (seen.has(im.index)) throw new Error(`duplicate evaluation for index ${im.index}`);
     seen.add(im.index);
-    for (const k of ['has_person', 'shows_full_product', 'is_crop_or_detail', 'product_only_still']) {
-      if (typeof im[k] !== 'boolean') throw new Error(`image ${im.index}: ${k} must be boolean`);
+    for (const k of [
+      "has_person",
+      "shows_full_product",
+      "is_crop_or_detail",
+      "product_only_still",
+    ]) {
+      if (typeof im[k] !== "boolean") throw new Error(`image ${im.index}: ${k} must be boolean`);
     }
     if (!ANGLES.includes(im.angle)) throw new Error(`image ${im.index}: invalid angle`);
   }
   if (seen.size !== n) throw new Error(`expected evaluations for ${n} images, got ${seen.size}`);
-  for (const slot of ['primary', 'secondary']) {
+  for (const slot of ["primary", "secondary"]) {
     const s = input[slot];
-    if (!s || typeof s.reason !== 'string') throw new Error(`${slot} missing reason`);
-    if (s.index !== null && !isIdx(s.index, n)) throw new Error(`${slot}.index ${s.index} is not null or a valid gallery index`);
+    if (!s || typeof s.reason !== "string") throw new Error(`${slot} missing reason`);
+    if (s.index !== null && !isIdx(s.index, n))
+      throw new Error(`${slot}.index ${s.index} is not null or a valid gallery index`);
   }
-  if (input.secondary.index !== null && input.secondary.index === input.primary.index) throw new Error('secondary must differ from primary');
-  if (!['high', 'medium', 'low'].includes(input.confidence)) throw new Error('invalid confidence');
-  if (!Array.isArray(input.limitations) || input.limitations.some((l) => typeof l !== 'string')) throw new Error('limitations must be string[]');
+  if (input.secondary.index !== null && input.secondary.index === input.primary.index)
+    throw new Error("secondary must differ from primary");
+  if (!["high", "medium", "low"].includes(input.confidence)) throw new Error("invalid confidence");
+  if (!Array.isArray(input.limitations) || input.limitations.some((l) => typeof l !== "string"))
+    throw new Error("limitations must be string[]");
 
   const byIndex = new Map(input.images.map((im) => [im.index, im]));
-  for (const slot of ['primary', 'secondary']) {
+  for (const slot of ["primary", "secondary"]) {
     const i = input[slot].index;
     const im = i === null ? null : byIndex.get(i);
-    if (im && im.has_person && im.product_only_still) throw new Error(`${slot} index ${i} has contradictory classification (has_person and product_only_still)`);
+    if (im && im.has_person && im.product_only_still)
+      throw new Error(
+        `${slot} index ${i} has contradictory classification (has_person and product_only_still)`,
+      );
     if (im && im.has_person) throw new Error(`${slot} index ${i} was itself flagged has_person`);
   }
   // Selections resolve to URLs from OUR gallery, never from model text.
   const url = (i) => (i === null ? null : gallery[i].url);
   return {
     images: [...input.images].sort((a, b) => a.index - b.index),
-    primary: { index: input.primary.index, url: url(input.primary.index), reason: input.primary.reason },
-    secondary: { index: input.secondary.index, url: url(input.secondary.index), reason: input.secondary.reason },
+    primary: {
+      index: input.primary.index,
+      url: url(input.primary.index),
+      reason: input.primary.reason,
+    },
+    secondary: {
+      index: input.secondary.index,
+      url: url(input.secondary.index),
+      reason: input.secondary.reason,
+    },
     confidence: input.confidence,
     limitations: input.limitations,
     diagnostics: findInconsistencies(input.images),
@@ -148,7 +204,10 @@ export function buildPersistParams(candidateId, scored, { model, usage, imageCou
       secondary_index: result.secondary.index,
       no_primary_reason: result.primary.index === null ? result.primary.reason : null,
       image_count: imageCount,
-      usage: { input_tokens: usage?.input_tokens ?? null, output_tokens: usage?.output_tokens ?? null },
+      usage: {
+        input_tokens: usage?.input_tokens ?? null,
+        output_tokens: usage?.output_tokens ?? null,
+      },
       images: result.images,
       diagnostics: findInconsistencies(result.images),
     },

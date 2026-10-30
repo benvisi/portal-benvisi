@@ -7,29 +7,43 @@
 // No AI/vision scoring, no Storage, no primary/secondary selection: those
 // are later slices. See scripts/sync-produto-imagens/README.md.
 
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
-import dotenv from 'dotenv';
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import dotenv from "dotenv";
 
-import { parseArgs } from './args.mjs';
-import { launchSession, closeSession, verifyAndAcquire, Outcome } from './lacoste.mjs';
-import { createWorkerClient, createExecucao, completeExecucao, findPendingCandidate, insertCandidate } from './supabase-client.mjs';
+import { parseArgs } from "./args.mjs";
+import { launchSession, closeSession, verifyAndAcquire, Outcome } from "./lacoste.mjs";
+import {
+  createWorkerClient,
+  createExecucao,
+  completeExecucao,
+  findPendingCandidate,
+  insertCandidate,
+} from "./supabase-client.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const MAX_ERROR_TEXT_LENGTH = 2000;
 
 function boundError(err) {
   const text = err?.stack ?? err?.message ?? String(err);
-  return text.length > MAX_ERROR_TEXT_LENGTH ? `${text.slice(0, MAX_ERROR_TEXT_LENGTH)}…(truncated)` : text;
+  return text.length > MAX_ERROR_TEXT_LENGTH
+    ? `${text.slice(0, MAX_ERROR_TEXT_LENGTH)}…(truncated)`
+    : text;
 }
 
 async function processItem(session, supabase, execucaoId, { produto, cor }, { dryRun }) {
   const result = await verifyAndAcquire(session, produto, cor);
 
   if (result.outcome !== Outcome.EXACT_MATCH) {
-    return { produto, cor, outcome: result.outcome, reason: result.reason, requestUrl: result.requestUrl };
+    return {
+      produto,
+      cor,
+      outcome: result.outcome,
+      reason: result.reason,
+      requestUrl: result.requestUrl,
+    };
   }
 
   const summary = {
@@ -44,17 +58,28 @@ async function processItem(session, supabase, execucaoId, { produto, cor }, { dr
   };
 
   if (dryRun) {
-    return { ...summary, write: 'dry-run (no write performed)' };
+    return { ...summary, write: "dry-run (no write performed)" };
   }
 
   const existingPending = await findPendingCandidate(supabase, produto, cor);
   if (existingPending) {
-    return { ...summary, write: `skipped: already-pending candidate exists (id=${existingPending.id}, criado_em=${existingPending.criado_em})` };
+    return {
+      ...summary,
+      write: `skipped: already-pending candidate exists (id=${existingPending.id}, criado_em=${existingPending.criado_em})`,
+    };
   }
 
-  const insertResult = await insertCandidate(supabase, { execucaoId, produto, corCodigo: cor, candidate: result.candidate });
+  const insertResult = await insertCandidate(supabase, {
+    execucaoId,
+    produto,
+    corCodigo: cor,
+    candidate: result.candidate,
+  });
   if (insertResult.alreadyPending) {
-    return { ...summary, write: 'skipped: already-pending candidate exists (race detected on insert)' };
+    return {
+      ...summary,
+      write: "skipped: already-pending candidate exists (race detected on insert)",
+    };
   }
   return { ...summary, write: `inserted new pending candidate (id=${insertResult.id})` };
 }
@@ -62,7 +87,9 @@ async function processItem(session, supabase, execucaoId, { produto, cor }, { dr
 async function main() {
   const { items, dryRun, limit, truncated, requestedCount } = parseArgs();
 
-  console.log(`Acquisition run: ${items.length} item(s) (limit=${limit}${truncated ? `, truncated from ${requestedCount} requested` : ''}), dryRun=${dryRun}`);
+  console.log(
+    `Acquisition run: ${items.length} item(s) (limit=${limit}${truncated ? `, truncated from ${requestedCount} requested` : ""}), dryRun=${dryRun}`,
+  );
   for (const { produto, cor } of items) {
     console.log(`  - ${produto}:${cor}`);
   }
@@ -90,7 +117,12 @@ async function main() {
         // Per-item failures do not crash the run or corrupt prior results —
         // only a run-level failure (browser/session/Supabase-connectivity)
         // below causes the ledger to record status='erro'.
-        results.push({ produto: item.produto, cor: item.cor, outcome: 'ITEM_ERROR', reason: boundError(itemErr) });
+        results.push({
+          produto: item.produto,
+          cor: item.cor,
+          outcome: "ITEM_ERROR",
+          reason: boundError(itemErr),
+        });
       }
     }
   } catch (err) {
@@ -99,24 +131,26 @@ async function main() {
     await closeSession(session);
   }
 
-  console.log('\n=== Results ===');
+  console.log("\n=== Results ===");
   for (const r of results) {
     console.log(JSON.stringify(r, null, 2));
   }
 
-  const candidatosNovos = results.filter((r) => typeof r.write === 'string' && r.write.startsWith('inserted')).length;
+  const candidatosNovos = results.filter(
+    (r) => typeof r.write === "string" && r.write.startsWith("inserted"),
+  ).length;
 
   if (!dryRun) {
     if (fatalError) {
       await completeExecucao(supabase, execucaoId, {
-        status: 'erro',
+        status: "erro",
         produtosProcessados: results.length,
         candidatosNovos,
         erro: boundError(fatalError),
       });
     } else {
       await completeExecucao(supabase, execucaoId, {
-        status: 'sucesso',
+        status: "sucesso",
         produtosProcessados: results.length,
         candidatosNovos,
       });
@@ -124,14 +158,16 @@ async function main() {
   }
 
   if (fatalError) {
-    console.error('\nFATAL (run-level):', boundError(fatalError));
+    console.error("\nFATAL (run-level):", boundError(fatalError));
     process.exitCode = 1;
   } else {
-    console.log(`\nRun complete. ${candidatosNovos} new candidate(s) inserted out of ${results.length} item(s) processed.`);
+    console.log(
+      `\nRun complete. ${candidatosNovos} new candidate(s) inserted out of ${results.length} item(s) processed.`,
+    );
   }
 }
 
 main().catch((err) => {
-  console.error('Unhandled error:', err);
+  console.error("Unhandled error:", err);
   process.exitCode = 1;
 });

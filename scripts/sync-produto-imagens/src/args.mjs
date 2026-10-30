@@ -7,8 +7,8 @@ export const DEFAULT_LIMIT = 5;
 export function parseFlags(argv) {
   const flags = {};
   for (const raw of argv) {
-    if (!raw.startsWith('--')) continue;
-    const eq = raw.indexOf('=');
+    if (!raw.startsWith("--")) continue;
+    const eq = raw.indexOf("=");
     if (eq === -1) {
       flags[raw.slice(2)] = true;
     } else {
@@ -23,14 +23,18 @@ export function parseFlags(argv) {
 // Linx/Lacoste references are passed through exactly as given).
 function parseProdutoCor(token, index) {
   const trimmed = token.trim();
-  const colonIdx = trimmed.indexOf(':');
+  const colonIdx = trimmed.indexOf(":");
   if (colonIdx === -1) {
-    throw new Error(`--produtos item #${index + 1} ("${trimmed}") is missing the required ":" separator (expected REF:COR)`);
+    throw new Error(
+      `--produtos item #${index + 1} ("${trimmed}") is missing the required ":" separator (expected REF:COR)`,
+    );
   }
   const produto = trimmed.slice(0, colonIdx).trim();
   const cor = trimmed.slice(colonIdx + 1).trim();
   if (!produto || !cor) {
-    throw new Error(`--produtos item #${index + 1} ("${trimmed}") must have a non-empty REF and COR on both sides of ":"`);
+    throw new Error(
+      `--produtos item #${index + 1} ("${trimmed}") must have a non-empty REF and COR on both sides of ":"`,
+    );
   }
   return { produto, cor };
 }
@@ -38,8 +42,8 @@ function parseProdutoCor(token, index) {
 export function parseArgs(argv = process.argv.slice(2)) {
   const flags = parseFlags(argv);
 
-  const dryRun = flags['dry-run'] === true || flags['dry-run'] === 'true';
-  const persist = flags.persist === true || flags.persist === 'true';
+  const dryRun = flags["dry-run"] === true || flags["dry-run"] === "true";
+  const persist = flags.persist === true || flags.persist === "true";
 
   let limit = DEFAULT_LIMIT;
   if (flags.limit !== undefined) {
@@ -52,17 +56,20 @@ export function parseArgs(argv = process.argv.slice(2)) {
 
   if (flags.produtos === undefined) {
     throw new Error(
-      'No --produtos list given, and this slice has no full-catalog acquisition path. ' +
-      'Pass explicit combinations, e.g. --produtos=46SMA0045BR:02H,FH2349-23:02S,NF2142AA:A91'
+      "No --produtos list given, and this slice has no full-catalog acquisition path. " +
+        "Pass explicit combinations, e.g. --produtos=46SMA0045BR:02H,FH2349-23:02S,NF2142AA:A91",
     );
   }
   if (flags.produtos === true) {
-    throw new Error('--produtos requires a value, e.g. --produtos=REF:COR,REF:COR');
+    throw new Error("--produtos requires a value, e.g. --produtos=REF:COR,REF:COR");
   }
 
-  const rawItems = String(flags.produtos).split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+  const rawItems = String(flags.produtos)
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   if (rawItems.length === 0) {
-    throw new Error('--produtos was given but contained no items');
+    throw new Error("--produtos was given but contained no items");
   }
 
   const parsedItems = rawItems.map((item, i) => parseProdutoCor(item, i));

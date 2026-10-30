@@ -14,10 +14,10 @@
 // this run to one browser instance / one navigation regardless of how many
 // combinations are requested.
 
-import { chromium } from 'playwright';
+import { chromium } from "playwright";
 
-const HOMEPAGE_URL = 'https://www.lacoste.com.br/';
-const PARTIALS_PATH = '/on/demandware.store/Sites-BRECOM-Site/pt_BR/Product-PartialsData';
+const HOMEPAGE_URL = "https://www.lacoste.com.br/";
+const PARTIALS_PATH = "/on/demandware.store/Sites-BRECOM-Site/pt_BR/Product-PartialsData";
 const FETCH_TIMEOUT_MS = 20000;
 const NAV_TIMEOUT_MS = 60000;
 
@@ -26,7 +26,7 @@ export async function launchSession() {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(HOMEPAGE_URL, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+  await page.goto(HOMEPAGE_URL, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
   await page.waitForTimeout(1500);
 
   // Didomi cookie-consent overlay intercepts clicks/layout until dismissed.
@@ -52,7 +52,7 @@ export async function fetchPartialsData(page, origin, produto, cor) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const resp = await fetch(url, { credentials: 'include', signal: controller.signal });
+        const resp = await fetch(url, { credentials: "include", signal: controller.signal });
         const text = await resp.text();
         let json = null;
         try {
@@ -68,7 +68,7 @@ export async function fetchPartialsData(page, origin, produto, cor) {
         clearTimeout(timer);
       }
     },
-    { url, timeoutMs: FETCH_TIMEOUT_MS }
+    { url, timeoutMs: FETCH_TIMEOUT_MS },
   );
   return { url, ...result };
 }
@@ -78,10 +78,10 @@ export async function fetchPartialsData(page, origin, produto, cor) {
 // live API during Slice 2 discovery, but handled rather than silently
 // coerced into a false EXACT_MATCH.
 export const Outcome = Object.freeze({
-  EXACT_MATCH: 'EXACT_MATCH',
-  PRODUCT_FOUND_COLOR_NOT_FOUND: 'PRODUCT_FOUND_COLOR_NOT_FOUND',
-  AMBIGUOUS: 'AMBIGUOUS',
-  NOT_FOUND: 'NOT_FOUND',
+  EXACT_MATCH: "EXACT_MATCH",
+  PRODUCT_FOUND_COLOR_NOT_FOUND: "PRODUCT_FOUND_COLOR_NOT_FOUND",
+  AMBIGUOUS: "AMBIGUOUS",
+  NOT_FOUND: "NOT_FOUND",
 });
 
 // Verified fact: an invalid/unavailable color on a valid master PID does
@@ -94,8 +94,11 @@ function classify(requestedProduto, requestedCor, fetchResult) {
     return { outcome: Outcome.NOT_FOUND, reason: `fetch_error: ${fetchResult.fetchError}` };
   }
   const { httpStatus, json } = fetchResult;
-  if (!json || typeof json !== 'object') {
-    return { outcome: Outcome.NOT_FOUND, reason: `non_json_response (http ${httpStatus}, body ${fetchResult.bodyLength ?? 0} chars)` };
+  if (!json || typeof json !== "object") {
+    return {
+      outcome: Outcome.NOT_FOUND,
+      reason: `non_json_response (http ${httpStatus}, body ${fetchResult.bodyLength ?? 0} chars)`,
+    };
   }
   if (json.status === 404 || !json.product) {
     return { outcome: Outcome.NOT_FOUND, reason: `no_product (json.status=${json.status})` };
@@ -106,13 +109,25 @@ function classify(requestedProduto, requestedCor, fetchResult) {
   const colorId = product.color?.id;
 
   if (!masterProductId || !colorId) {
-    return { outcome: Outcome.AMBIGUOUS, reason: 'product present but missing masterProductId/color.id', product };
+    return {
+      outcome: Outcome.AMBIGUOUS,
+      reason: "product present but missing masterProductId/color.id",
+      product,
+    };
   }
   if (masterProductId !== requestedProduto) {
-    return { outcome: Outcome.NOT_FOUND, reason: `masterProductId mismatch: requested "${requestedProduto}", got "${masterProductId}"`, product };
+    return {
+      outcome: Outcome.NOT_FOUND,
+      reason: `masterProductId mismatch: requested "${requestedProduto}", got "${masterProductId}"`,
+      product,
+    };
   }
   if (colorId !== requestedCor) {
-    return { outcome: Outcome.PRODUCT_FOUND_COLOR_NOT_FOUND, reason: `color fallback: requested "${requestedCor}", got "${colorId}" (${product.color?.label ?? 'unknown label'})`, product };
+    return {
+      outcome: Outcome.PRODUCT_FOUND_COLOR_NOT_FOUND,
+      reason: `color fallback: requested "${requestedCor}", got "${colorId}" (${product.color?.label ?? "unknown label"})`,
+      product,
+    };
   }
 
   return { outcome: Outcome.EXACT_MATCH, product };
@@ -123,7 +138,7 @@ function classify(requestedProduto, requestedCor, fetchResult) {
 // header's documented assumption.
 function extractGalleryImages(product) {
   const images = Array.isArray(product.gallery?.images) ? product.gallery.images : [];
-  return images.filter((img) => img.type === 'image');
+  return images.filter((img) => img.type === "image");
 }
 
 export async function verifyAndAcquire(session, produto, cor) {
@@ -159,13 +174,17 @@ export async function verifyAndAcquire(session, produto, cor) {
 // user would open it: a top-level navigation in the established headed
 // session. No header/fingerprint tweaks; a non-2xx response is surfaced, never
 // worked around. Memory-only.
-export async function fetchImageBytes(session, url, { timeoutMs = 20000, maxBytes = 8 * 1024 * 1024 } = {}) {
+export async function fetchImageBytes(
+  session,
+  url,
+  { timeoutMs = 20000, maxBytes = 8 * 1024 * 1024 } = {},
+) {
   const page = await session.page.context().newPage();
   try {
     const resp = await page.goto(url, { timeout: timeoutMs });
-    if (!resp || !resp.ok()) throw new Error(`image http ${resp ? resp.status() : 'no-response'}`);
+    if (!resp || !resp.ok()) throw new Error(`image http ${resp ? resp.status() : "no-response"}`);
     const buf = await resp.body();
-    if (buf.length > maxBytes) throw new Error('image too large');
+    if (buf.length > maxBytes) throw new Error("image too large");
     return buf;
   } finally {
     await page.close().catch(() => {});
