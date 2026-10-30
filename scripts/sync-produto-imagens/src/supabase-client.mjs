@@ -14,10 +14,10 @@ export function createWorkerClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export async function createExecucao(supabase) {
+export async function createExecucao(supabase, modo = 'aquisicao') {
   const { data, error } = await supabase
     .from('produto_imagem_execucoes')
-    .insert({ modo: 'aquisicao', status: 'executando' })
+    .insert({ modo, status: 'executando' })
     .select('id')
     .single();
   if (error) throw new Error(`createExecucao failed: ${error.message}`);

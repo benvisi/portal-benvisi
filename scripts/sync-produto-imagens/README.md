@@ -122,3 +122,61 @@ before any row is written — only `type: "image"` entries reach
 No AI/vision calls, no primary/secondary candidate selection, no image
 downloads/Storage, no `produto_imagem_publicadas`, no approval/rejection
 RPCs. Those are later slices.
+
+## Slice 4B — human approval and publication
+
+Approval and publication are separate stages with separate actors:
+
+1. **Approval (employee, browser).** `aprovar_candidato_imagem(token, candidato, indice_principal, indice_secundaria?, observacao?, confirmar_divergencia?)`
+   and `rejeitar_candidato_imagem(token, candidato, observacao)`. The reviewer
+   comes only from the session token and must have
+   `funcionarios.pode_gerenciar_imagens_produto`. Indices refer to the stored
+   gallery and may differ from the AI recommendation. Choosing an image the AI
+   flagged (person / not product-only) needs `confirmar_divergencia = true`
+   and a note. `scoring_notes.human_reviewed` is never read.
+   Approval creates a `pendente` publication with DB-assigned immutable paths:
+   `{produto}/{cor}/{publicacao_id}/{principal|secundaria}.webp`.
+2. **Publication (this worker, service_role).**
+
+   ```bash
+   npm run publicar                  # dry-run: list + validate, no writes
+   npm run publicar -- --persist     # download, convert, upload, activate
+   npm run publicar -- --persist --limit=3
+   ```
+
+   Each approved image is fetched through the headed browser, converted to
+   WebP (longest edge 1200 px, quality 82) and uploaded to the public bucket
+   `produto-imagens-publicadas` with `upsert: false`. The set goes live in one
+   transaction (`ativar_publicacao_imagem`), superseding the previous set for
+   that product/colour.
+
+**Integrity.** The approved URL must carry Salesforce Commerce Cloud's
+content-version token (`/dw<hex>/`) and the approved colour code in its file
+name, so the published bytes are the asset version the reviewer saw. Source
+and WebP SHA-256 are recorded per file.
+
+**Retries.** Files already recorded are skipped. An object that already exists
+is accepted only if byte-identical (crash after upload); otherwise the run
+refuses and never overwrites. Failures increment `tentativas`/`ultimo_erro`
+and the set stays `pendente` for the next run.
+
+**Revocation / replacement.** `revogar_publicacao_imagem(token, publicacao, motivo)`
+hides a set from Consulta immediately. A newer approval replaces the active
+set only when it is activated. Rows are never deleted.
+
+**Manual cleanup (~30 days).** Superseded/revoked/cancelled files stay in the
+bucket. Paths eligible for manual deletion:
+
+```sql
+select a.storage_path, p.status, p.encerrado_em
+  from produto_imagem_publicacoes p
+  join produto_imagem_publicacao_arquivos a on a.publicacao_id = p.id
+ where p.status in ('substituida', 'revogada', 'cancelada')
+   and a.enviado_em is not null
+   and p.encerrado_em < now() - interval '30 days'
+ order by p.encerrado_em;
+```
+
+**Reviewer previews.** Lacoste CDN gallery URLs load directly in a normal
+browser `<img>` (verified from a cookieless browser on a foreign origin), so
+the review UI can show them without storing unapproved images anywhere.

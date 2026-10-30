@@ -4,7 +4,7 @@
 
 export const DEFAULT_LIMIT = 5;
 
-function parseFlags(argv) {
+export function parseFlags(argv) {
   const flags = {};
   for (const raw of argv) {
     if (!raw.startsWith('--')) continue;
