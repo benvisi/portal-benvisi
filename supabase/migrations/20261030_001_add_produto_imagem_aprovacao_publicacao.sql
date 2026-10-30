@@ -199,27 +199,35 @@ as $$
     pg_catalog.hashtextextended('produto_imagem:' || p_produto || ':' || p_cor_codigo, 0));
 $$;
 
--- True when the AI evaluation for that gallery index flags a person or a
--- non-product-only image. Advisory input only: it adds friction (explicit
--- confirmation + note), it never grants anything.
-create or replace function public.produto_imagem_ia_sinaliza(p_scoring_notes jsonb, p_indice integer)
+-- V1 hard safety rule (no override, by design): an index is eligible for
+-- primary/secondary ONLY when its stored AI evaluation is present, unambiguous
+-- and says "no person, product-only". A missing evaluation, a missing field,
+-- a contradictory one (has_person=true AND product_only_still=true), or
+-- has_person=true on its own are all treated the same way — not eligible.
+-- There is no confirmation flag that bypasses this; an image flagged (or not
+-- evaluated) as containing a person can never be approved or published,
+-- regardless of reviewer input. A reviewer may still pick any OTHER eligible
+-- index than the AI's own primary/secondary recommendation.
+create or replace function public.produto_imagem_elegivel(p_scoring_notes jsonb, p_indice integer)
 returns boolean
 language sql
 immutable
 set search_path = ''
 as $$
-  select coalesce(bool_or(
-           (e ->> 'has_person') = 'true' or (e ->> 'product_only_still') = 'false'), false)
+  select coalesce(bool_and(
+           (e ->> 'has_person') = 'false' and (e ->> 'product_only_still') = 'true'), false)
     from pg_catalog.jsonb_array_elements(
            case when pg_catalog.jsonb_typeof(p_scoring_notes -> 'images') = 'array'
                 then p_scoring_notes -> 'images' else '[]'::jsonb end) e
-   where (e ->> 'index') = p_indice::text;
+   where (e ->> 'index') = p_indice::text
+     and (e ->> 'has_person') is not null
+     and (e ->> 'product_only_still') is not null;
 $$;
 
 revoke all on function public.produto_imagens_exigir_gestor(text) from public, anon, authenticated, service_role;
 revoke all on function public.produto_imagem_url_galeria(jsonb, integer) from public, anon, authenticated, service_role;
 revoke all on function public.produto_imagem_lock(text, text) from public, anon, authenticated, service_role;
-revoke all on function public.produto_imagem_ia_sinaliza(jsonb, integer) from public, anon, authenticated, service_role;
+revoke all on function public.produto_imagem_elegivel(jsonb, integer) from public, anon, authenticated, service_role;
 
 -- -----------------------------------------------------------------------------
 -- Browser RPCs (anon + session token).
@@ -293,9 +301,13 @@ end;
 $$;
 
 -- Formal approval. The reviewer picks gallery indices (may differ from the
--- AI recommendation). Selecting an image the AI flagged (person / not
--- product-only) requires p_confirmar_divergencia = true and a note.
--- Returns the new publication id.
+-- AI's own recommendation). V1 hard rule: an index must be independently
+-- eligible per produto_imagem_elegivel (no person, product-only, evaluation
+-- present and unambiguous) for BOTH primary and secondary — there is no
+-- override. p_confirmar_divergencia is accepted for call-signature stability
+-- with existing callers/tests but no longer has any bypass effect; kept as a
+-- no-op rather than removed so this is a behavioural tightening, not a
+-- breaking API change. Returns the new publication id.
 create or replace function public.aprovar_candidato_imagem(
   p_session_token text,
   p_candidato_id uuid,
@@ -356,11 +368,14 @@ begin
     end if;
   end if;
 
-  if (public.produto_imagem_ia_sinaliza(v_c.scoring_notes, p_indice_principal)
-      or (p_indice_secundaria is not null
-          and public.produto_imagem_ia_sinaliza(v_c.scoring_notes, p_indice_secundaria)))
-     and (p_confirmar_divergencia is not true or v_obs is null) then
-    raise exception using errcode = 'P0001', message = 'DIVERGENCIA_IA_NAO_CONFIRMADA';
+  -- Hard rule, independently per slot, no override: an image flagged (or not
+  -- clearly evaluated as person-free and product-only) can never be approved.
+  if not public.produto_imagem_elegivel(v_c.scoring_notes, p_indice_principal) then
+    raise exception using errcode = 'P0001', message = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE';
+  end if;
+  if p_indice_secundaria is not null
+     and not public.produto_imagem_elegivel(v_c.scoring_notes, p_indice_secundaria) then
+    raise exception using errcode = 'P0001', message = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE';
   end if;
 
   update public.produto_imagem_candidatos

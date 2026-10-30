@@ -21,12 +21,19 @@ declare
     {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dwbbbb2222/TST_T01_20.jpg","type":"image"},
     {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dwcccc3333/TST_T01_31.jpg","type":"image"},
     {"desktopUrl":"//evil.example.com/x.jpg","type":"image"},
-    {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dwdddd4444/TST_T01_L1.jpg","type":"look"}
+    {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dwdddd4444/TST_T01_L1.jpg","type":"look"},
+    {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dweeee5555/TST_T01_32.jpg","type":"image"},
+    {"desktopUrl":"//imagesa1.lacoste.com/dw/image/v2/X/dwffff6666/TST_T01_33.jpg","type":"image"}
   ]';
+  -- index 0: eligible. index 1: has_person=true (hard rule 1). index 2:
+  -- eligible (used for the human-override-of-recommendation cases). index 5:
+  -- contradictory, has_person=true AND product_only_still=true (hard rule 2).
+  -- index 6: no evaluation at all (hard rule 3, missing/insufficient).
   v_notes jsonb := '{"confidence":"high","human_reviewed":true,"images":[
     {"index":0,"has_person":false,"product_only_still":true},
     {"index":1,"has_person":true,"product_only_still":false},
-    {"index":2,"has_person":false,"product_only_still":true}]}';
+    {"index":2,"has_person":false,"product_only_still":true},
+    {"index":5,"has_person":true,"product_only_still":true}]}';
   v_sha text := repeat('a', 64);
   v_sha2 text := repeat('b', 64);
 begin
@@ -103,13 +110,36 @@ begin
   exception when others then v_err := sqlerrm; end;
   assert v_err = 'IDENTIDADE_NAO_VERIFICADA', '2f identity mismatch: ' || v_err;
 
-  -- AI flagged index 1 (person): needs explicit confirmation AND a note.
+  -- V1 hard rule: has_person=true is an absolute bar, no override exists.
+  -- 2g: person-flagged primary, no confirmation offered at all.
   begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 1); v_err := 'none';
   exception when others then v_err := sqlerrm; end;
-  assert v_err = 'DIVERGENCIA_IA_NAO_CONFIRMADA', '2g ai flag: ' || v_err;
-  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 1, null, null, true); v_err := 'none';
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2g person primary, no confirm: ' || v_err;
+  -- 2h: same primary, WITH confirmation flag + a note — still rejected. The
+  -- former override mechanism (p_confirmar_divergencia + note) no longer has
+  -- any bypass effect for an unsafe image.
+  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 1, null, 'confirmo', true); v_err := 'none';
   exception when others then v_err := sqlerrm; end;
-  assert v_err = 'DIVERGENCIA_IA_NAO_CONFIRMADA', '2h ai flag without note: ' || v_err;
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2h person primary, confirm+note still rejected: ' || v_err;
+  -- 2h2: same, but the person-flagged image is the SECONDARY (eligible
+  -- primary at index 0) — rule applies to each slot independently.
+  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 0, 1, 'confirmo', true); v_err := 'none';
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2h2 person secondary rejected: ' || v_err;
+  -- 2h3: contradictory classification (has_person=true AND
+  -- product_only_still=true) is rejected the same way, confirm+note included.
+  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 5, null, 'confirmo', true); v_err := 'none';
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2h3 contradictory classification: ' || v_err;
+  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 0, 5, 'confirmo', true); v_err := 'none';
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2h3b contradictory as secondary: ' || v_err;
+  -- 2h4: no stored evaluation at all for that index — insufficient to
+  -- establish "no person, product-only", so it is rejected, not silently
+  -- allowed, even with confirm+note.
+  begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c1, 6, null, 'confirmo', true); v_err := 'none';
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '2h4 missing evaluation: ' || v_err;
 
   begin perform public.rejeitar_candidato_imagem(v_tok_gestor, v_c1, '   '); v_err := 'none';
   exception when others then v_err := sqlerrm; end;
@@ -204,15 +234,30 @@ begin
   assert v_err = 'PUBLICACAO_NAO_PENDENTE', '5k no writes to active pub: ' || v_err;
 
   -- 6. Replacement & concurrency invariants ------------------------------------
-  -- Two newer candidates for the same product/colour.
+  -- Two newer candidates for the same product/colour. Each needs its own
+  -- eligible evaluation now that a missing evaluation is rejected (hard
+  -- rule 3) rather than silently treated as safe.
   insert into public.produto_imagem_candidatos (execucao_id, produto, cor_codigo, lacoste_pid, lacoste_color_id,
-    lacoste_color_label, lacoste_product_name, resolved_url, verification_ok, gallery_json)
-  values (v_exec, 'TST-001', 'T01', 'TST-001', 'T01', 'Test', 'Test', 'https://x', true, v_gal) returning id into v_c4;
+    lacoste_color_label, lacoste_product_name, resolved_url, verification_ok, gallery_json, scoring_notes)
+  values (v_exec, 'TST-001', 'T01', 'TST-001', 'T01', 'Test', 'Test', 'https://x', true, v_gal, v_notes) returning id into v_c4;
   v_pub2 := public.aprovar_candidato_imagem(v_tok_gestor, v_c4, 0);
   insert into public.produto_imagem_candidatos (execucao_id, produto, cor_codigo, lacoste_pid, lacoste_color_id,
-    lacoste_color_label, lacoste_product_name, resolved_url, verification_ok, gallery_json)
-  values (v_exec, 'TST-001', 'T01', 'TST-001', 'T01', 'Test', 'Test', 'https://x', true, v_gal) returning id into v_c5;
+    lacoste_color_label, lacoste_product_name, resolved_url, verification_ok, gallery_json, scoring_notes)
+  values (v_exec, 'TST-001', 'T01', 'TST-001', 'T01', 'Test', 'Test', 'https://x', true, v_gal, v_notes) returning id into v_c5;
   v_pub3 := public.aprovar_candidato_imagem(v_tok_gestor, v_c5, 2);
+
+  -- And: a candidate with NO scoring_notes at all can never be approved,
+  -- confirming hard rule 3 end-to-end (missing evaluation, not just an
+  -- isolated function call).
+  declare v_c_sem_notas uuid; v_err_sem_notas text;
+  begin
+    insert into public.produto_imagem_candidatos (execucao_id, produto, cor_codigo, lacoste_pid, lacoste_color_id,
+      lacoste_color_label, lacoste_product_name, resolved_url, verification_ok, gallery_json)
+    values (v_exec, 'TST-004', 'T01', 'TST-004', 'T01', 'Test', 'Test', 'https://x', true, v_gal) returning id into v_c_sem_notas;
+    begin perform public.aprovar_candidato_imagem(v_tok_gestor, v_c_sem_notas, 0, null, 'confirmo', true); v_err_sem_notas := 'none';
+    exception when others then v_err_sem_notas := sqlerrm; end;
+    assert v_err_sem_notas = 'IMAGEM_NAO_ELEGIVEL_PESSOA_OU_AVALIACAO_AUSENTE', '6a2 candidate with no scoring_notes at all: ' || v_err_sem_notas;
+  end;
 
   -- Newer approval cancelled the older never-activated publication.
   assert (select status = 'cancelada' and encerrado_em is not null from public.produto_imagem_publicacoes where id = v_pub2), '6a pub2 cancelled';
