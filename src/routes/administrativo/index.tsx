@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { ArrowLeft, CalendarDays, ClipboardCheck, Tags } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardCheck, Images, Tags } from "lucide-react";
 
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -13,12 +13,15 @@ import {
   ADMINISTRATOR_CARGO,
   ESCALA_ADMIN_CARD_DESCRIPTION,
   ESCALA_ADMIN_TITLE,
+  IMAGENS_PRODUTO_CARD_DESCRIPTION,
+  IMAGENS_PRODUTO_TITLE,
   TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION,
   TERMOS_BUSCA_ADMIN_TITLE,
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
+import { useImagensProdutoPermissao } from "@/hooks/useImagensProdutoPermissao";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useTermosBuscaPermissao } from "@/hooks/useTermosBuscaPermissao";
 
@@ -41,6 +44,8 @@ function AdministrativoPage() {
   // Termos de busca is capability-gated (not cargo), so its card only shows
   // to an Administrador who also holds pode_gerenciar_termos_busca.
   const permissaoTermos = useTermosBuscaPermissao(session?.session_token ?? null);
+  // Same for product image review (pode_gerenciar_imagens_produto).
+  const permissaoImagens = useImagensProdutoPermissao(session?.session_token ?? null);
 
   useEffect(() => {
     if (ready && session && !isAdmin) {
@@ -91,6 +96,15 @@ function AdministrativoPage() {
               description={TERMOS_BUSCA_ADMIN_CARD_DESCRIPTION}
               variant="brand-level-2"
               onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO_TERMOS_BUSCA })}
+            />
+          )}
+          {permissaoImagens.podeGerenciar && (
+            <ModuleCard
+              icon={Images}
+              title={IMAGENS_PRODUTO_TITLE}
+              description={IMAGENS_PRODUTO_CARD_DESCRIPTION}
+              variant="brand-level-2"
+              onClick={() => void navigate({ to: ROUTES.ADMINISTRATIVO_IMAGENS_PRODUTO })}
             />
           )}
         </div>

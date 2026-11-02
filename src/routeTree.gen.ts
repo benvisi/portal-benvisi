@@ -17,6 +17,7 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AdministrativoIndexRouteImport } from './routes/administrativo/index'
 import { Route as AdministrativoAtendimentoRouteImport } from './routes/administrativo/atendimento'
 import { Route as AdministrativoEscalaRouteImport } from './routes/administrativo/escala'
+import { Route as AdministrativoImagensProdutoRouteImport } from './routes/administrativo/imagens-produto'
 import { Route as AdministrativoTermosBuscaRouteImport } from './routes/administrativo/termos-busca'
 import { Route as ConhecimentoCulturaIndexRouteImport } from './routes/conhecimento-cultura/index'
 import { Route as ConhecimentoCulturaPrincipiosRouteImport } from './routes/conhecimento-cultura/principios'
@@ -71,6 +72,12 @@ const AdministrativoEscalaRoute = AdministrativoEscalaRouteImport.update({
   path: '/administrativo/escala',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdministrativoImagensProdutoRoute =
+  AdministrativoImagensProdutoRouteImport.update({
+    id: '/administrativo/imagens-produto',
+    path: '/administrativo/imagens-produto',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdministrativoTermosBuscaRoute =
   AdministrativoTermosBuscaRouteImport.update({
     id: '/administrativo/termos-busca',
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/imagens-produto': typeof AdministrativoImagensProdutoRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/imagens-produto': typeof AdministrativoImagensProdutoRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/administrativo/atendimento': typeof AdministrativoAtendimentoRoute
   '/administrativo/escala': typeof AdministrativoEscalaRoute
+  '/administrativo/imagens-produto': typeof AdministrativoImagensProdutoRoute
   '/administrativo/termos-busca': typeof AdministrativoTermosBuscaRoute
   '/conhecimento-cultura/principios': typeof ConhecimentoCulturaPrincipiosRoute
   '/conhecimento-cultura/tamanhos-calcados': typeof ConhecimentoCulturaTamanhosCalcadosRoute
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/imagens-produto'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/conhecimento-cultura/tamanhos-calcados'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/imagens-produto'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/conhecimento-cultura/tamanhos-calcados'
@@ -261,6 +273,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/administrativo/atendimento'
     | '/administrativo/escala'
+    | '/administrativo/imagens-produto'
     | '/administrativo/termos-busca'
     | '/conhecimento-cultura/principios'
     | '/conhecimento-cultura/tamanhos-calcados'
@@ -284,6 +297,7 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   AdministrativoAtendimentoRoute: typeof AdministrativoAtendimentoRoute
   AdministrativoEscalaRoute: typeof AdministrativoEscalaRoute
+  AdministrativoImagensProdutoRoute: typeof AdministrativoImagensProdutoRoute
   AdministrativoTermosBuscaRoute: typeof AdministrativoTermosBuscaRoute
   ConhecimentoCulturaPrincipiosRoute: typeof ConhecimentoCulturaPrincipiosRoute
   ConhecimentoCulturaTamanhosCalcadosRoute: typeof ConhecimentoCulturaTamanhosCalcadosRoute
@@ -355,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/administrativo/escala'
       fullPath: '/administrativo/escala'
       preLoaderRoute: typeof AdministrativoEscalaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administrativo/imagens-produto': {
+      id: '/administrativo/imagens-produto'
+      path: '/administrativo/imagens-produto'
+      fullPath: '/administrativo/imagens-produto'
+      preLoaderRoute: typeof AdministrativoImagensProdutoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/administrativo/termos-busca': {
@@ -452,6 +473,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   AdministrativoAtendimentoRoute: AdministrativoAtendimentoRoute,
   AdministrativoEscalaRoute: AdministrativoEscalaRoute,
+  AdministrativoImagensProdutoRoute: AdministrativoImagensProdutoRoute,
   AdministrativoTermosBuscaRoute: AdministrativoTermosBuscaRoute,
   ConhecimentoCulturaPrincipiosRoute: ConhecimentoCulturaPrincipiosRoute,
   ConhecimentoCulturaTamanhosCalcadosRoute:

@@ -1045,3 +1045,72 @@ export const RELATORIO_VENDAS_COLUMNS = [
   "Ticket Méd.",
   "PM",
 ] as const;
+
+// Product image review (Trello #10, Slice 5A). Access is the explicit
+// funcionarios.pode_gerenciar_imagens_produto capability, never cargo.
+// "Aprovada" means formally approved by a reviewer — NOT yet visible to the
+// store; publication is a separate, later step done by the worker.
+export const IMAGENS_PRODUTO_TITLE = "Imagens de produto";
+export const IMAGENS_PRODUTO_CARD_DESCRIPTION = "Revise e aprove as imagens dos produtos.";
+export const IMAGENS_PRODUTO_PAGE_SUBTITLE =
+  "Escolha a imagem principal e, se quiser, uma secundária. Só aparecem como selecionáveis imagens de produto sem pessoas.";
+export const IMAGENS_PRODUTO_FILA_TITLE = "Aguardando revisão";
+export const IMAGENS_PRODUTO_FILA_VAZIO_MESSAGE = "Nenhum produto aguardando revisão.";
+export const IMAGENS_PRODUTO_ERRO_CARREGAR_MESSAGE =
+  "Não foi possível carregar os produtos para revisão. Tente novamente.";
+export const IMAGENS_PRODUTO_TENTAR_NOVAMENTE_LABEL = "Tentar novamente";
+export const IMAGENS_PRODUTO_STATUS_PENDENTE_LABEL = "Pendente";
+export const IMAGENS_PRODUTO_COR_PREFIX = "Cor";
+export const IMAGENS_PRODUTO_ADQUIRIDO_PREFIX = "Adquirido em";
+export const IMAGENS_PRODUTO_SEM_NOME_LABEL = "Produto sem nome cadastrado";
+export const IMAGENS_PRODUTO_VOLTAR_FILA_LABEL = "Voltar à lista";
+export const IMAGENS_PRODUTO_REVISAR_LABEL = "Revisar";
+export const IMAGENS_PRODUTO_SEM_IMAGENS_MESSAGE = "Este produto não tem imagens na galeria.";
+export const IMAGENS_PRODUTO_SEM_ELEGIVEIS_MESSAGE =
+  "Nenhuma imagem desta galeria é elegível. Rejeite o produto para registrar o motivo.";
+export const IMAGENS_PRODUTO_GALERIA_LABEL = "Galeria";
+export const IMAGENS_PRODUTO_PRINCIPAL_LABEL = "Principal";
+export const IMAGENS_PRODUTO_SECUNDARIA_LABEL = "Secundária";
+export const IMAGENS_PRODUTO_RECOMENDADA_IA_LABEL = "Recomendada pela IA";
+export const IMAGENS_PRODUTO_INELEGIVEL_LABEL = "Não elegível";
+export const IMAGENS_PRODUTO_ESCOLHER_PRINCIPAL_LABEL = "Usar como principal";
+export const IMAGENS_PRODUTO_ESCOLHER_SECUNDARIA_LABEL = "Usar como secundária";
+export const IMAGENS_PRODUTO_LIMPAR_SECUNDARIA_LABEL = "Remover secundária";
+export const IMAGENS_PRODUTO_USAR_RECOMENDACAO_LABEL = "Usar recomendação da IA";
+export const IMAGENS_PRODUTO_SELECAO_TITLE = "Seleção final";
+export const IMAGENS_PRODUTO_SELECAO_VAZIA_MESSAGE = "Escolha uma imagem principal.";
+export const IMAGENS_PRODUTO_SEM_SECUNDARIA_LABEL = "Sem imagem secundária";
+export const IMAGENS_PRODUTO_CONFIANCA_PREFIX = "Confiança da IA:";
+export const IMAGENS_PRODUTO_LIMITACOES_TITLE = "Limitações apontadas pela IA";
+export const IMAGENS_PRODUTO_APROVAR_LABEL = "Aprovar seleção";
+export const IMAGENS_PRODUTO_REJEITAR_LABEL = "Rejeitar produto";
+export const IMAGENS_PRODUTO_CANCELAR_LABEL = "Cancelar";
+export const IMAGENS_PRODUTO_ENVIANDO_LABEL = "Enviando...";
+export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_TITLE = "Aprovar estas imagens?";
+export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION =
+  "A aprovação registra sua decisão, mas as imagens ainda não ficam visíveis para a equipe. A publicação é uma etapa separada.";
+export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_LABEL = "Confirmar aprovação";
+export const IMAGENS_PRODUTO_OBSERVACAO_LABEL = "Observação (opcional)";
+export const IMAGENS_PRODUTO_REJEITAR_MOTIVO_LABEL = "Motivo da rejeição (obrigatório)";
+export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_TITLE = "Rejeitar este produto?";
+export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_LABEL = "Confirmar rejeição";
+export const IMAGENS_PRODUTO_APROVADO_MESSAGE =
+  "Imagens aprovadas. Ainda não estão publicadas para a equipe.";
+export const IMAGENS_PRODUTO_REJEITADO_MESSAGE = "Produto rejeitado.";
+export const IMAGENS_PRODUTO_PESSOA_LABEL = "Pessoa na imagem";
+export const IMAGENS_PRODUTO_SEM_AVALIACAO_LABEL = "Sem avaliação da IA";
+export const IMAGENS_PRODUTO_AVALIACAO_AMBIGUA_LABEL = "Avaliação da IA inconsistente";
+export const IMAGENS_PRODUTO_NAO_E_FOTO_LABEL = "Não é foto de produto";
+export const IMAGENS_PRODUTO_ORIGEM_NAO_PERMITIDA_LABEL = "Origem da imagem não permitida";
+export const IMAGENS_PRODUTO_SEM_PESSOA_LABEL = "Produto sem pessoa";
+export const IMAGENS_PRODUTO_ERRO_SEM_PERMISSAO_MESSAGE =
+  "Você não tem permissão para revisar imagens de produto.";
+export const IMAGENS_PRODUTO_ERRO_TRANSICAO_MESSAGE =
+  "Este produto já foi revisado por outra pessoa. Atualize a lista.";
+export const IMAGENS_PRODUTO_ERRO_INELEGIVEL_MESSAGE =
+  "Uma das imagens escolhidas não é elegível (pessoa na imagem ou avaliação ausente). Escolha outra.";
+export const IMAGENS_PRODUTO_ERRO_IDENTIDADE_MESSAGE =
+  "A identidade deste produto/cor não foi verificada. Não é possível aprovar.";
+export const IMAGENS_PRODUTO_ERRO_MOTIVO_MESSAGE = "Informe o motivo da rejeição.";
+export const IMAGENS_PRODUTO_ERRO_GENERICO_MESSAGE =
+  "Não foi possível concluir agora. Tente novamente.";
