@@ -13,6 +13,7 @@ import {
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import { IMAGENS_PRODUTO_PREVIEW_MOCK, PREVIEW_BANNER_TEXT } from "@/lib/produtoImagensPreviewFlag";
 
 export const Route = createFileRoute("/administrativo/imagens-produto")({
   head: () => ({
@@ -51,6 +52,15 @@ function ImagensProdutoPage() {
           </Button>
           <h1 className="text-xl font-semibold text-foreground">{IMAGENS_PRODUTO_TITLE}</h1>
         </header>
+
+        {IMAGENS_PRODUTO_PREVIEW_MOCK && (
+          <p
+            role="note"
+            className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm font-medium text-amber-900"
+          >
+            {PREVIEW_BANNER_TEXT}
+          </p>
+        )}
 
         <p className="text-sm text-muted-foreground">{IMAGENS_PRODUTO_PAGE_SUBTITLE}</p>
 
