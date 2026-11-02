@@ -104,26 +104,26 @@ begin
     ),
     mapeados_totais as (
       select
-        coalesce(sum(venda_liquida), 0)::numeric as venda_liquida,
-        coalesce(sum(tickets), 0)::integer as tickets,
-        coalesce(sum(pecas_brutas), 0)::integer as pecas_brutas,
-        coalesce(sum(pecas_troca), 0)::integer as pecas_troca,
-        coalesce(sum(pecas_liquidas), 0)::integer as pecas_liquidas,
-        max(atualizado_em) as atualizado_em
-      from por_vendedor
+        coalesce(sum(pv.venda_liquida), 0)::numeric as venda_liquida,
+        coalesce(sum(pv.tickets), 0)::integer as tickets,
+        coalesce(sum(pv.pecas_brutas), 0)::integer as pecas_brutas,
+        coalesce(sum(pv.pecas_troca), 0)::integer as pecas_troca,
+        coalesce(sum(pv.pecas_liquidas), 0)::integer as pecas_liquidas,
+        max(pv.atualizado_em) as atualizado_em
+      from por_vendedor pv
     ),
     loja_totais as (
       select
-        coalesce(sum(venda_liquida), 0)::numeric as venda_liquida,
-        coalesce(sum(tickets), 0)::integer as tickets,
-        coalesce(sum(pecas_brutas), 0)::integer as pecas_brutas,
-        coalesce(sum(pecas_troca), 0)::integer as pecas_troca,
-        coalesce(sum(pecas_liquidas), 0)::integer as pecas_liquidas,
-        max(atualizado_em) as atualizado_em
-      from public.vendas_diarias_loja
-      where codigo_filial = p_codigo_filial
-        and data_venda >= v_inicio
-        and data_venda <= v_fim
+        coalesce(sum(vdl.venda_liquida), 0)::numeric as venda_liquida,
+        coalesce(sum(vdl.tickets), 0)::integer as tickets,
+        coalesce(sum(vdl.pecas_brutas), 0)::integer as pecas_brutas,
+        coalesce(sum(vdl.pecas_troca), 0)::integer as pecas_troca,
+        coalesce(sum(vdl.pecas_liquidas), 0)::integer as pecas_liquidas,
+        max(vdl.atualizado_em) as atualizado_em
+      from public.vendas_diarias_loja vdl
+      where vdl.codigo_filial = p_codigo_filial
+        and vdl.data_venda >= v_inicio
+        and vdl.data_venda <= v_fim
     ),
     outros as (
       select
