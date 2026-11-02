@@ -1,6 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { BookOpen, ClipboardCheck, Loader2, Package, Settings, Users } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  ListOrdered,
+  Loader2,
+  ShoppingBag,
+  Settings,
+} from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -12,8 +19,12 @@ import {
   CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
   CONHECIMENTO_CULTURA_TITLE,
   DASHBOARD_WELCOME_MESSAGE,
+  LISTA_DA_VEZ_CARD_DESCRIPTION,
+  LISTA_DA_VEZ_TITLE,
   OPERACOES_DASHBOARD_SUBTITLE,
   OPERACOES_TITLE,
+  VENDAS_DASHBOARD_SUBTITLE,
+  VENDAS_TITLE,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { getManausGreeting } from "@/lib/datetime";
@@ -130,18 +141,18 @@ function DashboardPage() {
           )}
 
           <ModuleCard
-            icon={Users}
-            title="Atendimento"
-            description="Atendimento ao cliente e apoio às vendas."
+            icon={ListOrdered}
+            title={LISTA_DA_VEZ_TITLE}
+            description={LISTA_DA_VEZ_CARD_DESCRIPTION}
             variant="brand"
             onClick={() => void navigate({ to: ROUTES.ATENDIMENTO })}
           />
           <ModuleCard
-            icon={Package}
-            title="Estoque"
-            description="Consulte a disponibilidade de produtos e tamanhos."
+            icon={ShoppingBag}
+            title={VENDAS_TITLE}
+            description={VENDAS_DASHBOARD_SUBTITLE}
             variant="brand"
-            onClick={() => void navigate({ to: ROUTES.ESTOQUE })}
+            onClick={() => void navigate({ to: ROUTES.VENDAS })}
           />
           <ModuleCard
             icon={ClipboardCheck}

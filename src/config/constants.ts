@@ -378,8 +378,7 @@ export const APP_STORE_LABEL = "App Store";
 export const GOOGLE_PLAY_LABEL = "Google Play";
 
 export const MENSAGENS_WHATSAPP_TITLE = "Mensagens para WhatsApp";
-export const MENSAGENS_WHATSAPP_CARD_DESCRIPTION =
-  "Modelos prontos para agilizar o atendimento ao cliente.";
+export const MENSAGENS_WHATSAPP_CARD_DESCRIPTION = "Modelos prontos para agilizar o atendimento.";
 export const MENSAGENS_WHATSAPP_PAGE_SUBTITLE =
   "Modelos aprovados para agilizar o atendimento ao cliente pelo WhatsApp. Toque em uma situação para ver a mensagem e copiar.";
 export const COPIAR_MENSAGEM_LABEL = "Copiar mensagem";
@@ -1022,3 +1021,27 @@ export const ESTOQUE_ORGANIZACAO_MANUAL_ERRO_GENERICO_MESSAGE =
 export function getEstoqueOrganizacaoSyncPendenciaMessage(semanaFormatada: string): string {
   return `Organização semanal não sincronizada com a Escala na semana de ${semanaFormatada}.`;
 }
+
+// Trello #12: Vendas hub + Relatório de vendas (Slice B, mock data only).
+export const LISTA_DA_VEZ_CARD_DESCRIPTION = "Veja a ordem de atendimento da equipe.";
+export const VENDAS_TITLE = "Vendas";
+export const VENDAS_DASHBOARD_SUBTITLE = "Ferramentas para apoiar as vendas.";
+export const VENDAS_PAGE_SUBTITLE = "Ferramentas de consulta e apoio às vendas da loja.";
+export const VOLTAR_A_VENDAS_LABEL = "Voltar a Vendas";
+export const CONSULTA_ESTOQUE_CARD_DESCRIPTION = "Consulte produtos, cores e tamanhos disponíveis.";
+export const RELATORIO_VENDAS_TITLE = "Relatório de vendas";
+export const RELATORIO_VENDAS_CARD_DESCRIPTION = "Acompanhe as vendas da equipe no mês atual.";
+export const RELATORIO_VENDAS_PAGE_SUBTITLE = "Vendas da equipe no mês atual (acumulado do mês).";
+export const RELATORIO_VENDAS_OUTROS_LABEL = "Outros";
+export const RELATORIO_VENDAS_TOTAL_LABEL = "Total";
+export const RELATORIO_VENDAS_COLUMNS = [
+  "Vendedor",
+  "R$",
+  "Peças",
+  "Trocas",
+  "Peças Líq.",
+  "Tickets",
+  "PA",
+  "Ticket Méd.",
+  "PM",
+] as const;

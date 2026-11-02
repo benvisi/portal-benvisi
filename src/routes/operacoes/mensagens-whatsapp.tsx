@@ -17,7 +17,7 @@ import {
   MENSAGEM_COPIADA_LABEL,
   MENSAGENS_WHATSAPP_PAGE_SUBTITLE,
   MENSAGENS_WHATSAPP_TITLE,
-  VOLTAR_A_OPERACOES_LABEL,
+  VOLTAR_A_VENDAS_LABEL,
 } from "@/config/constants";
 import { WHATSAPP_MESSAGE_GROUPS } from "@/config/mensagens-whatsapp";
 import { ROUTES } from "@/config/routes";
@@ -60,7 +60,7 @@ async function handleCopy(texto: string) {
 // a wall of text. Portal never sends/personalizes the message itself; it
 // only helps employees find and copy the approved wording quickly.
 function MensagensWhatsAppPage() {
-  const goBack = useGoBack(ROUTES.OPERACOES);
+  const goBack = useGoBack(ROUTES.VENDAS);
   const { session, ready } = useRequireSession();
 
   if (!ready || !session) return null;
@@ -75,7 +75,7 @@ function MensagensWhatsAppPage() {
             size="icon"
             className="min-touch shrink-0"
             onClick={goBack}
-            aria-label={VOLTAR_A_OPERACOES_LABEL}
+            aria-label={VOLTAR_A_VENDAS_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Button>
