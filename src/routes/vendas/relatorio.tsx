@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
+import { VendasPeriodoSeletor } from "@/components/vendas/VendasPeriodoSeletor";
 import { VendasRelatorioConteudo } from "@/components/vendas/VendasRelatorioConteudo";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,11 +14,13 @@ import {
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
-import { useVendasMetricasMtd } from "@/hooks/useVendasMetricasMtd";
+import { useVendasMetricasPeriodo } from "@/hooks/useVendasMetricasPeriodo";
 import {
   canViewRelatorioVendas,
   formatVendasAtualizadoEm,
   getVendasAtualizadoEm,
+  VENDAS_PERIODO_PADRAO,
+  type VendasPeriodo,
 } from "@/lib/vendasRelatorio";
 
 export const Route = createFileRoute("/vendas/relatorio")({
@@ -35,11 +38,14 @@ function RelatorioVendasPage() {
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.OPERACOES);
   const { session, ready } = useRequireSession();
+  // Not persisted: every visit starts on the default period (Hoje).
+  const [periodo, setPeriodo] = useState<VendasPeriodo>(VENDAS_PERIODO_PADRAO);
   const allowed = canViewRelatorioVendas(session?.cargo);
   // Never call the RPC for an unauthorized cargo (it would reject it anyway).
-  const query = useVendasMetricasMtd(
+  const query = useVendasMetricasPeriodo(
     allowed ? (session?.funcionario_id ?? null) : null,
     allowed ? (session?.session_token ?? null) : null,
+    periodo,
   );
 
   useEffect(() => {
@@ -77,6 +83,8 @@ function RelatorioVendasPage() {
             </p>
           )}
         </div>
+
+        <VendasPeriodoSeletor value={periodo} onChange={setPeriodo} />
 
         <VendasRelatorioConteudo
           isLoading={query.isLoading}
