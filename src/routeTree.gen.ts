@@ -28,6 +28,7 @@ import { Route as OperacoesEstoqueOrganizacaoSemanalRouteImport } from './routes
 import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
+import { Route as VendasRelatorioRouteImport } from './routes/vendas/relatorio'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -133,6 +134,11 @@ const OperacoesMensagensWhatsappRoute =
     path: '/operacoes/mensagens-whatsapp',
     getParentRoute: () => rootRouteImport,
   } as any)
+const VendasRelatorioRoute = VendasRelatorioRouteImport.update({
+  id: '/vendas/relatorio',
+  path: '/vendas/relatorio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/vendas/relatorio': typeof VendasRelatorioRoute
   '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/vendas/relatorio': typeof VendasRelatorioRoute
   '/administrativo': typeof AdministrativoIndexRoute
   '/conhecimento-cultura': typeof ConhecimentoCulturaIndexRoute
   '/operacoes': typeof OperacoesIndexRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/operacoes/limpeza': typeof OperacoesLimpezaRoute
   '/operacoes/links-importantes': typeof OperacoesLinksImportantesRoute
   '/operacoes/mensagens-whatsapp': typeof OperacoesMensagensWhatsappRoute
+  '/vendas/relatorio': typeof VendasRelatorioRoute
   '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/vendas/relatorio'
     | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/vendas/relatorio'
     | '/administrativo'
     | '/conhecimento-cultura'
     | '/operacoes'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/operacoes/limpeza'
     | '/operacoes/links-importantes'
     | '/operacoes/mensagens-whatsapp'
+    | '/vendas/relatorio'
     | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   OperacoesLimpezaRoute: typeof OperacoesLimpezaRoute
   OperacoesLinksImportantesRoute: typeof OperacoesLinksImportantesRoute
   OperacoesMensagensWhatsappRoute: typeof OperacoesMensagensWhatsappRoute
+  VendasRelatorioRoute: typeof VendasRelatorioRoute
   AdministrativoIndexRoute: typeof AdministrativoIndexRoute
   ConhecimentoCulturaIndexRoute: typeof ConhecimentoCulturaIndexRoute
   OperacoesIndexRoute: typeof OperacoesIndexRoute
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesMensagensWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendas/relatorio': {
+      id: '/vendas/relatorio'
+      path: '/vendas/relatorio'
+      fullPath: '/vendas/relatorio'
+      preLoaderRoute: typeof VendasRelatorioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   OperacoesLimpezaRoute: OperacoesLimpezaRoute,
   OperacoesLinksImportantesRoute: OperacoesLinksImportantesRoute,
   OperacoesMensagensWhatsappRoute: OperacoesMensagensWhatsappRoute,
+  VendasRelatorioRoute: VendasRelatorioRoute,
   AdministrativoIndexRoute: AdministrativoIndexRoute,
   ConhecimentoCulturaIndexRoute: ConhecimentoCulturaIndexRoute,
   OperacoesIndexRoute: OperacoesIndexRoute,

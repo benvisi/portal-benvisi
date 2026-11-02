@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  BarChart3,
   Boxes,
   CalendarDays,
   Layers,
@@ -27,11 +28,14 @@ import {
   MENSAGENS_WHATSAPP_TITLE,
   OPERACOES_PAGE_SUBTITLE,
   OPERACOES_TITLE,
+  RELATORIO_VENDAS_CARD_DESCRIPTION,
+  RELATORIO_VENDAS_TITLE,
   VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import { canViewRelatorioVendas } from "@/lib/vendasRelatorio";
 
 export const Route = createFileRoute("/operacoes/")({
   head: () => ({
@@ -79,7 +83,8 @@ function OperacoesPage() {
         {/*
           Card order approved by the product owner (Milestone 4D QA polish):
           Escala, Mensagens para WhatsApp, Contagem de Embalagens, Links
-          Importantes. Not a hub redesign — just the ordering of the real
+          Importantes. Relatório de vendas (Gerente/Administrador only) is
+          appended after Mensagens para WhatsApp. Not a hub redesign — just the ordering of the real
           modules (Blueprint section 18).
         */}
         <div className="flex flex-col gap-4">
@@ -111,6 +116,15 @@ function OperacoesPage() {
             variant="brand-level-2"
             onClick={() => void navigate({ to: ROUTES.OPERACOES_MENSAGENS_WHATSAPP })}
           />
+          {canViewRelatorioVendas(session.cargo) && (
+            <ModuleCard
+              icon={BarChart3}
+              title={RELATORIO_VENDAS_TITLE}
+              description={RELATORIO_VENDAS_CARD_DESCRIPTION}
+              variant="brand-level-2"
+              onClick={() => void navigate({ to: ROUTES.VENDAS_RELATORIO })}
+            />
+          )}
           <ModuleCard
             icon={Boxes}
             title={CONTAGEM_EMBALAGENS_TITLE}
