@@ -1024,14 +1024,14 @@ export function getEstoqueOrganizacaoSyncPendenciaMessage(semanaFormatada: strin
 
 // Trello #12: Vendas hub + Relatório de vendas (Slice B, mock data only).
 export const LISTA_DA_VEZ_CARD_DESCRIPTION = "Veja a ordem de atendimento da equipe.";
-export const VENDAS_TITLE = "Vendas";
-export const VENDAS_DASHBOARD_SUBTITLE = "Ferramentas para apoiar as vendas.";
-export const VENDAS_PAGE_SUBTITLE = "Ferramentas de consulta e apoio às vendas da loja.";
-export const VOLTAR_A_VENDAS_LABEL = "Voltar a Vendas";
 export const CONSULTA_ESTOQUE_CARD_DESCRIPTION = "Consulte produtos, cores e tamanhos disponíveis.";
 export const RELATORIO_VENDAS_TITLE = "Relatório de vendas";
 export const RELATORIO_VENDAS_CARD_DESCRIPTION = "Acompanhe as vendas da equipe no mês atual.";
 export const RELATORIO_VENDAS_PAGE_SUBTITLE = "Vendas da equipe no mês atual (acumulado do mês).";
+export const RELATORIO_VENDAS_ERRO_MESSAGE =
+  "Não foi possível carregar o relatório. Tente novamente.";
+export const RELATORIO_VENDAS_VAZIO_MESSAGE = "Ainda não há vendas registradas neste mês.";
+export const RELATORIO_VENDAS_TENTAR_NOVAMENTE_LABEL = "Tentar novamente";
 export const RELATORIO_VENDAS_OUTROS_LABEL = "Outros";
 export const RELATORIO_VENDAS_TOTAL_LABEL = "Total";
 export const RELATORIO_VENDAS_COLUMNS = [

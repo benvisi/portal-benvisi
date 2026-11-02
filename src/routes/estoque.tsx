@@ -17,7 +17,7 @@ import {
   ESTOQUE_SEM_SNAPSHOT_MESSAGE,
   getEstoqueAtualizadoLabel,
   TERMOS_BUSCA_ADMIN_LINK_LABEL,
-  VOLTAR_A_VENDAS_LABEL,
+  VOLTAR_AO_PAINEL_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useBuscarProdutosEstoque } from "@/hooks/useBuscarProdutosEstoque";
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/estoque")({
 // Lista da Vez (useRequireSession is the only gate). All ordering, colours,
 // applicable sizes, quantities and freshness come from the backend RPCs.
 function ConsultaEstoquePage() {
-  const goBack = useGoBack(ROUTES.VENDAS);
+  const goBack = useGoBack(ROUTES.DASHBOARD);
   const { session, ready } = useRequireSession();
   const sessionToken = session?.session_token ?? null;
 
@@ -151,7 +151,7 @@ function ConsultaEstoquePage() {
             size="icon"
             className="min-touch shrink-0"
             onClick={goBack}
-            aria-label={VOLTAR_A_VENDAS_LABEL}
+            aria-label={VOLTAR_AO_PAINEL_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Button>

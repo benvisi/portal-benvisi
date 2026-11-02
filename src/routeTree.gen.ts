@@ -28,7 +28,6 @@ import { Route as OperacoesEstoqueOrganizacaoSemanalRouteImport } from './routes
 import { Route as OperacoesLimpezaRouteImport } from './routes/operacoes/limpeza'
 import { Route as OperacoesLinksImportantesRouteImport } from './routes/operacoes/links-importantes'
 import { Route as OperacoesMensagensWhatsappRouteImport } from './routes/operacoes/mensagens-whatsapp'
-import { Route as VendasIndexRouteImport } from './routes/vendas/index'
 import { Route as VendasRelatorioRouteImport } from './routes/vendas/relatorio'
 
 const IndexRoute = IndexRouteImport.update({
@@ -135,11 +134,6 @@ const OperacoesMensagensWhatsappRoute =
     path: '/operacoes/mensagens-whatsapp',
     getParentRoute: () => rootRouteImport,
   } as any)
-const VendasIndexRoute = VendasIndexRouteImport.update({
-  id: '/vendas/',
-  path: '/vendas/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const VendasRelatorioRoute = VendasRelatorioRouteImport.update({
   id: '/vendas/relatorio',
   path: '/vendas/relatorio',
@@ -167,7 +161,6 @@ export interface FileRoutesByFullPath {
   '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
-  '/vendas/': typeof VendasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -190,7 +183,6 @@ export interface FileRoutesByTo {
   '/administrativo': typeof AdministrativoIndexRoute
   '/conhecimento-cultura': typeof ConhecimentoCulturaIndexRoute
   '/operacoes': typeof OperacoesIndexRoute
-  '/vendas': typeof VendasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -214,7 +206,6 @@ export interface FileRoutesById {
   '/administrativo/': typeof AdministrativoIndexRoute
   '/conhecimento-cultura/': typeof ConhecimentoCulturaIndexRoute
   '/operacoes/': typeof OperacoesIndexRoute
-  '/vendas/': typeof VendasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -239,7 +230,6 @@ export interface FileRouteTypes {
     | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
-    | '/vendas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -262,7 +252,6 @@ export interface FileRouteTypes {
     | '/administrativo'
     | '/conhecimento-cultura'
     | '/operacoes'
-    | '/vendas'
   id:
     | '__root__'
     | '/'
@@ -285,7 +274,6 @@ export interface FileRouteTypes {
     | '/administrativo/'
     | '/conhecimento-cultura/'
     | '/operacoes/'
-    | '/vendas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -309,7 +297,6 @@ export interface RootRouteChildren {
   AdministrativoIndexRoute: typeof AdministrativoIndexRoute
   ConhecimentoCulturaIndexRoute: typeof ConhecimentoCulturaIndexRoute
   OperacoesIndexRoute: typeof OperacoesIndexRoute
-  VendasIndexRoute: typeof VendasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -447,13 +434,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacoesMensagensWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vendas/': {
-      id: '/vendas/'
-      path: '/vendas'
-      fullPath: '/vendas/'
-      preLoaderRoute: typeof VendasIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/vendas/relatorio': {
       id: '/vendas/relatorio'
       path: '/vendas/relatorio'
@@ -487,7 +467,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdministrativoIndexRoute: AdministrativoIndexRoute,
   ConhecimentoCulturaIndexRoute: ConhecimentoCulturaIndexRoute,
   OperacoesIndexRoute: OperacoesIndexRoute,
-  VendasIndexRoute: VendasIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

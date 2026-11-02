@@ -1,13 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import {
-  BookOpen,
-  ClipboardCheck,
-  ListOrdered,
-  Loader2,
-  ShoppingBag,
-  Settings,
-} from "lucide-react";
+import { BookOpen, ClipboardCheck, ListOrdered, Loader2, Package, Settings } from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -16,6 +9,8 @@ import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
 import {
   ADMINISTRATOR_CARGO,
+  CONSULTA_ESTOQUE_CARD_DESCRIPTION,
+  CONSULTA_ESTOQUE_TITLE,
   CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
   CONHECIMENTO_CULTURA_TITLE,
   DASHBOARD_WELCOME_MESSAGE,
@@ -23,8 +18,6 @@ import {
   LISTA_DA_VEZ_TITLE,
   OPERACOES_DASHBOARD_SUBTITLE,
   OPERACOES_TITLE,
-  VENDAS_DASHBOARD_SUBTITLE,
-  VENDAS_TITLE,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { getManausGreeting } from "@/lib/datetime";
@@ -148,11 +141,11 @@ function DashboardPage() {
             onClick={() => void navigate({ to: ROUTES.ATENDIMENTO })}
           />
           <ModuleCard
-            icon={ShoppingBag}
-            title={VENDAS_TITLE}
-            description={VENDAS_DASHBOARD_SUBTITLE}
+            icon={Package}
+            title={CONSULTA_ESTOQUE_TITLE}
+            description={CONSULTA_ESTOQUE_CARD_DESCRIPTION}
             variant="brand"
-            onClick={() => void navigate({ to: ROUTES.VENDAS })}
+            onClick={() => void navigate({ to: ROUTES.ESTOQUE })}
           />
           <ModuleCard
             icon={ClipboardCheck}

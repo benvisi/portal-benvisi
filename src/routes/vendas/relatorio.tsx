@@ -1,19 +1,24 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
-import { VendasRelatorioTabela } from "@/components/vendas/VendasRelatorioTabela";
+import { VendasRelatorioConteudo } from "@/components/vendas/VendasRelatorioConteudo";
 import { Button } from "@/components/ui/button";
 import {
   RELATORIO_VENDAS_PAGE_SUBTITLE,
   RELATORIO_VENDAS_TITLE,
-  VOLTAR_A_VENDAS_LABEL,
+  VOLTAR_A_OPERACOES_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useVendasMetricasMtd } from "@/hooks/useVendasMetricasMtd";
-import { formatVendasAtualizadoEm } from "@/lib/vendasRelatorio";
+import {
+  canViewRelatorioVendas,
+  formatVendasAtualizadoEm,
+  getVendasAtualizadoEm,
+} from "@/lib/vendasRelatorio";
 
 export const Route = createFileRoute("/vendas/relatorio")({
   head: () => ({
@@ -25,16 +30,27 @@ export const Route = createFileRoute("/vendas/relatorio")({
   component: RelatorioVendasPage,
 });
 
-// Narrow side padding on phones so the first five columns fit the portrait
-// viewport; the table itself is not capped to phone width.
+// Narrow side padding on phones; the table itself is not capped to phone width.
 function RelatorioVendasPage() {
-  const goBack = useGoBack(ROUTES.VENDAS);
+  const navigate = useNavigate();
+  const goBack = useGoBack(ROUTES.OPERACOES);
   const { session, ready } = useRequireSession();
-  const query = useVendasMetricasMtd();
+  const allowed = canViewRelatorioVendas(session?.cargo);
+  // Never call the RPC for an unauthorized cargo (it would reject it anyway).
+  const query = useVendasMetricasMtd(
+    allowed ? (session?.funcionario_id ?? null) : null,
+    allowed ? (session?.session_token ?? null) : null,
+  );
 
-  if (!ready || !session) return null;
+  useEffect(() => {
+    if (ready && session && !allowed) {
+      void navigate({ to: ROUTES.DASHBOARD, replace: true });
+    }
+  }, [ready, session, allowed, navigate]);
 
-  const atualizadoEm = query.data?.[0]?.atualizado_em;
+  if (!ready || !session || !allowed) return null;
+
+  const atualizadoEm = query.data ? getVendasAtualizadoEm(query.data) : null;
 
   return (
     <main className="min-h-screen bg-background px-1.5 py-8">
@@ -46,7 +62,7 @@ function RelatorioVendasPage() {
             size="icon"
             className="min-touch shrink-0"
             onClick={goBack}
-            aria-label={VOLTAR_A_VENDAS_LABEL}
+            aria-label={VOLTAR_A_OPERACOES_LABEL}
           >
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Button>
@@ -62,17 +78,12 @@ function RelatorioVendasPage() {
           )}
         </div>
 
-        {query.isLoading && (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
-          </div>
-        )}
-        {query.isError && (
-          <p className="px-2 text-sm text-destructive">
-            Não foi possível carregar o relatório. Tente novamente.
-          </p>
-        )}
-        {query.data && <VendasRelatorioTabela linhas={query.data} />}
+        <VendasRelatorioConteudo
+          isLoading={query.isLoading}
+          isError={query.isError}
+          linhas={query.data}
+          onRetry={() => void query.refetch()}
+        />
       </div>
 
       <AuthUtilityBar />

@@ -5,6 +5,7 @@ import {
   formatBrlWhole,
   formatInteger,
   formatPa,
+  getVendasLinhaLabel,
   organizarLinhasVendas,
   type VendasMetricasLinha,
 } from "@/lib/vendasRelatorio";
@@ -57,7 +58,7 @@ function Linha({ linha, kind }: { linha: VendasMetricasLinha; kind: RowKind }) {
           COLUMN_WIDTHS[0],
         )}
       >
-        {linha.vendedor_nome}
+        {getVendasLinhaLabel(linha)}
       </th>
       {valores.map((valor, i) => (
         <td
