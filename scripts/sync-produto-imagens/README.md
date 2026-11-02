@@ -62,11 +62,11 @@ own output for exact results on this machine.
 
 ## Dependencies (current versions, pinned loosely via `^`)
 
-| package | role | tier |
-| --- | --- | --- |
-| `playwright` | headed Chromium automation against lacoste.com.br | acquisition |
-| `sharp` | image resize/optimize (webp) before publish | publish |
-| `@anthropic-ai/sdk` | bounded vision calls for ALL candidate visual judgments structured metadata can't answer — person/model present, complete-vs-crop, likely front/back/other view, and whether a plausible secondary view is materially useful — advisory candidate scoring only, never auto-publishing | scoring |
+| package             | role                                                                                                                                                                                                                                                                                  | tier        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `playwright`        | headed Chromium automation against lacoste.com.br                                                                                                                                                                                                                                     | acquisition |
+| `sharp`             | image resize/optimize (webp) before publish                                                                                                                                                                                                                                           | publish     |
+| `@anthropic-ai/sdk` | bounded vision calls for ALL candidate visual judgments structured metadata can't answer — person/model present, complete-vs-crop, likely front/back/other view, and whether a plausible secondary view is materially useful — advisory candidate scoring only, never auto-publishing | scoring     |
 
 A local TensorFlow (`tfjs-node` + `coco-ssd`) person-detection tier was
 evaluated and dropped before this dependency set was finalized: `tfjs-node`
@@ -131,9 +131,11 @@ Approval and publication are separate stages with separate actors:
    and `rejeitar_candidato_imagem(token, candidato, observacao)`. The reviewer
    comes only from the session token and must have
    `funcionarios.pode_gerenciar_imagens_produto`. Indices refer to the stored
-   gallery and may differ from the AI recommendation. Choosing an image the AI
-   flagged (person / not product-only) needs `confirmar_divergencia = true`
-   and a note. `scoring_notes.human_reviewed` is never read.
+   gallery and may differ from the AI recommendation, but every chosen index
+   (primary and secondary) must have a stored AI evaluation with
+   `has_person = false` and `product_only_still = true`. There is no override:
+   `confirmar_divergencia` is kept only for signature compatibility and has no
+   effect. `scoring_notes.human_reviewed` is never read.
    Approval creates a `pendente` publication with DB-assigned immutable paths:
    `{produto}/{cor}/{publicacao_id}/{principal|secundaria}.webp`.
 2. **Publication (this worker, service_role).**
@@ -149,6 +151,17 @@ Approval and publication are separate stages with separate actors:
    `produto-imagens-publicadas` with `upsert: false`. The set goes live in one
    transaction (`ativar_publicacao_imagem`), superseding the previous set for
    that product/colour.
+
+**Bucket.** `produto-imagens-publicadas` is provisioned once per project
+(not by a migration): public read, `image/webp` only, 2 MB file limit, and no
+`storage.objects` policies, so only `service_role` can upload, overwrite,
+delete or list. Production was provisioned on 2026-11-02:
+
+```sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('produto-imagens-publicadas', 'produto-imagens-publicadas', true, 2097152, array['image/webp'])
+on conflict (id) do nothing;
+```
 
 **Integrity.** The approved URL must carry Salesforce Commerce Cloud's
 content-version token (`/dw<hex>/`) and the approved colour code in its file
