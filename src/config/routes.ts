@@ -4,6 +4,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   ATENDIMENTO: "/atendimento",
   ESTOQUE: "/estoque",
+  VENDAS_RELATORIO: "/vendas/relatorio",
   ADMINISTRATIVO: "/administrativo",
   ADMINISTRATIVO_ESCALA: "/administrativo/escala",
   ADMINISTRATIVO_ATENDIMENTO: "/administrativo/atendimento",

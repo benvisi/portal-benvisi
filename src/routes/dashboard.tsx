@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { BookOpen, ClipboardCheck, Loader2, Package, Settings, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, ListOrdered, Loader2, Package, Settings } from "lucide-react";
 
 import { PendingChecklistIndicator } from "@/components/checklist/PendingChecklistIndicator";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -9,9 +9,13 @@ import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { ShiftStartCard } from "@/components/dashboard/ShiftStartCard";
 import {
   ADMINISTRATOR_CARGO,
+  CONSULTA_ESTOQUE_CARD_DESCRIPTION,
+  CONSULTA_ESTOQUE_TITLE,
   CONHECIMENTO_CULTURA_DASHBOARD_SUBTITLE,
   CONHECIMENTO_CULTURA_TITLE,
   DASHBOARD_WELCOME_MESSAGE,
+  LISTA_DA_VEZ_CARD_DESCRIPTION,
+  LISTA_DA_VEZ_TITLE,
   OPERACOES_DASHBOARD_SUBTITLE,
   OPERACOES_TITLE,
 } from "@/config/constants";
@@ -130,16 +134,16 @@ function DashboardPage() {
           )}
 
           <ModuleCard
-            icon={Users}
-            title="Atendimento"
-            description="Atendimento ao cliente e apoio às vendas."
+            icon={ListOrdered}
+            title={LISTA_DA_VEZ_TITLE}
+            description={LISTA_DA_VEZ_CARD_DESCRIPTION}
             variant="brand"
             onClick={() => void navigate({ to: ROUTES.ATENDIMENTO })}
           />
           <ModuleCard
             icon={Package}
-            title="Estoque"
-            description="Consulte a disponibilidade de produtos e tamanhos."
+            title={CONSULTA_ESTOQUE_TITLE}
+            description={CONSULTA_ESTOQUE_CARD_DESCRIPTION}
             variant="brand"
             onClick={() => void navigate({ to: ROUTES.ESTOQUE })}
           />
