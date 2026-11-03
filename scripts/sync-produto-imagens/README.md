@@ -171,7 +171,7 @@ and WebP SHA-256 are recorded per file.
 **Retries.** Files already recorded are skipped. An object that already exists
 is accepted only if byte-identical (crash after upload); otherwise the run
 refuses and never overwrites. Failures increment `tentativas`/`ultimo_erro`
-and the set stays `pendente` for the next run.
+and the set stays `pendente`; see "Scheduled runs" below for the retry limits.
 
 **Revocation / replacement.** `revogar_publicacao_imagem(token, publicacao, motivo)`
 hides a set from Consulta immediately. A newer approval replaces the active
@@ -193,3 +193,57 @@ select a.storage_path, p.status, p.encerrado_em
 **Reviewer previews.** Lacoste CDN gallery URLs load directly in a normal
 browser `<img>` (verified from a cookieless browser on a foreign origin), so
 the review UI can show them without storing unapproved images anywhere.
+
+## Scheduled runs (Windows Task Scheduler)
+
+Validated on the development PC: a task set to "Run only when user is logged
+on" launches headed Chromium and fetches a Lacoste CDN image both with the
+desktop unlocked and locked. **Not** expected to work when the user is logged
+out or before the first login after a reboot (no interactive desktop). The
+CDN serves images as AVIF to Chromium; `toWebp` decodes it (covered by
+`test/avif.test.mjs`).
+
+### Safeguards
+
+| concern          | behavior                                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| overlapping runs | `--persist` takes a lock file (`PUBLICAR_LOCK_FILE`, default `%TEMP%\portal-benvisi-publicar.lock`). A second run logs "outra execução em andamento" and exits 0. A dead or expired holder is taken over. |
+| whole-run limit  | `PUBLICAR_MAX_RUNTIME_MIN` (default 20): close Chromium, exit 124; 30 s later force exit. The wrapper adds an outer limit that kills the whole process tree.                                              |
+| hung item        | `PUBLICAR_ITEM_TIMEOUT_SEC` (default 180): the item is recorded as a failed attempt and the run stops, so one bad item cannot block the queue head forever.                                               |
+| interruption     | Ctrl+C / SIGTERM close Chromium and release the lock. A hard kill leaves a stale lock that the next run recovers. Interrupted work costs no attempt and resumes safely (immutable paths, sha checks).     |
+| empty queue      | No browser, no execution row, exit 0.                                                                                                                                                                     |
+| dry-run          | Never takes the lock, launches a browser or writes.                                                                                                                                                       |
+| bounded retries  | Migration `20261103_001`: failure 1-4 back off 15 min, 1 h, 4 h, 6 h; failure 5 is permanent (`falha_permanente_em`). The approval stays intact and the publication stays `pendente`.                     |
+
+Exit codes: 0 ok / nothing to do / another run active; 1 run-level error;
+2 a publication failed (recorded, will retry unless permanent); 124 time limit;
+130/143 interrupted; 3 wrapper problem.
+
+### Wrapper
+
+`run-publicar.ps1` runs the worker, appends timestamped output and the exit code
+to `%LOCALAPPDATA%\PortalBenvisi\logs\publicar-YYYYMMDD.log` (30 days kept) and
+returns the worker's exit code. It is **dry-run unless `-Persist` is given**.
+Paths are parameters or `PUBLICAR_WORKER_DIR`, `PUBLICAR_LOG_DIR`,
+`PUBLICAR_NODE`, so the same script works on another machine.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File run-publicar.ps1            # dry-run
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File run-publicar.ps1 -Persist   # publishes
+```
+
+Recommended task settings (not created by this repo): run as the interactive
+user, "Run only when user is logged on", not elevated, repeat every 15 minutes,
+do not start a new instance, stop after 30 minutes, start when available.
+
+### Finding and re-queuing permanently failed publications
+
+```sql
+select p.id, p.produto, p.cor_codigo, p.tentativas, p.ultimo_erro, p.ultimo_erro_em
+  from produto_imagem_publicacoes p
+ where p.status = 'pendente' and p.falha_permanente_em is not null
+ order by p.ultimo_erro_em;
+
+-- after fixing the cause (service_role / SQL editor only):
+select reenfileirar_publicacao_imagem('<publicacao id>');
+```

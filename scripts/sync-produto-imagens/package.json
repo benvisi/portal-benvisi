@@ -12,7 +12,7 @@
     "acquire": "node src/acquire.mjs",
     "score": "node src/score.mjs",
     "publicar": "node src/publish.mjs",
-    "test": "node --test test/scoring.test.mjs test/score.test.mjs test/persist.test.mjs test/publishing.test.mjs test/migration-4b.test.mjs"
+    "test": "node --test test/scoring.test.mjs test/score.test.mjs test/persist.test.mjs test/publishing.test.mjs test/migration-4b.test.mjs test/migration-retry.test.mjs test/runlock.test.mjs test/runtime.test.mjs test/avif.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
