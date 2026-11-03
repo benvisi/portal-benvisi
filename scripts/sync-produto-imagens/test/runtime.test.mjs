@@ -6,7 +6,6 @@ test("config defaults and overrides", () => {
   const d = readRuntimeConfig({});
   assert.equal(d.maxRuntimeMs, 20 * 60_000);
   assert.equal(d.itemTimeoutMs, 180_000);
-  assert.ok(d.lockStaleMs > d.maxRuntimeMs);
   assert.match(d.lockFile, /portal-benvisi-publicar\.lock$/);
   const c = readRuntimeConfig({
     PUBLICAR_MAX_RUNTIME_MIN: "5",

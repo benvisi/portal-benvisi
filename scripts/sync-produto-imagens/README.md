@@ -205,15 +205,15 @@ CDN serves images as AVIF to Chromium; `toWebp` decodes it (covered by
 
 ### Safeguards
 
-| concern          | behavior                                                                                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| overlapping runs | `--persist` takes a lock file (`PUBLICAR_LOCK_FILE`, default `%TEMP%\portal-benvisi-publicar.lock`). A second run logs "outra execução em andamento" and exits 0. A dead or expired holder is taken over. |
-| whole-run limit  | `PUBLICAR_MAX_RUNTIME_MIN` (default 20): close Chromium, exit 124; 30 s later force exit. The wrapper adds an outer limit that kills the whole process tree.                                              |
-| hung item        | `PUBLICAR_ITEM_TIMEOUT_SEC` (default 180): the item is recorded as a failed attempt and the run stops, so one bad item cannot block the queue head forever.                                               |
-| interruption     | Ctrl+C / SIGTERM close Chromium and release the lock. A hard kill leaves a stale lock that the next run recovers. Interrupted work costs no attempt and resumes safely (immutable paths, sha checks).     |
-| empty queue      | No browser, no execution row, exit 0.                                                                                                                                                                     |
-| dry-run          | Never takes the lock, launches a browser or writes.                                                                                                                                                       |
-| bounded retries  | Migration `20261103_001`: failure 1-4 back off 15 min, 1 h, 4 h, 6 h; failure 5 is permanent (`falha_permanente_em`). The approval stays intact and the publication stays `pendente`.                     |
+| concern          | behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| overlapping runs | `--persist` takes a lock file (`PUBLICAR_LOCK_FILE`, default `%TEMP%\portal-benvisi-publicar.lock`) holding the owner PID. A second run logs "outra execução em andamento" and exits 0. A lock whose owner is **alive is never taken over, however old**; a dead owner's lock is taken over (serialized by a guard folder, so two runs cannot both win). If a crash left a lock whose PID was reused by an unrelated program, delete the lock file named in the log message. |
+| whole-run limit  | `PUBLICAR_MAX_RUNTIME_MIN` (default 20): close Chromium, exit 124; 30 s later force exit. The wrapper adds an outer limit that kills the whole process tree.                                                                                                                                                                                                                                                                                                                 |
+| hung item        | `PUBLICAR_ITEM_TIMEOUT_SEC` (default 180): the item is recorded as a failed attempt and the run stops, so one bad item cannot block the queue head forever.                                                                                                                                                                                                                                                                                                                  |
+| interruption     | Ctrl+C / SIGTERM close Chromium and release the lock. A hard kill leaves a stale lock that the next run recovers. Interrupted work costs no attempt and resumes safely (immutable paths, sha checks).                                                                                                                                                                                                                                                                        |
+| empty queue      | No browser, no execution row, exit 0.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| dry-run          | Never takes the lock, launches a browser or writes.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| bounded retries  | Migration `20261103_001`: failure 1-4 back off 15 min, 1 h, 4 h, 6 h; failure 5 is permanent (`falha_permanente_em`). The approval stays intact and the publication stays `pendente`.                                                                                                                                                                                                                                                                                        |
 
 Exit codes: 0 ok / nothing to do / another run active; 1 run-level error;
 2 a publication failed (recorded, will retry unless permanent); 124 time limit;
@@ -232,9 +232,36 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File run-publicar.ps1        
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File run-publicar.ps1 -Persist   # publishes
 ```
 
-Recommended task settings (not created by this repo): run as the interactive
-user, "Run only when user is logged on", not elevated, repeat every 15 minutes,
-do not start a new instance, stop after 30 minutes, start when available.
+### Manual publication
+
+Double-click **`publicar-agora.cmd`** ("Publicar imagens agora"). It only starts
+`run-publicar.ps1 -Persist`, so logging, the lock and the time limits are the
+same as for the scheduled run, then prints the outcome in Portuguese (done /
+a publication failed and will retry / time limit / error) and where the log
+is. If a scheduled run is in progress, the manual run exits without doing
+anything; nothing is duplicated.
+
+### Operating model
+
+- **One automatic run daily at 03:00**, plus **manual runs at any time**. Both
+  go through the same wrapper and the same single-instance lock.
+- **Missed runs lose nothing.** Approved publications stay queued
+  (`pendente`) and are picked up by the next run, scheduled or manual.
+- **Windows must be awake with the user logged in** (screen lock is fine).
+  There is no auto-login and no change to Windows security settings; if the PC
+  is asleep, off or logged out at 03:00, the run is simply missed.
+- A publication that fails is retried on later runs with backoff (15 min, 1 h,
+  4 h, 6 h) and parked after the 5th failure (see below). With one run a day,
+  a failed item is therefore retried about once a day.
+
+Task settings to use when the task is created (it is **not** created or
+activated by this repo): trigger daily at 03:00; run as the interactive user,
+"Run only when user is logged on"; not elevated; do not start a new instance;
+stop after 30 minutes; "start when available" **off** (a late catch-up run
+while someone is using the PC is not wanted - use the manual shortcut instead);
+do not wake the computer. Action: `powershell.exe -NoProfile
+-ExecutionPolicy Bypass -File "<worker folder>
+un-publicar.ps1" -Persist`.
 
 ### Finding and re-queuing permanently failed publications
 

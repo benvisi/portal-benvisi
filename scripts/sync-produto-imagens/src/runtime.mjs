@@ -26,8 +26,6 @@ export function readRuntimeConfig(env = process.env) {
   return {
     maxRuntimeMs: maxRuntimeMin * 60_000,
     itemTimeoutMs: itemTimeoutSec * 1000,
-    // The lock is considered stale after the longest legitimate run plus slack.
-    lockStaleMs: maxRuntimeMin * 60_000 + 5 * 60_000,
     lockFile: env.PUBLICAR_LOCK_FILE || path.join(os.tmpdir(), "portal-benvisi-publicar.lock"),
   };
 }

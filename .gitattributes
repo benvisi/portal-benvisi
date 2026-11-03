@@ -5,3 +5,6 @@
 
 # Explicitly mark known binary assets so they are never treated as text.
 *.ico binary
+
+# Windows batch launchers must keep CRLF to parse reliably in cmd.exe.
+*.cmd text eol=crlf

@@ -62,9 +62,13 @@ async function main() {
     return;
   }
 
-  const lock = acquireRunLock(config.lockFile, { staleMs: config.lockStaleMs });
+  const lock = acquireRunLock(config.lockFile);
   if (!lock.acquired) {
-    console.log(stamp(`outra execução em andamento (pid ${lock.holder?.pid}); nada a fazer`));
+    console.log(
+      stamp(
+        `outra execução em andamento (pid ${lock.holder?.pid}); nada a fazer. Lock: ${lock.file}`,
+      ),
+    );
     return;
   }
 
