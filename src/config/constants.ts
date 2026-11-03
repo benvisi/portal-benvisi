@@ -1042,6 +1042,33 @@ export const RELATORIO_VENDAS_PERIODOS = [
 ] as const;
 export const RELATORIO_VENDAS_PERIODO_PADRAO = "hoje";
 export const RELATORIO_VENDAS_PERIODO_ARIA_LABEL = "Período do relatório";
+// Views inside Relatório de vendas: salesperson table vs. store-level comparison.
+export const RELATORIO_VENDAS_VISOES = [
+  { value: "equipe", label: "Equipe" },
+  { value: "comparativo", label: "Comparativo" },
+] as const;
+export const RELATORIO_VENDAS_VISAO_PADRAO = "equipe";
+export const RELATORIO_VENDAS_VISAO_ARIA_LABEL = "Visão do relatório";
+export const RELATORIO_VENDAS_COMPARATIVO_SUBTITLE =
+  "Comparativo da loja entre anos no período selecionado.";
+export const RELATORIO_VENDAS_INCLUIR_HOJE_LABEL = "Incluir hoje?";
+export const RELATORIO_VENDAS_INCLUIR_HOJE_OPCOES = [
+  { value: "sim", label: "Sim" },
+  { value: "nao", label: "Não" },
+] as const;
+export const RELATORIO_VENDAS_COMPARATIVO_COLUNAS = [
+  "R$",
+  "Peças Líq.",
+  "Tickets",
+  "PA",
+  "Ticket Méd.",
+  "PM",
+] as const;
+export const RELATORIO_VENDAS_COMPARATIVO_VARIACAO_LABEL = "%Δ";
+// First-column header per period (rows are days / months / years / windows).
+export const RELATORIO_VENDAS_COMPARATIVO_ROTULO_COLUNA = "Período";
+export const RELATORIO_VENDAS_COMPARATIVO_JANELAS_TITLE = "Períodos comparados";
+export const RELATORIO_VENDAS_COMPARATIVO_ARIA_LABEL = "Comparativo de vendas da loja por ano";
 export const RELATORIO_VENDAS_OUTROS_LABEL = "Outros";
 export const RELATORIO_VENDAS_TOTAL_LABEL = "Total";
 export const RELATORIO_VENDAS_COLUMNS = [

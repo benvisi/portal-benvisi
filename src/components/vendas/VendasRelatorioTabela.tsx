@@ -21,7 +21,7 @@ const COLUMN_WIDTHS = [
   "min-w-[3.75rem]",
   "min-w-[4.25rem]",
   "min-w-[3.75rem]",
-  "min-w-[2.75rem]",
+  "min-w-[3.75rem]",
   "min-w-[5.75rem]",
   "min-w-[3.5rem]",
 ];
