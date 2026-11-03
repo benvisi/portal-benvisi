@@ -79,6 +79,19 @@ describe("gallery rendering", () => {
   });
 });
 
+describe("reviewer copy", () => {
+  it("shows the AI confidence in pt-BR and the internal-note help text", () => {
+    renderDetalhe();
+    expect(screen.getByText(/Confiança da IA: alta/)).toBeTruthy();
+    expect(screen.getByText(/Não é exibida para os vendedores/)).toBeTruthy();
+  });
+
+  it("falls back to the raw value for an unknown confidence", () => {
+    renderDetalhe(candidatoFixture({ confianca: "weird" }));
+    expect(screen.getByText(/Confiança da IA: weird/)).toBeTruthy();
+  });
+});
+
 describe("selection safeguards", () => {
   it("never lets an image containing a person be selected", () => {
     renderDetalhe();
@@ -156,7 +169,7 @@ describe("approval", () => {
 
     click(thumb(3));
     click(button("Usar como principal"));
-    fireEvent.change(screen.getByLabelText("Observação (opcional)"), {
+    fireEvent.change(screen.getByLabelText("Observação interna (opcional)"), {
       target: { value: "melhor vista" },
     });
     click(button("Aprovar seleção"));
@@ -212,7 +225,7 @@ describe("approval", () => {
 describe("rejection", () => {
   it("requires a reason before the confirm button is enabled", () => {
     renderDetalhe();
-    click(button("Rejeitar produto"));
+    click(button("Rejeitar imagens"));
     const confirmar = screen.getByText("Confirmar rejeição").closest("button") as HTMLButtonElement;
     expect(confirmar.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Motivo da rejeição (obrigatório)"), {
@@ -226,7 +239,7 @@ describe("rejection", () => {
     rpc.mockResolvedValue({ data: null, error: null });
     renderDetalhe();
 
-    click(button("Rejeitar produto"));
+    click(button("Rejeitar imagens"));
     fireEvent.change(screen.getByLabelText("Motivo da rejeição (obrigatório)"), {
       target: { value: "fotos ruins" },
     });
@@ -244,7 +257,7 @@ describe("rejection", () => {
     rpc.mockResolvedValue({ data: null, error: { message: "TRANSICAO_INVALIDA" } });
     renderDetalhe();
 
-    click(button("Rejeitar produto"));
+    click(button("Rejeitar imagens"));
     fireEvent.change(screen.getByLabelText("Motivo da rejeição (obrigatório)"), {
       target: { value: "x" },
     });

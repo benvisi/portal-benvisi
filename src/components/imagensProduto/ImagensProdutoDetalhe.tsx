@@ -16,8 +16,11 @@ import {
   IMAGENS_PRODUTO_CONFIANCA_PREFIX,
   IMAGENS_PRODUTO_COR_PREFIX,
   IMAGENS_PRODUTO_ENVIANDO_LABEL,
+  IMAGENS_PRODUTO_CONFIANCA_LABELS,
+  IMAGENS_PRODUTO_LIMITACOES_HINT,
   IMAGENS_PRODUTO_LIMITACOES_TITLE,
   IMAGENS_PRODUTO_LIMPAR_SECUNDARIA_LABEL,
+  IMAGENS_PRODUTO_OBSERVACAO_HELP,
   IMAGENS_PRODUTO_OBSERVACAO_LABEL,
   IMAGENS_PRODUTO_PRINCIPAL_LABEL,
   IMAGENS_PRODUTO_REJEITAR_LABEL,
@@ -137,7 +140,8 @@ export function ImagensProdutoDetalhe({
           )}
           {candidato.confianca && (
             <span className="text-xs text-muted-foreground">
-              {IMAGENS_PRODUTO_CONFIANCA_PREFIX} {candidato.confianca}
+              {IMAGENS_PRODUTO_CONFIANCA_PREFIX}{" "}
+              {IMAGENS_PRODUTO_CONFIANCA_LABELS[candidato.confianca] ?? candidato.confianca}
             </span>
           )}
         </div>
@@ -223,8 +227,12 @@ export function ImagensProdutoDetalhe({
             value={observacao}
             disabled={busy}
             maxLength={500}
+            aria-describedby="imagens-produto-observacao-help"
             onChange={(event) => setObservacao(event.target.value)}
           />
+          <p id="imagens-produto-observacao-help" className="text-xs text-muted-foreground">
+            {IMAGENS_PRODUTO_OBSERVACAO_HELP}
+          </p>
 
           {errorMessage && (
             <p role="alert" className="text-sm text-destructive">
@@ -256,6 +264,9 @@ export function ImagensProdutoDetalhe({
             <div className="flex flex-col gap-1 border-t border-border pt-3">
               <span className="text-xs font-semibold text-foreground">
                 {IMAGENS_PRODUTO_LIMITACOES_TITLE}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {IMAGENS_PRODUTO_LIMITACOES_HINT}
               </span>
               <ul className="list-disc pl-4 text-xs text-muted-foreground">
                 {candidato.limitacoes.map((limitacao) => (

@@ -102,7 +102,7 @@ describe("post-review state", () => {
     renderView();
 
     fireEvent.click(await screen.findByRole("button", { name: "Revisar" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rejeitar produto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rejeitar imagens" }));
     fireEvent.change(screen.getByLabelText("Motivo da rejeição (obrigatório)"), {
       target: { value: "fotos ruins" },
     });
