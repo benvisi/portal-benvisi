@@ -7,7 +7,10 @@ interface VendasVisaoSeletorProps {
   onChange: (visao: VendasVisao) => void;
 }
 
-/** Equipe (salesperson table) | Comparativo (store-level multi-year comparison). */
+/**
+ * Equipe | Comparativo as worksheet-style tabs hanging below the report: a
+ * green rule joins them to the table above and the active tab is filled green.
+ */
 export function VendasVisaoSeletor({ value, onChange }: VendasVisaoSeletorProps) {
   return (
     <Tabs
@@ -19,10 +22,14 @@ export function VendasVisaoSeletor({ value, onChange }: VendasVisaoSeletorProps)
     >
       <TabsList
         aria-label={RELATORIO_VENDAS_VISAO_ARIA_LABEL}
-        className="grid h-auto w-full grid-cols-2 gap-1"
+        className="h-auto w-full justify-start gap-1 rounded-none border-t-2 border-brand bg-transparent p-0"
       >
         {RELATORIO_VENDAS_VISOES.map((visao) => (
-          <TabsTrigger key={visao.value} value={visao.value} className="min-h-11">
+          <TabsTrigger
+            key={visao.value}
+            value={visao.value}
+            className="min-h-11 rounded-b-lg rounded-t-none bg-muted px-5 text-muted-foreground data-[state=active]:bg-brand data-[state=active]:text-brand-foreground data-[state=active]:shadow-none"
+          >
             {visao.label}
           </TabsTrigger>
         ))}

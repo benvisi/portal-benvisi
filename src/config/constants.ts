@@ -1027,7 +1027,6 @@ export const LISTA_DA_VEZ_CARD_DESCRIPTION = "Veja a ordem de atendimento da equ
 export const CONSULTA_ESTOQUE_CARD_DESCRIPTION = "Consulte produtos, cores e tamanhos disponíveis.";
 export const RELATORIO_VENDAS_TITLE = "Relatório de vendas";
 export const RELATORIO_VENDAS_CARD_DESCRIPTION = "Acompanhe as vendas e indicadores da equipe.";
-export const RELATORIO_VENDAS_PAGE_SUBTITLE = "Vendas da equipe no período selecionado.";
 export const RELATORIO_VENDAS_ERRO_MESSAGE =
   "Não foi possível carregar o relatório. Tente novamente.";
 export const RELATORIO_VENDAS_VAZIO_MESSAGE = "Ainda não há vendas registradas neste período.";
@@ -1038,7 +1037,7 @@ export const RELATORIO_VENDAS_PERIODOS = [
   { value: "hoje", label: "Hoje" },
   { value: "mes", label: "Mês" },
   { value: "ano", label: "Ano" },
-  { value: "ultimos_12_meses", label: "Últimos 12 meses" },
+  { value: "ultimos_12_meses", label: "12M" },
 ] as const;
 export const RELATORIO_VENDAS_PERIODO_PADRAO = "hoje";
 export const RELATORIO_VENDAS_PERIODO_ARIA_LABEL = "Período do relatório";
@@ -1049,13 +1048,7 @@ export const RELATORIO_VENDAS_VISOES = [
 ] as const;
 export const RELATORIO_VENDAS_VISAO_PADRAO = "equipe";
 export const RELATORIO_VENDAS_VISAO_ARIA_LABEL = "Visão do relatório";
-export const RELATORIO_VENDAS_COMPARATIVO_SUBTITLE =
-  "Comparativo da loja entre anos no período selecionado.";
-export const RELATORIO_VENDAS_INCLUIR_HOJE_LABEL = "Incluir hoje?";
-export const RELATORIO_VENDAS_INCLUIR_HOJE_OPCOES = [
-  { value: "sim", label: "Sim" },
-  { value: "nao", label: "Não" },
-] as const;
+export const RELATORIO_VENDAS_INCLUIR_HOJE_LABEL = "Incluir hoje";
 export const RELATORIO_VENDAS_COMPARATIVO_COLUNAS = [
   "R$",
   "Peças Líq.",
@@ -1067,7 +1060,6 @@ export const RELATORIO_VENDAS_COMPARATIVO_COLUNAS = [
 export const RELATORIO_VENDAS_COMPARATIVO_VARIACAO_LABEL = "%Δ";
 // First-column header per period (rows are days / months / years / windows).
 export const RELATORIO_VENDAS_COMPARATIVO_ROTULO_COLUNA = "Período";
-export const RELATORIO_VENDAS_COMPARATIVO_JANELAS_TITLE = "Períodos comparados";
 export const RELATORIO_VENDAS_COMPARATIVO_ARIA_LABEL = "Comparativo de vendas da loja por ano";
 export const RELATORIO_VENDAS_OUTROS_LABEL = "Outros";
 export const RELATORIO_VENDAS_TOTAL_LABEL = "Total";

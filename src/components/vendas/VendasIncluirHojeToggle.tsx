@@ -1,38 +1,30 @@
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  RELATORIO_VENDAS_INCLUIR_HOJE_LABEL,
-  RELATORIO_VENDAS_INCLUIR_HOJE_OPCOES,
-} from "@/config/constants";
+import { Check } from "lucide-react";
+
+import { RELATORIO_VENDAS_INCLUIR_HOJE_LABEL } from "@/config/constants";
+import { cn } from "@/lib/utils";
 
 interface VendasIncluirHojeToggleProps {
   value: boolean;
   onChange: (incluirHoje: boolean) => void;
 }
 
-/** "Incluir hoje?" Sim | Não — the active option is the filled segment. */
+/** Independent on/off chip: green with a check when today is included (Sim), quiet when not (Não). */
 export function VendasIncluirHojeToggle({ value, onChange }: VendasIncluirHojeToggleProps) {
   return (
-    <div className="flex items-center justify-between gap-3 px-2.5">
-      <span id="vendas-incluir-hoje-label" className="text-sm font-medium text-foreground">
-        {RELATORIO_VENDAS_INCLUIR_HOJE_LABEL}
-      </span>
-      <Tabs
-        value={value ? "sim" : "nao"}
-        onValueChange={(next) => {
-          if (next === "sim" || next === "nao") onChange(next === "sim");
-        }}
-      >
-        <TabsList
-          aria-labelledby="vendas-incluir-hoje-label"
-          className="grid h-auto grid-cols-2 gap-1"
-        >
-          {RELATORIO_VENDAS_INCLUIR_HOJE_OPCOES.map((opcao) => (
-            <TabsTrigger key={opcao.value} value={opcao.value} className="min-h-11 min-w-16">
-              {opcao.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      className={cn(
+        "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        value
+          ? "border-brand bg-brand text-brand-foreground"
+          : "border-border bg-transparent text-muted-foreground",
+      )}
+    >
+      {value && <Check className="h-4 w-4" aria-hidden />}
+      {RELATORIO_VENDAS_INCLUIR_HOJE_LABEL}
+    </button>
   );
 }

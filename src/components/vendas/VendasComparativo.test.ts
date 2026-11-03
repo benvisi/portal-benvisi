@@ -61,6 +61,15 @@ describe("Equipe / Comparativo switching", () => {
     }
   });
 
+  it("styles the tabs as worksheet tabs under a green rule, filled green when active", () => {
+    const html = renderToStaticMarkup(
+      createElement(VendasVisaoSeletor, { value: "comparativo", onChange: () => {} }),
+    );
+    expect(html).toContain("border-t-2 border-brand");
+    expect(html).toContain("rounded-b-lg");
+    expect(html).toContain("data-[state=active]:bg-brand");
+  });
+
   it("reports the chosen view and ignores unknown values", () => {
     const onChange = vi.fn();
     const root = VendasVisaoSeletor({ value: "equipe", onChange }) as ReactElement<{
@@ -74,33 +83,36 @@ describe("Equipe / Comparativo switching", () => {
 });
 
 describe("Incluir hoje toggle", () => {
-  it("labels the question and makes the current state obvious", () => {
-    const sim = renderToStaticMarkup(
-      createElement(VendasIncluirHojeToggle, { value: true, onChange: () => {} }),
+  function renderToggle(value: boolean) {
+    return renderToStaticMarkup(
+      createElement(VendasIncluirHojeToggle, { value, onChange: () => {} }),
     );
-    expect(sim).toContain("Incluir hoje?");
-    expect(sim).toMatch(/data-state="active"[^>]*>Sim</);
-    expect(sim.match(/data-state="active"/g)).toHaveLength(1);
+  }
 
-    const nao = renderToStaticMarkup(
-      createElement(VendasIncluirHojeToggle, { value: false, onChange: () => {} }),
-    );
-    expect(nao).toMatch(/data-state="active"[^>]*>Não</);
-    expect(nao.match(/data-state="active"/g)).toHaveLength(1);
+  it("is an independent on/off switch: green with a check when included, quiet when not", () => {
+    const sim = renderToggle(true);
+    expect(sim).toContain("Incluir hoje");
+    expect(sim).toContain('role="switch"');
+    expect(sim).toContain('aria-checked="true"');
+    expect(sim).toContain("bg-brand");
+    expect(sim).toContain("<svg");
+
+    const nao = renderToggle(false);
+    expect(nao).toContain('aria-checked="false"');
+    expect(nao).not.toContain("bg-brand");
+    expect(nao).not.toContain("<svg");
   });
 
-  it("reports booleans, ignoring unknown values", () => {
+  it("flips the boolean on click", () => {
     const onChange = vi.fn();
-    const root = (
-      (
-        VendasIncluirHojeToggle({ value: true, onChange }) as ReactElement<{
-          children: ReactElement<{ onValueChange: (value: string) => void }>[];
-        }>
-      ).props.children as ReactElement<{ onValueChange: (value: string) => void }>[]
-    )[1];
-    root.props.onValueChange("nao");
-    root.props.onValueChange("sim");
-    root.props.onValueChange("talvez");
+    const sim = VendasIncluirHojeToggle({ value: true, onChange }) as ReactElement<{
+      onClick: () => void;
+    }>;
+    sim.props.onClick();
+    const nao = VendasIncluirHojeToggle({ value: false, onChange }) as ReactElement<{
+      onClick: () => void;
+    }>;
+    nao.props.onClick();
     expect(onChange.mock.calls.map(([v]) => v)).toEqual([false, true]);
   });
 });
@@ -156,19 +168,12 @@ describe("Comparativo table", () => {
     expect(html).toContain("min-w-[4.5rem]");
   });
 
-  it("explains the exact compared windows below the table", () => {
+  it("does not render the compared-windows footnote or date-range lines", () => {
     const html = renderConteudo();
-    expect(html).toContain("Períodos comparados");
-    expect(html).toContain("01/11/2026 – 19/11/2026");
-    expect(html).toContain("01/11/2023 – 19/11/2023");
-  });
-
-  it("describes Hoje windows as weekday dates", () => {
-    const html = renderConteudo({
-      periodo: "hoje",
-      janelas: QUATRO_ANOS.map((j) => ({ ...j, data_inicio: j.data_fim })),
-    });
-    expect(html).toContain("qui 19/11/2026");
+    expect(html).not.toContain("Períodos comparados");
+    expect(html).not.toContain("01/11/2026 – 19/11/2026");
+    expect(html).not.toContain("qui 19/11/2026");
+    expect(renderConteudo({ periodo: "hoje" })).not.toContain("qui 19/11/2026");
   });
 });
 

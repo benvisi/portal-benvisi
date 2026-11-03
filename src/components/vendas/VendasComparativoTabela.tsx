@@ -1,13 +1,11 @@
 import {
   RELATORIO_VENDAS_COMPARATIVO_ARIA_LABEL,
   RELATORIO_VENDAS_COMPARATIVO_COLUNAS,
-  RELATORIO_VENDAS_COMPARATIVO_JANELAS_TITLE,
   RELATORIO_VENDAS_COMPARATIVO_ROTULO_COLUNA,
   RELATORIO_VENDAS_COMPARATIVO_VARIACAO_LABEL,
 } from "@/config/constants";
 import { cn } from "@/lib/utils";
 import {
-  descricaoJanela,
   formatVariacao,
   montarLinhasComparativo,
   tomVariacao,
@@ -98,66 +96,52 @@ export function VendasComparativoTabela({ periodo, janelas }: VendasComparativoT
   const linhas = montarLinhasComparativo(periodo, janelas);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table
-          aria-label={RELATORIO_VENDAS_COMPARATIVO_ARIA_LABEL}
-          className="w-full border-separate border-spacing-0 text-sm"
-        >
-          <thead>
-            <tr className="bg-brand text-xs uppercase tracking-wide text-brand-foreground">
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table
+        aria-label={RELATORIO_VENDAS_COMPARATIVO_ARIA_LABEL}
+        className="w-full border-separate border-spacing-0 text-sm"
+      >
+        <thead>
+          <tr className="bg-brand text-xs uppercase tracking-wide text-brand-foreground">
+            <th
+              scope="col"
+              className={cn(
+                "sticky left-0 z-20 border-r-2 border-brand bg-brand px-2 py-2.5 text-left font-semibold",
+                PRIMEIRA_COLUNA,
+              )}
+            >
+              {RELATORIO_VENDAS_COMPARATIVO_ROTULO_COLUNA}
+            </th>
+            {RELATORIO_VENDAS_COMPARATIVO_COLUNAS.flatMap((coluna) => [
               <th
+                key={`${coluna}-valor`}
                 scope="col"
                 className={cn(
-                  "sticky left-0 z-20 border-r-2 border-brand bg-brand px-2 py-2.5 text-left font-semibold",
-                  PRIMEIRA_COLUNA,
+                  "whitespace-nowrap px-2 py-2.5 text-right font-semibold",
+                  COLUNA_VALOR,
                 )}
               >
-                {RELATORIO_VENDAS_COMPARATIVO_ROTULO_COLUNA}
-              </th>
-              {RELATORIO_VENDAS_COMPARATIVO_COLUNAS.flatMap((coluna) => [
-                <th
-                  key={`${coluna}-valor`}
-                  scope="col"
-                  className={cn(
-                    "whitespace-nowrap px-2 py-2.5 text-right font-semibold",
-                    COLUNA_VALOR,
-                  )}
-                >
-                  {coluna}
-                </th>,
-                <th
-                  key={`${coluna}-delta`}
-                  scope="col"
-                  className={cn(
-                    "whitespace-nowrap px-2 py-2.5 text-right font-semibold",
-                    COLUNA_VARIACAO,
-                  )}
-                >
-                  {RELATORIO_VENDAS_COMPARATIVO_VARIACAO_LABEL}
-                </th>,
-              ])}
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((linha) => (
-              <Linha key={linha.janela.anos_atras} linha={linha} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="px-2.5 text-xs text-muted-foreground">
-        <p className="font-medium">{RELATORIO_VENDAS_COMPARATIVO_JANELAS_TITLE}</p>
-        <ul className="mt-1 flex flex-col gap-0.5">
+                {coluna}
+              </th>,
+              <th
+                key={`${coluna}-delta`}
+                scope="col"
+                className={cn(
+                  "whitespace-nowrap px-2 py-2.5 text-right font-semibold",
+                  COLUNA_VARIACAO,
+                )}
+              >
+                {RELATORIO_VENDAS_COMPARATIVO_VARIACAO_LABEL}
+              </th>,
+            ])}
+          </tr>
+        </thead>
+        <tbody>
           {linhas.map((linha) => (
-            <li key={linha.janela.anos_atras}>
-              <span className="font-medium">{linha.rotulo}:</span>{" "}
-              {descricaoJanela(periodo, linha.janela)}
-            </li>
+            <Linha key={linha.janela.anos_atras} linha={linha} />
           ))}
-        </ul>
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }

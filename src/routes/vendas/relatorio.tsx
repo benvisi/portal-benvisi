@@ -10,8 +10,6 @@ import { VendasRelatorioConteudo } from "@/components/vendas/VendasRelatorioCont
 import { VendasVisaoSeletor } from "@/components/vendas/VendasVisaoSeletor";
 import { Button } from "@/components/ui/button";
 import {
-  RELATORIO_VENDAS_COMPARATIVO_SUBTITLE,
-  RELATORIO_VENDAS_PAGE_SUBTITLE,
   RELATORIO_VENDAS_VISAO_PADRAO,
   RELATORIO_VENDAS_TITLE,
   VOLTAR_A_OPERACOES_LABEL,
@@ -101,33 +99,22 @@ function RelatorioVendasPage() {
           <h1 className="text-xl font-semibold text-foreground">{RELATORIO_VENDAS_TITLE}</h1>
         </header>
 
-        <div className="flex flex-col gap-1 px-2.5">
-          <p className="text-sm text-muted-foreground">
-            {visao === "equipe"
-              ? RELATORIO_VENDAS_PAGE_SUBTITLE
-              : RELATORIO_VENDAS_COMPARATIVO_SUBTITLE}
-          </p>
-          {atualizadoEm && (
-            <p className="text-xs text-muted-foreground">
-              {formatVendasAtualizadoEm(atualizadoEm)}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 px-2.5">
+          <VendasPeriodoSeletor value={periodo} onChange={setPeriodo} />
+          {visao === "comparativo" && (
+            <VendasIncluirHojeToggle value={incluirHoje} onChange={setIncluirHoje} />
           )}
         </div>
 
-        <VendasVisaoSeletor value={visao} onChange={setVisao} />
-
-        <VendasPeriodoSeletor value={periodo} onChange={setPeriodo} />
-
-        {visao === "equipe" ? (
-          <VendasRelatorioConteudo
-            isLoading={query.isLoading}
-            isError={query.isError}
-            linhas={query.data}
-            onRetry={() => void query.refetch()}
-          />
-        ) : (
-          <>
-            <VendasIncluirHojeToggle value={incluirHoje} onChange={setIncluirHoje} />
+        <div className="flex flex-col">
+          {visao === "equipe" ? (
+            <VendasRelatorioConteudo
+              isLoading={query.isLoading}
+              isError={query.isError}
+              linhas={query.data}
+              onRetry={() => void query.refetch()}
+            />
+          ) : (
             <VendasComparativoConteudo
               periodo={periodo}
               isLoading={comparativo.isLoading}
@@ -135,7 +122,14 @@ function RelatorioVendasPage() {
               janelas={comparativo.data}
               onRetry={() => void comparativo.refetch()}
             />
-          </>
+          )}
+          <VendasVisaoSeletor value={visao} onChange={setVisao} />
+        </div>
+
+        {atualizadoEm && (
+          <p className="px-2.5 text-xs text-muted-foreground">
+            {formatVendasAtualizadoEm(atualizadoEm)}
+          </p>
         )}
       </div>
 

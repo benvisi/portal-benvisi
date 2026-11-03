@@ -147,9 +147,24 @@ describe("Relatório de vendas route wiring", () => {
     expect(route).toContain("allowed ? (session?.session_token ?? null) : null");
   });
 
-  it("shows the Incluir hoje toggle only in Comparativo", () => {
-    const comparativo = route.slice(route.indexOf(": ("));
-    expect(comparativo).toContain("<VendasIncluirHojeToggle");
-    expect(route.slice(0, route.indexOf(": ("))).not.toContain("<VendasIncluirHojeToggle");
+  it("shows the Incluir hoje chip only in Comparativo, next to the period tabs", () => {
+    expect(route).toContain('{visao === "comparativo" && (');
+    expect(route.match(/<VendasIncluirHojeToggle/g)).toHaveLength(1);
+    expect(route.indexOf("<VendasPeriodoSeletor")).toBeLessThan(
+      route.indexOf("<VendasIncluirHojeToggle"),
+    );
+  });
+
+  it("has no subtitle, puts the view tabs under the report and freshness at the bottom", () => {
+    expect(route).not.toContain("SUBTITLE");
+    const conteudo = route.indexOf("<VendasRelatorioConteudo");
+    const visao = route.indexOf("<VendasVisaoSeletor");
+    const atualizado = route.indexOf("formatVendasAtualizadoEm(atualizadoEm)");
+    const periodo = route.indexOf("<VendasPeriodoSeletor");
+    const barra = route.indexOf("<AuthUtilityBar");
+    expect(periodo).toBeLessThan(conteudo);
+    expect(conteudo).toBeLessThan(visao);
+    expect(visao).toBeLessThan(atualizado);
+    expect(atualizado).toBeLessThan(barra);
   });
 });
