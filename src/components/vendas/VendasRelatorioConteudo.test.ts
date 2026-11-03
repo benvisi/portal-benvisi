@@ -83,7 +83,7 @@ describe("VendasRelatorioConteudo", () => {
     for (const coluna of RELATORIO_VENDAS_COLUMNS) expect(html).toContain(coluna);
     expect(html).toContain("Renan");
     expect(html).toContain("R$9.789"); // whole reais, no space
-    expect(html).toContain("R$889,92"); // cents
+    expect(html).toContain("R$890"); // Ticket Méd., whole reais
     expect(html).toContain("1,3"); // PA, one decimal
     expect(html).not.toContain("Total da loja");
     expect(html).toContain(">Total<");
