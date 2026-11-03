@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import {
-  ConfirmarAprovacaoDialog,
-  ConfirmarRejeicaoDialog,
-} from "@/components/imagensProduto/ImagensProdutoDialogos";
+import { ConfirmarRejeicaoDialog } from "@/components/imagensProduto/ImagensProdutoDialogos";
 import {
   ImagemLacoste,
   ImagensProdutoGaleria,
@@ -83,7 +80,6 @@ export function ImagensProdutoDetalhe({
     inicial.principal ?? galeria.find((img) => img.elegivel)?.index ?? 0,
   );
   const [observacao, setObservacao] = useState("");
-  const [aprovando, setAprovando] = useState(false);
   const [rejeitando, setRejeitando] = useState(false);
   const { busy, errorMessage, aprovar, rejeitar } = useCandidatoImagemActions(sessionToken);
 
@@ -100,9 +96,8 @@ export function ImagensProdutoDetalhe({
   const definirSecundaria = (index: number) =>
     setSelecao((atual) => (atual.principal === index ? atual : { ...atual, secundaria: index }));
 
-  const confirmarAprovacao = async () => {
+  const aprovarAgora = async () => {
     const ok = await aprovar(candidato.id, selecao, observacao);
-    setAprovando(false);
     if (ok) onDecidido("aprovado");
   };
 
@@ -245,7 +240,7 @@ export function ImagensProdutoDetalhe({
               type="button"
               className="min-touch"
               disabled={!podeAprovar}
-              onClick={() => setAprovando(true)}
+              onClick={() => void aprovarAgora()}
             >
               {busy ? IMAGENS_PRODUTO_ENVIANDO_LABEL : IMAGENS_PRODUTO_APROVAR_LABEL}
             </Button>
@@ -278,12 +273,6 @@ export function ImagensProdutoDetalhe({
         </aside>
       </div>
 
-      <ConfirmarAprovacaoDialog
-        open={aprovando}
-        busy={busy}
-        onOpenChange={setAprovando}
-        onConfirmar={() => void confirmarAprovacao()}
-      />
       <ConfirmarRejeicaoDialog
         open={rejeitando}
         busy={busy}

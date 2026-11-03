@@ -82,7 +82,6 @@ describe("post-review state", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Revisar" }));
     fireEvent.click(screen.getByRole("button", { name: "Aprovar seleção" }));
-    fireEvent.click(screen.getByText("Confirmar aprovação"));
 
     expect(await screen.findByText(IMAGENS_PRODUTO_APROVADO_MESSAGE)).toBeTruthy();
     await waitFor(() => expect(screen.getByText(IMAGENS_PRODUTO_FILA_VAZIO_MESSAGE)).toBeTruthy());
@@ -123,7 +122,6 @@ describe("post-review state", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Revisar" }));
     fireEvent.click(screen.getByRole("button", { name: "Aprovar seleção" }));
-    fireEvent.click(screen.getByText("Confirmar aprovação"));
 
     expect(await screen.findByText(/já foi revisado por outra pessoa/)).toBeTruthy();
     expect(screen.queryByText(IMAGENS_PRODUTO_APROVADO_MESSAGE)).toBeNull();

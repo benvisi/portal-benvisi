@@ -1092,18 +1092,13 @@ export const IMAGENS_PRODUTO_APROVAR_LABEL = "Aprovar seleção";
 export const IMAGENS_PRODUTO_REJEITAR_LABEL = "Rejeitar imagens";
 export const IMAGENS_PRODUTO_CANCELAR_LABEL = "Cancelar";
 export const IMAGENS_PRODUTO_ENVIANDO_LABEL = "Enviando...";
-export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_TITLE = "Aprovar estas imagens?";
-export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION =
-  "A aprovação registra sua decisão, mas as imagens ainda não ficam visíveis para a equipe. A publicação é uma etapa separada.";
-export const IMAGENS_PRODUTO_APROVAR_CONFIRMAR_LABEL = "Confirmar aprovação";
 export const IMAGENS_PRODUTO_OBSERVACAO_LABEL = "Observação interna (opcional)";
 export const IMAGENS_PRODUTO_OBSERVACAO_HELP =
   "Registrada junto com a decisão, para consulta administrativa. Não é exibida para os vendedores.";
 export const IMAGENS_PRODUTO_REJEITAR_MOTIVO_LABEL = "Motivo da rejeição (obrigatório)";
 export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_TITLE = "Rejeitar estas imagens?";
 export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_LABEL = "Confirmar rejeição";
-export const IMAGENS_PRODUTO_APROVADO_MESSAGE =
-  "Imagens aprovadas. Ainda não estão publicadas para a equipe.";
+export const IMAGENS_PRODUTO_APROVADO_MESSAGE = "Imagens aprovadas! Publicação pendente.";
 export const IMAGENS_PRODUTO_REJEITADO_MESSAGE = "Imagens rejeitadas.";
 export const IMAGENS_PRODUTO_PESSOA_LABEL = "Pessoa na imagem";
 export const IMAGENS_PRODUTO_SEM_AVALIACAO_LABEL = "Sem avaliação da IA";

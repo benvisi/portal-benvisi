@@ -4,10 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION,
-  IMAGENS_PRODUTO_ERRO_INELEGIVEL_MESSAGE,
-} from "@/config/constants";
+import { IMAGENS_PRODUTO_ERRO_INELEGIVEL_MESSAGE } from "@/config/constants";
 
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
@@ -152,14 +149,13 @@ describe("selection safeguards", () => {
 });
 
 describe("approval", () => {
-  it("requires explicit confirmation and states that approval is not publication", () => {
+  it("approves immediately on click, with no confirmation modal", async () => {
+    rpc.mockResolvedValue({ data: "pub-1", error: null });
     renderDetalhe();
     click(button("Aprovar seleção"));
-    expect(screen.getByText(IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION)).toBeTruthy();
-    expect(rpc).not.toHaveBeenCalled();
-    click(screen.getByText("Cancelar"));
-    expect(rpc).not.toHaveBeenCalled();
-    expect(onDecidido).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(rpc).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onDecidido).toHaveBeenCalledWith("aprovado"));
   });
 
   it("submits the chosen indices and reports the decision only after the RPC confirms", async () => {
@@ -173,7 +169,6 @@ describe("approval", () => {
       target: { value: "melhor vista" },
     });
     click(button("Aprovar seleção"));
-    click(screen.getByText("Confirmar aprovação"));
 
     expect(rpc).toHaveBeenCalledWith("aprovar_candidato_imagem", {
       p_session_token: "tok",
@@ -194,11 +189,10 @@ describe("approval", () => {
     rpc.mockReturnValue(new Promise((r) => (resolve = r)));
     renderDetalhe();
 
-    click(button("Aprovar seleção"));
-    const confirmar = screen.getByText("Confirmar aprovação").closest("button") as HTMLElement;
-    click(confirmar);
-    click(confirmar);
-    click(confirmar);
+    const aprovar = button("Aprovar seleção"); // the label becomes "Enviando..." once busy
+    click(aprovar);
+    click(aprovar);
+    click(aprovar);
     expect(rpc).toHaveBeenCalledTimes(1);
 
     await act(async () => resolve({ data: "pub-1", error: null }));
@@ -213,7 +207,6 @@ describe("approval", () => {
     renderDetalhe();
 
     click(button("Aprovar seleção"));
-    click(screen.getByText("Confirmar aprovação"));
 
     expect(await screen.findByText(IMAGENS_PRODUTO_ERRO_INELEGIVEL_MESSAGE)).toBeTruthy();
     expect(onDecidido).not.toHaveBeenCalled();

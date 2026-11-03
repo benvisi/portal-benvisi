@@ -12,9 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION,
-  IMAGENS_PRODUTO_APROVAR_CONFIRMAR_LABEL,
-  IMAGENS_PRODUTO_APROVAR_CONFIRMAR_TITLE,
   IMAGENS_PRODUTO_CANCELAR_LABEL,
   IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_LABEL,
   IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_TITLE,
@@ -25,42 +22,6 @@ interface DialogoBase {
   open: boolean;
   busy: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-/** Explicit approval confirmation; states that approval is not publication. */
-export function ConfirmarAprovacaoDialog({
-  open,
-  busy,
-  onOpenChange,
-  onConfirmar,
-}: DialogoBase & { onConfirmar: () => void }) {
-  return (
-    <AlertDialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{IMAGENS_PRODUTO_APROVAR_CONFIRMAR_TITLE}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {IMAGENS_PRODUTO_APROVAR_CONFIRMAR_DESCRIPTION}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            className="min-touch"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            {IMAGENS_PRODUTO_CANCELAR_LABEL}
-          </Button>
-          <Button type="button" className="min-touch" disabled={busy} onClick={onConfirmar}>
-            {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {IMAGENS_PRODUTO_APROVAR_CONFIRMAR_LABEL}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
 }
 
 /** Rejection confirmation; rejeitar_candidato_imagem requires a non-empty reason. */
