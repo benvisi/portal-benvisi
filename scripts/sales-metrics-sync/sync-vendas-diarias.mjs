@@ -120,7 +120,7 @@ function getLinxConfig() {
   };
 }
 
-function getSupabaseConfig() {
+export function getSupabaseConfig() {
   return {
     url: requireEnv("SUPABASE_URL"),
     serviceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
@@ -293,16 +293,18 @@ export function computeRatios({ vendaLiquida, tickets, pecasBrutas, pecasTroca }
 }
 
 // -----------------------------------------------------------------------------
-// Linx extraction (I/O) — single SELECT per day, same query file/connection
-// options as reconcile-vendas.mjs (pool size 1, 180s timeout).
+// Linx extraction (I/O) — single SELECT per [start, endExclusive) date range,
+// same query file/connection options as reconcile-vendas.mjs (pool size 1,
+// 180s timeout). The daily sync asks for one day; the historical backfill
+// (backfill-vendas-diarias.mjs) asks for a calendar month at a time.
 // -----------------------------------------------------------------------------
-async function extractDayFromLinx(sql, { filial, dateStr }) {
+export async function extractRangeFromLinx(sql, { filial, startStr, endExclusiveStr }) {
   const linx = getLinxConfig();
   const queryText = readFileSync(join(RECONCILIATION_DIR, "linx-vendas-query.sql"), "utf8");
   assertReadOnlyQuery(queryText);
 
-  const startDate = new Date(`${dateStr}T00:00:00Z`);
-  const endDateExclusive = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+  const startDate = new Date(`${startStr}T00:00:00Z`);
+  const endDateExclusive = new Date(`${endExclusiveStr}T00:00:00Z`);
 
   const pool = await sql.connect({
     server: linx.server,
@@ -332,14 +334,24 @@ async function extractDayFromLinx(sql, { filial, dateStr }) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// One day's sync: extract -> classify -> map -> (write).
-// -----------------------------------------------------------------------------
-async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRun }) {
-  const queryStartedAt = Date.now();
-  const rawRows = await extractDayFromLinx(sql, { filial, dateStr });
-  const linxElapsedMs = Date.now() - queryStartedAt;
+async function extractDayFromLinx(sql, { filial, dateStr }) {
+  const startDate = new Date(`${dateStr}T00:00:00Z`);
+  const endExclusiveStr = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return extractRangeFromLinx(sql, { filial, startStr: dateStr, endExclusiveStr });
+}
 
+// -----------------------------------------------------------------------------
+// One day's sync: classify -> map -> (write). `rawRows` are the Linx ticket
+// rows for exactly this day (linx-vendas-query.sql output); the daily sync
+// and the historical backfill both feed this same function.
+// -----------------------------------------------------------------------------
+export async function processDayRows(
+  supabase,
+  mapaPorCodigo,
+  { filial, dateStr, dryRun, rawRows, linxElapsedMs = null },
+) {
   const classified = rawRows.map(classifyTicket);
   const dup = detectDuplicateCanonicalKeys(classified);
   if (dup.duplicateKeyCount > 0) {
@@ -372,7 +384,7 @@ async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRu
       `venda_liquida_total=${totalLojaKpis.vendaLiquida.toFixed(2)} ` +
       `atribuicao_zero=${zeroRows.length} atribuicao_multipla=${multiRows.length} ` +
       `vendedores_mapeados=${mapeadas.length} vendedores_nao_mapeados=${naoMapeadas.length} ` +
-      `linx_query_ms=${linxElapsedMs}`,
+      `linx_query_ms=${linxElapsedMs ?? "n/a"}`,
   );
 
   if (naoMapeadas.length > 0) {
@@ -410,7 +422,7 @@ async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRu
     log(
       `${dateStr}: dry-run — skipping write (${mapeadas.length} salesperson rows would be written)`,
     );
-    return { dateStr, skipped: false, written: 0, dryRun: true };
+    return { dateStr, skipped: false, written: 0, dryRun: true, naoMapeadas, totalLojaKpis };
   }
 
   const { data, error } = await supabase.rpc("vendas_diarias_substituir_dia", {
@@ -429,7 +441,26 @@ async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRu
       `(removed ${resultado?.vendedores_removidos ?? "?"} previous), loja_gravada=${resultado?.loja_gravada ?? "?"}, ` +
       `anomalias=${resultado?.anomalias_inseridas ?? linhasAnomalias.length}`,
   );
-  return { dateStr, skipped: false, written: resultado?.vendedores_inseridos ?? mapeadas.length };
+  return {
+    dateStr,
+    skipped: false,
+    written: resultado?.vendedores_inseridos ?? mapeadas.length,
+    naoMapeadas,
+    totalLojaKpis,
+  };
+}
+
+async function syncOneDay(sql, supabase, mapaPorCodigo, { filial, dateStr, dryRun }) {
+  const queryStartedAt = Date.now();
+  const rawRows = await extractDayFromLinx(sql, { filial, dateStr });
+  const linxElapsedMs = Date.now() - queryStartedAt;
+  return processDayRows(supabase, mapaPorCodigo, {
+    filial,
+    dateStr,
+    dryRun,
+    rawRows,
+    linxElapsedMs,
+  });
 }
 
 // -----------------------------------------------------------------------------

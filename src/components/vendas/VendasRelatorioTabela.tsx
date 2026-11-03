@@ -1,7 +1,6 @@
 import { RELATORIO_VENDAS_COLUMNS } from "@/config/constants";
 import { cn } from "@/lib/utils";
 import {
-  formatBrl,
   formatBrlWhole,
   formatInteger,
   formatPa,
@@ -14,17 +13,17 @@ interface VendasRelatorioTabelaProps {
   linhas: readonly VendasMetricasLinha[];
 }
 
-// Comfortable minimum widths; portrait phones scroll horizontally.
+// Compact minimum widths sized for ~420px portrait phones; narrower screens scroll horizontally.
 const COLUMN_WIDTHS = [
-  "w-[6.5rem] min-w-[6.5rem]",
-  "min-w-[6rem]",
-  "min-w-[5rem]",
-  "min-w-[5rem]",
-  "min-w-[6rem]",
-  "min-w-[5rem]",
+  "w-[5.75rem] min-w-[5.75rem]",
   "min-w-[4.5rem]",
-  "min-w-[7.5rem]",
-  "min-w-[6rem]",
+  "min-w-[3.5rem]",
+  "min-w-[3.75rem]",
+  "min-w-[4.25rem]",
+  "min-w-[3.75rem]",
+  "min-w-[3.75rem]",
+  "min-w-[5.75rem]",
+  "min-w-[3.5rem]",
 ];
 
 type RowKind = "vendedor" | "outros" | "total";
@@ -45,15 +44,15 @@ function Linha({ linha, kind }: { linha: VendasMetricasLinha; kind: RowKind }) {
     formatInteger(linha.pecas_liquidas),
     formatInteger(linha.tickets),
     formatPa(linha.pa),
-    formatBrl(linha.ticket_medio),
-    formatBrl(linha.pm),
+    formatBrlWhole(linha.ticket_medio),
+    formatBrlWhole(linha.pm),
   ];
   return (
     <tr className={cn("[&>*]:border-b [&>*]:border-b-border/60", ROW_STYLES[kind])}>
       <th
         scope="row"
         className={cn(
-          "sticky left-0 z-10 truncate border-r-2 border-brand bg-inherit px-3 py-2.5 text-left",
+          "sticky left-0 z-10 truncate border-r-2 border-brand bg-inherit px-2 py-2.5 text-left",
           kind === "vendedor" && "font-medium text-foreground",
           COLUMN_WIDTHS[0],
         )}
@@ -64,7 +63,7 @@ function Linha({ linha, kind }: { linha: VendasMetricasLinha; kind: RowKind }) {
         <td
           key={RELATORIO_VENDAS_COLUMNS[i + 1]}
           className={cn(
-            "whitespace-nowrap px-3 py-2.5 text-right tabular-nums",
+            "whitespace-nowrap px-2 py-2.5 text-right tabular-nums",
             COLUMN_WIDTHS[i + 1],
           )}
         >
@@ -94,7 +93,7 @@ export function VendasRelatorioTabela({ linhas }: VendasRelatorioTabelaProps) {
                 key={coluna}
                 scope="col"
                 className={cn(
-                  "px-3 py-2.5 font-semibold",
+                  "px-2 py-2.5 font-semibold",
                   i === 0
                     ? "sticky left-0 z-20 border-r-2 border-brand bg-brand text-left"
                     : "text-right",

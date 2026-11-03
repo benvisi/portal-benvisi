@@ -2,22 +2,34 @@ import {
   ADMINISTRATOR_CARGO,
   MANAGER_CARGO,
   RELATORIO_VENDAS_OUTROS_LABEL,
+  RELATORIO_VENDAS_PERIODO_PADRAO,
+  RELATORIO_VENDAS_PERIODOS,
   RELATORIO_VENDAS_TOTAL_LABEL,
 } from "@/config/constants";
 
 /**
  * Client-side visibility/route guard for Relatório de vendas (V1 interim
  * policy: Gerente + Administrador). This is UX only — the cargo here comes
- * from the stored session; get_vendas_metricas_mtd enforces the same rule
+ * from the stored session; get_vendas_metricas_periodo enforces the same rule
  * server-side from the validated session, which is the real protection.
  */
 export function canViewRelatorioVendas(cargo: string | null | undefined): boolean {
   return cargo === ADMINISTRATOR_CARGO || cargo === MANAGER_CARGO;
 }
 
+/** Period keys accepted by `get_vendas_metricas_periodo` (validated server-side too). */
+export type VendasPeriodo = (typeof RELATORIO_VENDAS_PERIODOS)[number]["value"];
+
+export const VENDAS_PERIODO_PADRAO: VendasPeriodo = RELATORIO_VENDAS_PERIODO_PADRAO;
+
+export function isVendasPeriodo(value: unknown): value is VendasPeriodo {
+  return RELATORIO_VENDAS_PERIODOS.some((periodo) => periodo.value === value);
+}
+
 /**
  * Relatório de vendas (Trello #12). Row shape mirrors the columns returned
- * by the `get_vendas_metricas_mtd` RPC.
+ * by the `get_vendas_metricas_periodo` RPC (same shape as the older
+ * `get_vendas_metricas_mtd`).
  */
 export interface VendasMetricasLinha {
   funcionario_id: string | null;

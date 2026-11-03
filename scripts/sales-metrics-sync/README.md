@@ -104,10 +104,51 @@ scheduling interval (5-minute vs. 1-minute) later. **No Task Scheduler
 wiring is part of this slice** — invoke manually (or via whatever ad-hoc
 mechanism you choose) until that decision is made.
 
+## Historical backfill (manual, one-off)
+
+[`backfill-vendas-diarias.mjs`](backfill-vendas-diarias.mjs) fills the daily
+aggregates for an explicit date range (e.g. 2023-01-01 → today) so the
+Relatório de vendas period selector (Mês / Ano / Últimos 12 meses) has history.
+It is **not** run by the 5-minute scheduled task and must not be scheduled.
+
+It reuses this script's day processing verbatim (`processDayRows`: same Linx
+query, ticket classification, KPI math, `codigo_vendedor_linx` mapping and
+`vendas_diarias_substituir_dia` write). The only difference is batching: one
+read-only Linx query per **calendar month** (the ticket rows carry `DATA_VENDA`
+and are split by day in memory) instead of one per day — 47 Linx queries for
+2023-01-01 → 2026-11-02 instead of ~1,400. Roughly one write RPC per day with
+sales (~1,400 small calls). Nothing transaction-level is stored.
+
+```sh
+# 1) Preview — reads Linx + the vendor mapping, writes nothing
+node scripts/sales-metrics-sync/backfill-vendas-diarias.mjs --from 2023-01-01 --to 2026-11-02 --dry-run
+
+# 2) Real run
+node scripts/sales-metrics-sync/backfill-vendas-diarias.mjs --from 2023-01-01 --to 2026-11-02
+```
+
+- `--from` and `--to` (inclusive, `YYYY-MM-DD`) are mandatory; `--to` cannot be
+  in the future (Manaus date). `--filial` defaults to `060420`.
+- Idempotent: each day is replaced as a whole, so rerunning any range creates
+  no duplicates, and it is safe to run while the 5-minute sync is running.
+- Resumable: on failure it prints the exact command to rerun, starting from the
+  failed month (`--from <month start>`).
+- Days with no Linx tickets are not written (counted as "empty days").
+- End-of-run summary: Linx queries, ticket rows, days written, earliest day with
+  data, and every `VENDEDOR` code that still has no `funcionarios.codigo_vendedor_linx`
+  mapping (those sales appear under **Outros**; map historical sellers first if
+  they should show by name).
+- Exit codes: `1` failure (resume as printed), `3` some days were skipped for a
+  duplicate-key invariant violation (not written; investigate).
+
+Validate with [`verify-backfill.sql`](verify-backfill.sql) (read-only) and, after
+applying the period migration, [`verify-periodos.sql`](verify-periodos.sql).
+
 ## Tests
 
 ```sh
 node scripts/sales-metrics-sync/test-sync-vendas-diarias.mjs
+node scripts/sales-metrics-sync/test-backfill-vendas-diarias.mjs
 ```
 
 Covers this script's own added logic: Manaus date windowing, CLI parsing,
