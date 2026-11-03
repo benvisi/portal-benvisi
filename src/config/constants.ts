@@ -1104,7 +1104,7 @@ export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_TITLE = "Rejeitar estas imagens?
 export const IMAGENS_PRODUTO_REJEITAR_CONFIRMAR_LABEL = "Confirmar rejeição";
 export const IMAGENS_PRODUTO_APROVADO_MESSAGE =
   "Imagens aprovadas. Ainda não estão publicadas para a equipe.";
-export const IMAGENS_PRODUTO_REJEITADO_MESSAGE = "Produto rejeitado.";
+export const IMAGENS_PRODUTO_REJEITADO_MESSAGE = "Imagens rejeitadas.";
 export const IMAGENS_PRODUTO_PESSOA_LABEL = "Pessoa na imagem";
 export const IMAGENS_PRODUTO_SEM_AVALIACAO_LABEL = "Sem avaliação da IA";
 export const IMAGENS_PRODUTO_AVALIACAO_AMBIGUA_LABEL = "Avaliação da IA inconsistente";

@@ -108,7 +108,7 @@ describe("post-review state", () => {
     });
     fireEvent.click(screen.getByText("Confirmar rejeição"));
 
-    expect(await screen.findByText("Produto rejeitado.")).toBeTruthy();
+    expect(await screen.findByText("Imagens rejeitadas.")).toBeTruthy();
     await waitFor(() => expect(screen.getByText(IMAGENS_PRODUTO_FILA_VAZIO_MESSAGE)).toBeTruthy());
   });
 
