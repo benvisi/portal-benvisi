@@ -15,9 +15,9 @@ describe("VendasPeriodoSeletor", () => {
     expect(VENDAS_PERIODO_PADRAO).toBe("hoje");
   });
 
-  it("shows the four periods in order with the exact employee-facing wording", () => {
+  it("shows the four periods in order, with 12M as the compact last label", () => {
     const html = render("hoje");
-    const labels = ["Hoje", "Mês", "Ano", "Últimos 12 meses"];
+    const labels = ["Hoje", "Mês", "Ano", "12M"];
     const positions = labels.map((label) => html.indexOf(`>${label}<`));
     expect(positions.every((p) => p > -1)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);

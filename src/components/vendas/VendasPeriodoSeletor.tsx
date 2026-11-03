@@ -7,7 +7,7 @@ interface VendasPeriodoSeletorProps {
   onChange: (periodo: VendasPeriodo) => void;
 }
 
-/** Segmented period selector for Relatório de vendas (Hoje | Mês | Ano | Últimos 12 meses). */
+/** Compact underline tabs for the report period (Hoje | Mês | Ano | 12M). */
 export function VendasPeriodoSeletor({ value, onChange }: VendasPeriodoSeletorProps) {
   return (
     <Tabs
@@ -15,18 +15,16 @@ export function VendasPeriodoSeletor({ value, onChange }: VendasPeriodoSeletorPr
       onValueChange={(next) => {
         if (isVendasPeriodo(next)) onChange(next);
       }}
-      className="px-2.5"
     >
       <TabsList
         aria-label={RELATORIO_VENDAS_PERIODO_ARIA_LABEL}
-        className="grid h-auto w-full grid-cols-4 gap-1"
+        className="h-auto gap-1 rounded-none bg-transparent p-0"
       >
         {RELATORIO_VENDAS_PERIODOS.map((periodo) => (
-          // "Últimos 12 meses" wraps onto two lines on narrow phones instead of being abbreviated.
           <TabsTrigger
             key={periodo.value}
             value={periodo.value}
-            className="min-h-11 whitespace-normal px-1 text-center leading-tight"
+            className="min-h-11 rounded-none border-b-2 border-transparent px-3 text-muted-foreground data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none"
           >
             {periodo.label}
           </TabsTrigger>

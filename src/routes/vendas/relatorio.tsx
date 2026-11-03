@@ -3,18 +3,23 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
+import { VendasComparativoConteudo } from "@/components/vendas/VendasComparativoConteudo";
+import { VendasIncluirHojeToggle } from "@/components/vendas/VendasIncluirHojeToggle";
 import { VendasPeriodoSeletor } from "@/components/vendas/VendasPeriodoSeletor";
 import { VendasRelatorioConteudo } from "@/components/vendas/VendasRelatorioConteudo";
+import { VendasVisaoSeletor } from "@/components/vendas/VendasVisaoSeletor";
 import { Button } from "@/components/ui/button";
 import {
-  RELATORIO_VENDAS_PAGE_SUBTITLE,
+  RELATORIO_VENDAS_VISAO_PADRAO,
   RELATORIO_VENDAS_TITLE,
   VOLTAR_A_OPERACOES_LABEL,
 } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import { useVendasComparativo } from "@/hooks/useVendasComparativo";
 import { useVendasMetricasPeriodo } from "@/hooks/useVendasMetricasPeriodo";
+import { getComparativoAtualizadoEm, type VendasVisao } from "@/lib/vendasComparativo";
 import {
   canViewRelatorioVendas,
   formatVendasAtualizadoEm,
@@ -40,12 +45,24 @@ function RelatorioVendasPage() {
   const { session, ready } = useRequireSession();
   // Not persisted: every visit starts on the default period (Hoje).
   const [periodo, setPeriodo] = useState<VendasPeriodo>(VENDAS_PERIODO_PADRAO);
+  // Equipe (salesperson table) is the default view; Comparativo is store-level only.
+  const [visao, setVisao] = useState<VendasVisao>(RELATORIO_VENDAS_VISAO_PADRAO);
+  const [incluirHoje, setIncluirHoje] = useState(true);
   const allowed = canViewRelatorioVendas(session?.cargo);
-  // Never call the RPC for an unauthorized cargo (it would reject it anyway).
+  // Never call an RPC for an unauthorized cargo (it would reject it anyway),
+  // and only the visible view fetches.
+  const funcionarioId = allowed ? (session?.funcionario_id ?? null) : null;
+  const sessionToken = allowed ? (session?.session_token ?? null) : null;
   const query = useVendasMetricasPeriodo(
-    allowed ? (session?.funcionario_id ?? null) : null,
-    allowed ? (session?.session_token ?? null) : null,
+    visao === "equipe" ? funcionarioId : null,
+    visao === "equipe" ? sessionToken : null,
     periodo,
+  );
+  const comparativo = useVendasComparativo(
+    visao === "comparativo" ? funcionarioId : null,
+    visao === "comparativo" ? sessionToken : null,
+    periodo,
+    incluirHoje,
   );
 
   useEffect(() => {
@@ -56,7 +73,14 @@ function RelatorioVendasPage() {
 
   if (!ready || !session || !allowed) return null;
 
-  const atualizadoEm = query.data ? getVendasAtualizadoEm(query.data) : null;
+  const atualizadoEm =
+    visao === "equipe"
+      ? query.data
+        ? getVendasAtualizadoEm(query.data)
+        : null
+      : comparativo.data
+        ? getComparativoAtualizadoEm(comparativo.data)
+        : null;
 
   return (
     <main className="min-h-screen bg-background px-1.5 py-8">
@@ -75,23 +99,38 @@ function RelatorioVendasPage() {
           <h1 className="text-xl font-semibold text-foreground">{RELATORIO_VENDAS_TITLE}</h1>
         </header>
 
-        <div className="flex flex-col gap-1 px-2.5">
-          <p className="text-sm text-muted-foreground">{RELATORIO_VENDAS_PAGE_SUBTITLE}</p>
-          {atualizadoEm && (
-            <p className="text-xs text-muted-foreground">
-              {formatVendasAtualizadoEm(atualizadoEm)}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 px-2.5">
+          <VendasPeriodoSeletor value={periodo} onChange={setPeriodo} />
+          {visao === "comparativo" && (
+            <VendasIncluirHojeToggle value={incluirHoje} onChange={setIncluirHoje} />
           )}
         </div>
 
-        <VendasPeriodoSeletor value={periodo} onChange={setPeriodo} />
+        <div className="flex flex-col">
+          {visao === "equipe" ? (
+            <VendasRelatorioConteudo
+              isLoading={query.isLoading}
+              isError={query.isError}
+              linhas={query.data}
+              onRetry={() => void query.refetch()}
+            />
+          ) : (
+            <VendasComparativoConteudo
+              periodo={periodo}
+              isLoading={comparativo.isLoading}
+              isError={comparativo.isError}
+              janelas={comparativo.data}
+              onRetry={() => void comparativo.refetch()}
+            />
+          )}
+          <VendasVisaoSeletor value={visao} onChange={setVisao} />
+        </div>
 
-        <VendasRelatorioConteudo
-          isLoading={query.isLoading}
-          isError={query.isError}
-          linhas={query.data}
-          onRetry={() => void query.refetch()}
-        />
+        {atualizadoEm && (
+          <p className="px-2.5 text-xs text-muted-foreground">
+            {formatVendasAtualizadoEm(atualizadoEm)}
+          </p>
+        )}
       </div>
 
       <AuthUtilityBar />
