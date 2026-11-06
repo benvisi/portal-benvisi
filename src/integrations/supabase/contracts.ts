@@ -1489,3 +1489,53 @@ export interface PublicarRascunhoTreinamentoResult {
   /** The version archived by this publication; null on a first publication. */
   versao_anterior: string | null;
 }
+
+// get_candidatos_imagem_pendentes (Trello #10, Slice 4B): the reviewer queue,
+// oldest first. `galeria` is the retained Lacoste gallery (jsonb array of
+// { desktopUrl, type, alt }) and `avaliacoes_ia` is scoring_notes.images, the
+// per-gallery-index AI evaluation. Both are loosely typed on purpose: the
+// elegibility logic in lib/produtoImagens treats anything unexpected as
+// "not eligible" instead of trusting the shape.
+export interface CandidatoImagemPendente {
+  id: string;
+  produto: string;
+  cor_codigo: string;
+  lacoste_product_name: string | null;
+  lacoste_color_label: string | null;
+  resolved_url: string | null;
+  galeria: unknown;
+  primary_candidate_url: string | null;
+  primary_candidate_reason: string | null;
+  secondary_candidate_url: string | null;
+  secondary_candidate_reason: string | null;
+  confianca: string | null;
+  avaliacoes_ia: unknown;
+  limitacoes: string[] | null;
+  criado_em: string;
+}
+
+export function isCandidatoImagemPendente(value: unknown): value is CandidatoImagemPendente {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const optionalString = (v: unknown) => v === null || typeof v === "string";
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.produto === "string" &&
+    candidate.produto.length > 0 &&
+    typeof candidate.cor_codigo === "string" &&
+    candidate.cor_codigo.length > 0 &&
+    optionalString(candidate.lacoste_product_name) &&
+    optionalString(candidate.lacoste_color_label) &&
+    optionalString(candidate.resolved_url) &&
+    optionalString(candidate.primary_candidate_url) &&
+    optionalString(candidate.primary_candidate_reason) &&
+    optionalString(candidate.secondary_candidate_url) &&
+    optionalString(candidate.secondary_candidate_reason) &&
+    optionalString(candidate.confianca) &&
+    (candidate.limitacoes === null ||
+      (Array.isArray(candidate.limitacoes) &&
+        candidate.limitacoes.every((l) => typeof l === "string"))) &&
+    typeof candidate.criado_em === "string"
+  );
+}

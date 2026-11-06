@@ -1,0 +1,24 @@
+{
+  "name": "sync-produto-imagens",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Lacoste product-image acquisition/publish worker for Portal Benvisi (Trello #10). Standalone nested npm project — deliberately isolated from the Portal root dependency graph. Runs on a Windows machine with an interactive desktop session (headed Chromium requirement); never imported by src/, never deployed to Vercel.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node src/check-dependencies.mjs",
+    "acquire": "node src/acquire.mjs",
+    "score": "node src/score.mjs",
+    "publicar": "node src/publish.mjs",
+    "test": "node --test test/scoring.test.mjs test/score.test.mjs test/persist.test.mjs test/publishing.test.mjs test/migration-4b.test.mjs test/migration-retry.test.mjs test/runlock.test.mjs test/runtime.test.mjs test/avif.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.63.0",
+    "sharp": "^0.35.5"
+  }
+}
