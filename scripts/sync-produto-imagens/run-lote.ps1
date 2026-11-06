@@ -19,18 +19,20 @@
 
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File run-lote.ps1            # dry-run
-  powershell -NoProfile -ExecutionPolicy Bypass -File run-lote.ps1 -Persist -Limit 25
+  powershell -NoProfile -ExecutionPolicy Bypass -File run-lote.ps1 -Persist -Limit 250   # target: 250 scored candidates
 #>
 [CmdletBinding()]
 param(
   [switch]$Persist,
-  [ValidateRange(1, 100)][int]$Limit = 25,
-  [ValidateRange(1, 600)][double]$MaxMinutes = 150,
+  [ValidateRange(1, 500)][int]$Limit = 25,
+  # 0 = automatic: 5 min per target candidate, at least 150 and at most 1440 (24 h).
+  [ValidateRange(0, 1440)][double]$MaxMinutes = 0,
   [string]$LogDir = $(if ($env:PUBLICAR_LOG_DIR) { $env:PUBLICAR_LOG_DIR } else { Join-Path $env:LOCALAPPDATA 'PortalBenvisi\logs' })
 )
 
 $ErrorActionPreference = 'Stop'
 $workerDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($MaxMinutes -le 0) { $MaxMinutes = [Math]::Min(1440, [Math]::Max(150, 5 * $Limit)) }
 $mode = if ($Persist) { 'PERSIST' } else { 'dry-run' }
 
 try {
@@ -38,7 +40,7 @@ try {
   $log = Join-Path $LogDir ('lote-{0}.log' -f (Get-Date).ToString('yyyyMMdd'))
   $node = (Get-Command node -ErrorAction Stop).Source
 
-  Add-Content -LiteralPath $log -Encoding UTF8 -Value ('{0} === start mode={1} limit={2} user={3}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'), $mode, $Limit, $env:USERNAME)
+  Add-Content -LiteralPath $log -Encoding UTF8 -Value ('{0} === start mode={1} limit={2} maxMinutes={3} user={4}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'), $mode, $Limit, $MaxMinutes, $env:USERNAME)
 
   $flags = "--limit=$Limit"
   if ($Persist) { $flags += ' --persist' }

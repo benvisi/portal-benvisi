@@ -310,3 +310,17 @@ npm run lote -- --persist --limit=10
   session), and the PC must not sleep, log off or shut down. Whole-run limit
   150 min (`-MaxMinutes`); to stop early, end the `node` process or the
   `powershell` window (the lock clears itself).
+
+### Target mode (`--limit`, `--round`)
+
+`--limit=N` is the **target of successfully scored, reviewable candidates** (default 25, max 500), not the
+number of attempts. The batch selects `--round` combinations at a time (default 25), re-reading stock each
+round, until the target is reached or no eligible combination remains. Acquisition misses and unscored
+candidates do not count. Diversity rule: highest stock first, but at most 2 colours of one product per pass,
+so a few products cannot fill a round. A combination is never selected twice in one run (it either becomes a
+candidate, which the RPC then excludes, or goes to the 3-day skip list / in-run exclusion). Three consecutive
+chunks with nothing acquired abort the run (likely a site block). The Windows launcher scales its time limit
+(5 min per target candidate, 150 min–24 h). Observed on a 10-candidate sample: ~8 min total, ~7.2k input and
+~1k output tokens per candidate.
+
+    iniciar-lote.cmd 250        # background, returns at once; log in %LOCALAPPDATA%\PortalBenvisi\logs

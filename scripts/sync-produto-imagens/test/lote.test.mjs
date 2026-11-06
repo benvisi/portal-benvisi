@@ -9,6 +9,7 @@ import {
   addSkip,
   avaliarFrescor,
   chunk,
+  diversificar,
   escolherLote,
   loadSkip,
   parseLoteArgs,
@@ -22,12 +23,18 @@ const row = (produto, cor, total) => ({
   sync_concluido_em: "2026-11-06T10:00:00Z",
 });
 
-test("parseLoteArgs: dry-run by default, bounded limit", () => {
-  assert.deepEqual(parseLoteArgs([]), { persist: false, limit: 25 });
-  assert.deepEqual(parseLoteArgs(["--persist", "--limit=10"]), { persist: true, limit: 10 });
+test("parseLoteArgs: dry-run by default, bounded target and round", () => {
+  assert.deepEqual(parseLoteArgs([]), { persist: false, limit: 25, round: 25 });
+  assert.deepEqual(parseLoteArgs(["--persist", "--limit=250"]), {
+    persist: true,
+    limit: 250,
+    round: 25,
+  });
+  assert.equal(parseLoteArgs(["--limit=10", "--round=5"]).round, 5);
   assert.throws(() => parseLoteArgs(["--limit=0"]));
-  assert.throws(() => parseLoteArgs(["--limit=101"]));
+  assert.throws(() => parseLoteArgs(["--limit=501"]));
   assert.throws(() => parseLoteArgs(["--limit=abc"]));
+  assert.throws(() => parseLoteArgs(["--round=51"]));
   assert.throws(() => parseLoteArgs(["--persist", "--dry-run"]));
 });
 
@@ -49,6 +56,46 @@ test("escolherLote: keeps stock order, drops duplicates and skipped, caps at lim
     ["A:01", "C:03"],
   );
   assert.equal(skipped, 1);
+});
+
+test("diversificar: at most 2 colours per product per pass, stock order preserved", () => {
+  const rows = [
+    row("A", "1", 9),
+    row("A", "2", 8),
+    row("A", "3", 7),
+    row("B", "1", 6),
+    row("C", "1", 5),
+  ];
+  assert.deepEqual(
+    diversificar(rows).map((r) => `${r.produto}${r.cor_codigo}`),
+    ["A1", "A2", "B1", "C1", "A3"],
+  );
+  assert.deepEqual(diversificar([]), []);
+});
+
+test("escolherLote: a dominant product cannot fill a whole round", () => {
+  const rows = [
+    ...Array.from({ length: 10 }, (_, i) => row("TOP", `c${i}`, 100 - i)),
+    ...Array.from({ length: 6 }, (_, i) => row(`P${i}`, "01", 50 - i)),
+  ];
+  const { chosen } = escolherLote(rows, {}, { limit: 8 });
+  assert.equal(new Set(chosen.map((c) => c.produto)).size, 7);
+  assert.equal(chosen.filter((c) => c.produto === "TOP").length, 2);
+});
+
+test("escolherLote: combinations tried in this run are never selected again (no infinite loop)", () => {
+  const rows = [row("A", "1", 9), row("B", "1", 8)];
+  const exclude = new Set(["A:1"]);
+  const { chosen, eligible } = escolherLote(rows, {}, { limit: 5, exclude });
+  assert.deepEqual(
+    chosen.map((c) => c.produto),
+    ["B"],
+  );
+  assert.equal(eligible, 1);
+  assert.equal(
+    escolherLote(rows, {}, { limit: 5, exclude: new Set(["A:1", "B:1"]) }).chosen.length,
+    0,
+  );
 });
 
 test("escolherLote: an expired skip entry no longer excludes", () => {

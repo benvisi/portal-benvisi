@@ -6,13 +6,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export const DEFAULT_LIMIT = 25;
-export const MAX_LIMIT = 100;
+export const DEFAULT_LIMIT = 25; // target of scored candidates for the whole run
+export const MAX_LIMIT = 500;
+export const DEFAULT_ROUND = 25; // combinations selected per round
+export const MAX_ROUND = 50;
+export const PER_PRODUCT_PER_PASS = 2; // diversity: colours of one product per pass
+export const MAX_EMPTY_CHUNKS = 3; // consecutive chunks with nothing acquired => abort
 export const CHUNK_SIZE = 5; // acquire.mjs / score.mjs hard cap per run
 export const DEFAULT_MAX_STOCK_AGE_HOURS = 36;
 export const DEFAULT_SKIP_DAYS = 3;
 
-const keyOf = (produto, cor) => `${produto}:${cor}`;
+export const keyOf = (produto, cor) => `${produto}:${cor}`;
 
 export function parseLoteArgs(argv) {
   const flags = {};
@@ -33,7 +37,15 @@ export function parseLoteArgs(argv) {
         `--limit must be an integer between 1 and ${MAX_LIMIT}, got "${flags.limit}"`,
       );
   }
-  return { persist, limit };
+  let round = DEFAULT_ROUND;
+  if (flags.round !== undefined) {
+    round = Number.parseInt(flags.round, 10);
+    if (!Number.isInteger(round) || round < 1 || round > MAX_ROUND)
+      throw new Error(
+        `--round must be an integer between 1 and ${MAX_ROUND}, got "${flags.round}"`,
+      );
+  }
+  return { persist, limit, round };
 }
 
 /** Returns { fresh, ageHours } for the stock snapshot completion time. */
@@ -47,23 +59,45 @@ export function avaliarFrescor(
   return { fresh: ageHours >= 0 && ageHours <= maxHoras, ageHours };
 }
 
-/** Drops duplicates and recently-not-found combinations, then caps at `limit`. */
-export function escolherLote(rows, skip, { limit, now = Date.now() }) {
+/**
+ * Diversity rule: walk the stock-ordered rows in passes, taking at most `perPass`
+ * colours of each product per pass. Products keep the order of their highest-stock
+ * colour, so stock still drives priority but no product can fill a whole round.
+ */
+export function diversificar(rows, perPass = PER_PRODUCT_PER_PASS) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.produto)) groups.set(row.produto, []);
+    groups.get(row.produto).push(row);
+  }
+  const out = [];
+  while (out.length < rows.length) {
+    for (const group of groups.values()) out.push(...group.splice(0, perPass));
+  }
+  return out;
+}
+
+/**
+ * Drops duplicates, recently-not-found combinations (`skip`) and combinations
+ * already tried in this run (`exclude`), applies the diversity rule, caps at `limit`.
+ */
+export function escolherLote(rows, skip, { limit, now = Date.now(), exclude = new Set() }) {
   const seen = new Set();
-  const chosen = [];
+  const eligible = [];
   let skipped = 0;
   for (const row of rows) {
     const key = keyOf(row.produto, row.cor_codigo);
     if (seen.has(key)) continue;
     seen.add(key);
+    if (exclude.has(key)) continue;
     const until = skip[key];
     if (until !== undefined && until > now) {
       skipped += 1;
       continue;
     }
-    if (chosen.length < limit) chosen.push(row);
+    eligible.push(row);
   }
-  return { chosen, skipped };
+  return { chosen: diversificar(eligible).slice(0, limit), skipped, eligible: eligible.length };
 }
 
 export function chunk(items, size = CHUNK_SIZE) {
