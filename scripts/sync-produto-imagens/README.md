@@ -274,3 +274,39 @@ select p.id, p.produto, p.cor_codigo, p.tentativas, p.ultimo_erro, p.ultimo_erro
 -- after fixing the cause (service_role / SQL editor only):
 select reenfileirar_publicacao_imagem('<publicacao id>');
 ```
+
+## Stock-prioritized batch (`npm run lote`)
+
+Fills the review queue with candidates for colours that are **in stock**,
+highest stock first, without anyone typing `--produtos`.
+
+```sh
+npm run lote                        # dry-run: prints the selection only
+npm run lote -- --persist           # acquire + score (paid Anthropic calls)
+npm run lote -- --persist --limit=10
+```
+
+- **Selection:** `listar_cores_estoque_sem_imagem` (service_role-only, read-only;
+  migration `20261106_001`). Stock = sum of `quantidade_estoque` over all sizes in
+  `estoque_atual`. Excluded: any colour that already has a candidate in any
+  status (pending review, approved or rejected) and any colour with a pending or
+  active publication. Default 25, max 100 (`--limit`).
+- **Freshness:** the stock sync's completion time is checked; older than
+  `LOTE_MAX_IDADE_ESTOQUE_HORAS` (default 36) stops the run with a clear error.
+- **Execution:** reuses `acquire.mjs` then `score.mjs --persist`, 5 colours at a
+  time. Nothing is approved, rejected or published. Colours Lacoste cannot match
+  exactly are remembered locally for 3 days
+  (`%LOCALAPPDATA%\PortalBenvisi\lote-imagens-ignorados.json`) so they are not
+  retried on every run.
+- **Resume:** re-run the same command. Colours that already have a candidate are
+  excluded, and candidates acquired but not yet scored are scored first (an
+  already-scored candidate is never re-scored, so nothing is paid twice).
+- **Overlap:** a lock file (`LOTE_LOCK_FILE`, default `%TEMP%\portal-benvisi-lote.lock`)
+  makes a second run exit immediately.
+- **Windows background run:** double-click or run `iniciar-lote.cmd [limit]`. It
+  starts `run-lote.ps1 -Persist` minimised and returns at once; you can close the
+  window and keep working. Log: `%LOCALAPPDATA%\PortalBenvisi\logs\lote-YYYYMMDD.log`.
+  Requirements: you must stay logged in (headed Chromium needs the desktop
+  session), and the PC must not sleep, log off or shut down. Whole-run limit
+  150 min (`-MaxMinutes`); to stop early, end the `node` process or the
+  `powershell` window (the lock clears itself).
