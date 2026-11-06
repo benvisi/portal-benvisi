@@ -1146,3 +1146,20 @@ export const IMAGENS_PRODUTO_ERRO_IDENTIDADE_MESSAGE =
 export const IMAGENS_PRODUTO_ERRO_MOTIVO_MESSAGE = "Informe o motivo da rejeição.";
 export const IMAGENS_PRODUTO_ERRO_GENERICO_MESSAGE =
   "Não foi possível concluir agora. Tente novamente.";
+
+// Consulta de Estoque — published product images.
+export const PRODUTO_IMAGENS_BUCKET = "produto-imagens-publicadas";
+export const ESTOQUE_IMAGEM_ABRIR_LABEL = "Ver imagens da cor";
+export const ESTOQUE_IMAGEM_VIEWER_TITLE = "Imagens do produto";
+export const ESTOQUE_IMAGEM_PRINCIPAL_LABEL = "Principal";
+export const ESTOQUE_IMAGEM_SECUNDARIA_LABEL = "Secundária";
+export const ESTOQUE_IMAGEM_ERRO_MESSAGE = "Não foi possível carregar a imagem.";
+export const ESTOQUE_IMAGEM_TENTAR_NOVAMENTE_LABEL = "Tentar novamente";
+export const ESTOQUE_IMAGEM_ANTERIOR_LABEL = "Imagem anterior";
+export const ESTOQUE_IMAGEM_PROXIMA_LABEL = "Próxima imagem";
+export const ESTOQUE_IMAGEM_COPIAR_LABEL = "Copiar imagem";
+export const ESTOQUE_IMAGEM_COPIADA_MESSAGE = "Imagem copiada.";
+export const ESTOQUE_IMAGEM_COPIA_FALHOU_MESSAGE = "Não foi possível copiar a imagem.";
+export const ESTOQUE_IMAGEM_COMPARTILHAR_LABEL = "Compartilhar imagem";
+export const ESTOQUE_IMAGEM_COMPARTILHADA_MESSAGE = "Imagem compartilhada.";
+export const ESTOQUE_IMAGEM_COMPARTILHAR_FALHOU_MESSAGE = "Não foi possível compartilhar a imagem.";

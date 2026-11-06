@@ -1,5 +1,8 @@
+import { Image as ImageIcon } from "lucide-react";
+
 import {
   ESTOQUE_COR_COLUNA_LABEL,
+  ESTOQUE_IMAGEM_ABRIR_LABEL,
   ESTOQUE_PRECO_AUSENTE_LABEL,
   ESTOQUE_PRECO_COLUNA_LABEL,
   ESTOQUE_TAMANHO_BR_AUSENTE_LABEL,
@@ -8,10 +11,15 @@ import {
 } from "@/config/constants";
 import { converterUkParaBr, normalizeTamanhoCalcado } from "@/lib/conversaoTamanhoCalcado";
 import { formatEstoquePreco, type EstoqueMatriz } from "@/lib/estoque";
+import type { ImagensDaCor } from "@/lib/produtoImagensPublicadas";
 import { cn } from "@/lib/utils";
 
 interface EstoqueMatrixProps {
   matriz: EstoqueMatriz;
+  /** Colours with an active published image (cor_codigo -> images). */
+  imagens?: ReadonlyMap<string, ImagensDaCor>;
+  /** Opens the image viewer; the icon only renders for colours in `imagens`. */
+  onVerImagens?: (corCodigo: string) => void;
 }
 
 /**
@@ -65,7 +73,7 @@ interface EstoqueMatrixProps {
  *   rather than hiding the column or inventing a conversion. Non-footwear
  *   matrices (segmentoCalcado null) render exactly as before.
  */
-export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
+export function EstoqueMatrix({ matriz, imagens, onVerImagens }: EstoqueMatrixProps) {
   const segmento = matriz.segmentoCalcado;
   const isCalcado = segmento !== null;
   const headerRowSpan = isCalcado ? 2 : 1;
@@ -151,6 +159,16 @@ export function EstoqueMatrix({ matriz }: EstoqueMatrixProps) {
                   )}
                 >
                   <span className="font-semibold text-foreground">{cor.codigo}</span>{" "}
+                  {onVerImagens && imagens?.has(cor.codigo) && (
+                    <button
+                      type="button"
+                      aria-label={`${ESTOQUE_IMAGEM_ABRIR_LABEL} ${cor.codigo}`}
+                      onClick={() => onVerImagens(cor.codigo)}
+                      className="-my-1 mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md align-middle text-brand hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <ImageIcon className="h-4 w-4" aria-hidden />
+                    </button>
+                  )}
                   <span className="text-xs text-muted-foreground">{cor.nome}</span>
                 </th>
                 <td

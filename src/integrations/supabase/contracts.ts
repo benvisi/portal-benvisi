@@ -1539,3 +1539,26 @@ export function isCandidatoImagemPendente(value: unknown): value is CandidatoIma
     typeof candidate.criado_em === "string"
   );
 }
+
+// get_produto_imagens_publicadas (Trello #10): ACTIVE published image files of
+// one produto, one row per colour and slot. The browser builds the public URL
+// from `storage_path`.
+export type ProdutoImagemPublicadaSlot = "principal" | "secundaria";
+
+export interface ProdutoImagemPublicada {
+  cor_codigo: string;
+  slot: ProdutoImagemPublicadaSlot;
+  storage_path: string;
+}
+
+export function isProdutoImagemPublicada(value: unknown): value is ProdutoImagemPublicada {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.cor_codigo === "string" &&
+    candidate.cor_codigo.length > 0 &&
+    (candidate.slot === "principal" || candidate.slot === "secundaria") &&
+    typeof candidate.storage_path === "string" &&
+    candidate.storage_path.length > 0
+  );
+}
