@@ -1,7 +1,8 @@
 import { Loader2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { EstoqueMatrix } from "@/components/estoque/EstoqueMatrix";
+import { ProdutoImagemViewer } from "@/components/estoque/ProdutoImagemViewer";
 import { ProdutoTermosBusca } from "@/components/estoque/ProdutoTermosBusca";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,9 @@ import {
   ESTOQUE_PRODUTO_NAO_ENCONTRADO_MESSAGE,
 } from "@/config/constants";
 import { useProdutoEstoqueDetalhe } from "@/hooks/useProdutoEstoqueDetalhe";
+import { useProdutoImagensPublicadas } from "@/hooks/useProdutoImagensPublicadas";
 import { buildEstoqueMatriz } from "@/lib/estoque";
+import type { ImagensDaCor } from "@/lib/produtoImagensPublicadas";
 
 interface ProdutoEstoqueViewProps {
   sessionToken: string;
@@ -28,6 +31,8 @@ export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueView
   const query = useProdutoEstoqueDetalhe(sessionToken, produto);
   const linhas = useMemo(() => query.data ?? [], [query.data]);
   const matriz = useMemo(() => buildEstoqueMatriz(linhas), [linhas]);
+  const imagens = useProdutoImagensPublicadas(sessionToken, produto);
+  const [corAberta, setCorAberta] = useState<string | null>(null);
 
   if (query.isLoading) {
     return (
@@ -71,7 +76,17 @@ export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueView
         )}
       </header>
 
-      <EstoqueMatrix matriz={matriz} />
+      <EstoqueMatrix matriz={matriz} imagens={imagens} onVerImagens={setCorAberta} />
+
+      {corAberta !== null && imagens.has(corAberta) && (
+        <ProdutoImagemViewer
+          key={corAberta}
+          produto={matriz.produto}
+          corCodigo={corAberta}
+          imagens={imagens.get(corAberta) as ImagensDaCor}
+          onClose={() => setCorAberta(null)}
+        />
+      )}
 
       <ProdutoTermosBusca sessionToken={sessionToken} produto={matriz.produto} />
     </section>
