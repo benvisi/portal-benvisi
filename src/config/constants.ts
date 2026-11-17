@@ -35,6 +35,7 @@ export const TERMS_FULL_TEXT = TERMS_BODY_PARAGRAPHS.join("\n\n");
 
 export const TERMS_CHECKBOX_LABEL = "Li e declaro estar ciente das informações acima.";
 export const TERMS_ACCEPT_BUTTON_LABEL = "Aceitar e continuar";
+export const HOME_BUTTON_LABEL = "Início";
 export const SIGN_OUT_BUTTON_LABEL = "Sair";
 export const TERMS_LOADING_MESSAGE = "Verificando aceite do termo...";
 export const TERMS_ACCEPT_ERROR_MESSAGE = "Não foi possível registrar seu aceite. Tente novamente.";
