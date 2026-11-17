@@ -113,7 +113,7 @@ function TermsPage() {
       </Card>
 
       {/* Terms provides its own accept/decline (Sair) pair — only the text-size control here. */}
-      <AuthUtilityBar showSignOut={false} />
+      <AuthUtilityBar showSignOut={false} showHome={false} />
     </main>
   );
 }
