@@ -79,7 +79,7 @@ export function EstoqueMatrix({ matriz, imagens, onVerImagens }: EstoqueMatrixPr
   const headerRowSpan = isCalcado ? 2 : 1;
 
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-xl border border-border">
+    <div className="isolate max-h-[70vh] overflow-auto rounded-xl border border-border">
       <table className="w-max border-separate border-spacing-0 text-sm">
         <thead>
           <tr>

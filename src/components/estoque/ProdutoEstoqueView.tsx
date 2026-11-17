@@ -62,8 +62,10 @@ export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueView
     );
   }
 
+  // relative z-0 (+ isolate on the matrix scroller) contains the sticky headers (z-20/30) in their own
+  // stacking context so they can never paint over the search suggestions (z-40 in EstoqueBuscaField).
   return (
-    <section className="flex flex-col gap-4">
+    <section className="relative z-0 flex flex-col gap-4">
       <header className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">{matriz.produto}</h2>
         {matriz.descProduto && (
