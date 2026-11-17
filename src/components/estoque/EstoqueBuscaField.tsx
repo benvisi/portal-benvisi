@@ -57,8 +57,9 @@ export function EstoqueBuscaField({
     commit(exact?.produto ?? suggestions[0]?.produto ?? trimmed);
   };
 
+  // z-40 creates a local stacking context so the dropdown clears the matrix sticky headers (z-20/30).
   return (
-    <div className="relative">
+    <div className="relative z-40">
       <Search
         aria-hidden
         className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
