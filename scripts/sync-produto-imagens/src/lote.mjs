@@ -128,10 +128,72 @@ async function selecionar(supabase, want, round, exclude) {
   return { chosen, skipped, eligible, products, syncConcluidoEm };
 }
 
+async function contarSemPontuacao(supabase) {
+  const { count, error } = await supabase
+    .from("produto_imagem_candidatos")
+    .select("produto", { count: "exact", head: true })
+    .eq("status", "pendente")
+    .is("scoring_notes", null);
+  if (error) throw new Error(`count sem pontuação: ${error.message}`);
+  return count;
+}
+
+// Scoring-only recovery: scores pending candidates that have no scoring_notes
+// (e.g. after Anthropic credits ran out). Never acquires, selects stock or publishes.
+async function recuperarPontuacao(supabase, { persist, limit }) {
+  const { data, error } = await supabase
+    .from("produto_imagem_candidatos")
+    .select("produto,cor_codigo")
+    .eq("status", "pendente")
+    .is("scoring_notes", null)
+    .order("criado_em")
+    .limit(limit);
+  if (error) throw new Error(`select sem pontuação: ${error.message}`);
+  const total = await contarSemPontuacao(supabase);
+  stamp(`${total} candidato(s) pendente(s) sem pontuação; ${data.length} neste lote`);
+  if (!persist) {
+    for (const c of data) stamp(`  ${c.produto}:${c.cor_codigo}`);
+    stamp("dry-run: nenhuma chamada paga ou gravação foi feita.");
+    return;
+  }
+  const r = { tentados: 0, sucesso: 0, falhas: 0 };
+  let motivo = "lote concluído";
+  let semProgresso = 0;
+  for (const bloco of chunk(data)) {
+    if (interrupted) {
+      motivo = "interrompido";
+      break;
+    }
+    const code = await runWorker("score.mjs", [`--produtos=${toProdutosArg(bloco)}`, "--persist"]);
+    const prontos = contarProntos(await candidatosPendentes(supabase, bloco));
+    r.tentados += bloco.length;
+    r.sucesso += prontos;
+    r.falhas += bloco.length - prontos;
+    stamp(`progresso: ${r.sucesso} pontuados, ${r.falhas} falhas de ${r.tentados} tentados`);
+    if (code === 2) {
+      motivo = "créditos ou autenticação da Anthropic (parado; recarregue e rode de novo)";
+      process.exitCode = 2;
+      break;
+    }
+    semProgresso = prontos === 0 ? semProgresso + 1 : 0;
+    if (semProgresso >= 2) {
+      motivo = "2 blocos seguidos sem nenhuma pontuação (veja o log)";
+      process.exitCode = 1;
+      break;
+    }
+  }
+  stamp(
+    `RESUMO: motivo="${motivo}" tentados=${r.tentados} pontuados=${r.sucesso} falhas=${r.falhas} ` +
+      `restantes=${await contarSemPontuacao(supabase)}`,
+  );
+}
+
 async function main() {
-  const { persist, limit, round } = parseLoteArgs(process.argv.slice(2));
+  const { persist, limit, round, scoreOnly } = parseLoteArgs(process.argv.slice(2));
   const supabase = createWorkerClient();
-  stamp(`Lote de imagens: modo=${persist ? "PERSIST" : "dry-run"} meta=${limit} rodada=${round}`);
+  stamp(
+    `Lote de imagens: modo=${persist ? "PERSIST" : "dry-run"}${scoreOnly ? " SOMENTE-PONTUAÇÃO" : ""} meta=${limit} rodada=${round}`,
+  );
 
   const lock = persist
     ? acquireRunLock(
@@ -159,6 +221,10 @@ async function main() {
   let motivo = "meta atingida";
 
   try {
+    if (scoreOnly) {
+      await recuperarPontuacao(supabase, { persist, limit });
+      return;
+    }
     // Resume: candidates acquired earlier but never scored.
     const { data: semNota, error: semNotaErr } = await supabase
       .from("produto_imagem_candidatos")

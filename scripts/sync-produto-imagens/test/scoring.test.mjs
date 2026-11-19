@@ -90,3 +90,14 @@ test("inconsistent image elsewhere stays visible in diagnostics without altering
 test("consistent output has empty diagnostics", () =>
   assert.deepEqual(validateScoring(ok(), gal).diagnostics, []));
 test("non-array gallery rejected", () => assert.throws(() => normalizeGallery(null)));
+
+test("isFatalApiError: stops on credit/auth errors only", async () => {
+  const { isFatalApiError } = await import("../src/scoring.mjs");
+  assert.equal(isFatalApiError({ status: 401, message: "x" }), true);
+  assert.equal(
+    isFatalApiError({ status: 400, message: "Your credit balance is too low to access the API" }),
+    true,
+  );
+  assert.equal(isFatalApiError({ status: 500, message: "overloaded" }), false);
+  assert.equal(isFatalApiError(new Error("model returned no tool_use block")), false);
+});

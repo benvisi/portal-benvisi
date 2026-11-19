@@ -24,12 +24,14 @@ const row = (produto, cor, total) => ({
 });
 
 test("parseLoteArgs: dry-run by default, bounded target and round", () => {
-  assert.deepEqual(parseLoteArgs([]), { persist: false, limit: 25, round: 25 });
+  assert.deepEqual(parseLoteArgs([]), { persist: false, limit: 25, round: 25, scoreOnly: false });
   assert.deepEqual(parseLoteArgs(["--persist", "--limit=250"]), {
     persist: true,
     limit: 250,
     round: 25,
+    scoreOnly: false,
   });
+  assert.equal(parseLoteArgs(["--score-only"]).scoreOnly, true);
   assert.equal(parseLoteArgs(["--limit=10", "--round=5"]).round, 5);
   assert.throws(() => parseLoteArgs(["--limit=0"]));
   assert.throws(() => parseLoteArgs(["--limit=501"]));

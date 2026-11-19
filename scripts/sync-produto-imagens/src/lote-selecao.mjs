@@ -29,6 +29,7 @@ export function parseLoteArgs(argv) {
   const persist = flags.persist === true;
   if (persist && flags["dry-run"] === true)
     throw new Error("--dry-run and --persist are mutually exclusive");
+  const scoreOnly = flags["score-only"] === true;
   let limit = DEFAULT_LIMIT;
   if (flags.limit !== undefined) {
     limit = Number.parseInt(flags.limit, 10);
@@ -45,7 +46,7 @@ export function parseLoteArgs(argv) {
         `--round must be an integer between 1 and ${MAX_ROUND}, got "${flags.round}"`,
       );
   }
-  return { persist, limit, round };
+  return { persist, limit, round, scoreOnly };
 }
 
 /** Returns { fresh, ageHours } for the stock snapshot completion time. */

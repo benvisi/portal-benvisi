@@ -324,3 +324,11 @@ chunks with nothing acquired abort the run (likely a site block). The Windows la
 ~1k output tokens per candidate.
 
     iniciar-lote.cmd 250        # background, returns at once; log in %LOCALAPPDATA%\PortalBenvisi\logs
+
+### Scoring-only recovery (`--score-only`)
+
+`node src/lote.mjs --score-only [--limit=N] [--persist]` scores pending candidates that have no
+`scoring_notes` (for example after Anthropic credits ran out). It never acquires, reads stock or publishes.
+Dry-run by default (lists identifiers); `--persist` makes the paid calls. Each candidate is attempted once per
+run; credit/authentication errors stop the run (exit code 2); two chunks in a row with no success also stop it.
+The final `RESUMO` line reports attempted, scored, failed and remaining.
