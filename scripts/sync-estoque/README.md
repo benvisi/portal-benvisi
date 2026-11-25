@@ -110,6 +110,19 @@ negative), so dropping them loses no stock information.
 past ±15 %. Assortment and grade changes move it over time and must not be
 rejected; `max_tamanho_key` is reported per run and is data, not a cap.
 
+## Barcode Slice 1
+
+Each run also maintains `estoque_barcodes` (barcode → produto/cor/tamanho_key)
+from `PRODUTOS_BARRA` via [`linx-barcode-query.sql`](./linx-barcode-query.sql)
+and [`estoque-barcode-diff.mjs`](./estoque-barcode-diff.mjs). Scope: active,
+non-blank barcodes of every produto+cor the store has ever carried
+(`ESTOQUE_PRODUTOS` row for the filial, any quantity), so sold-out items stay
+recognizable. Barcodes mapping to different SKUs are excluded with a warning.
+A barcode-pass failure never aborts the inventory/price sync (it is recorded as
+a `BARCODE_SYNC_SKIPPED` warning). New barcode files must be copied onto the
+scheduled-task server together with `sync-estoque.mjs`. Before first use run
+[`validate-barcode-scope.sql`](./validate-barcode-scope.sql) on Linx (read-only).
+
 ## Price V1
 
 Each run also extracts and publishes the full/list price (Linx R3,

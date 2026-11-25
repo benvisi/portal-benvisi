@@ -43,7 +43,8 @@
        real label flows through automatically.
      * keep applicable positions even when quantidade_estoque = 0
      * retain tamanho_key for deterministic grade ordering
-     * do NOT join PRODUTOS_BARRA in this milestone
+     * do NOT join PRODUTOS_BARRA here (barcodes have their own extraction:
+       linx-barcode-query.sql)
      * (produto, cor_codigo, tamanho_key) is unique in the result — the
        script asserts this again before publishing
 

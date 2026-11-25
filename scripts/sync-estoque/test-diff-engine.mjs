@@ -25,6 +25,13 @@ import {
   normalizePriceExtraction,
   validatePriceExtraction,
 } from "./estoque-price-diff.mjs";
+import {
+  buildBarcodeMap,
+  diffBarcodes,
+  finalizeBarcodeRow,
+  normalizeBarcodeExtraction,
+  resolveBarcodeAmbiguity,
+} from "./estoque-barcode-diff.mjs";
 
 let failures = 0;
 let passed = 0;
@@ -571,6 +578,99 @@ console.log("\nestoque-price-diff.mjs (Price V1)");
     "blank tamanho_venda is still fatal",
     !v.ok && v.problems.some((p) => p.includes("tamanho_venda")),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Barcode Slice 1
+// ---------------------------------------------------------------------------
+const bcRow = (o = {}) =>
+  finalizeBarcodeRow({
+    codigo_barra: "0001234567890",
+    produto: "TH2411-23",
+    cor_codigo: "6SY",
+    tamanho_key: 3,
+    tamanho_venda: "M",
+    desc_produto: "POLO",
+    cor_descricao_linx: "AZUL",
+    ...o,
+  });
+
+// 29. leading zeros preserved (string), whitespace trimmed
+{
+  const r = bcRow({ codigo_barra: " 0001234567890  " });
+  check("barcode keeps leading zeros as text", r.codigo_barra === "0001234567890");
+}
+
+// 30. several barcodes -> same SKU are all kept
+{
+  const res = resolveBarcodeAmbiguity([
+    bcRow({ codigo_barra: "A1" }),
+    bcRow({ codigo_barra: "A2" }),
+  ]);
+  check("multiple barcodes for one SKU kept", res.rows.length === 2 && res.ambiguous.length === 0);
+}
+
+// 31. same barcode, same SKU duplicated -> collapsed, not ambiguous
+{
+  const res = resolveBarcodeAmbiguity([bcRow(), bcRow()]);
+  check(
+    "duplicate barcode+same SKU collapsed",
+    res.rows.length === 1 && res.duplicateRows === 1 && res.ambiguous.length === 0,
+  );
+}
+
+// 32. same barcode -> different SKUs: excluded, reported, never picked
+{
+  const res = resolveBarcodeAmbiguity([bcRow(), bcRow({ tamanho_key: 4, tamanho_venda: "G" })]);
+  check(
+    "ambiguous barcode excluded and reported",
+    res.rows.length === 0 && res.ambiguous.length === 1 && res.ambiguous[0].skus.length === 2,
+  );
+}
+
+// 33. invalid rows dropped with a warning
+{
+  const n = normalizeBarcodeExtraction([
+    bcRow(),
+    bcRow({ codigo_barra: "  " }),
+    bcRow({ tamanho_key: 49 }),
+    bcRow({ codigo_barra: "B", tamanho_venda: "" }),
+  ]);
+  check("invalid barcode rows excluded", n.rows.length === 1 && n.warnings.length === 3);
+}
+
+// 34. diff: novo / inalterado / alterado (re-pointed, label) / removido (stale)
+{
+  const cur = buildBarcodeMap([
+    bcRow({ codigo_barra: "SAME" }),
+    bcRow({ codigo_barra: "MOVED" }),
+    bcRow({ codigo_barra: "RELABEL" }),
+    bcRow({ codigo_barra: "STALE" }),
+  ]);
+  const inc = buildBarcodeMap([
+    bcRow({ codigo_barra: "SAME" }),
+    bcRow({ codigo_barra: "MOVED", tamanho_key: 5, tamanho_venda: "GG" }),
+    bcRow({ codigo_barra: "RELABEL", desc_produto: "POLO NOVA" }),
+    bcRow({ codigo_barra: "NEW" }),
+  ]);
+  const d = diffBarcodes(inc, cur);
+  check(
+    "barcode diff classifies novo/alterado/removido/inalterado",
+    d.novo.length === 1 &&
+      d.novo[0].codigo_barra === "NEW" &&
+      d.alterado.length === 2 &&
+      d.removido.length === 1 &&
+      d.removido[0].codigo_barra === "STALE" &&
+      d.inalterado === 1,
+  );
+}
+
+// 35. null vs blank description is not a change
+{
+  const cur = buildBarcodeMap([bcRow({ desc_produto: null })]);
+  const inc = buildBarcodeMap([bcRow({ desc_produto: "" })]);
+  const d = diffBarcodes(inc, cur);
+  check("null vs blank description is unchanged", d.inalterado === 1 && d.alterado.length === 0);
 }
 
 console.log(`\n${passed} passed, ${failures} failed`);

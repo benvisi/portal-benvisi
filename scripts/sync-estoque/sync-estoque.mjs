@@ -53,6 +53,14 @@ import {
   validatePriceExtraction,
 } from "./estoque-price-diff.mjs";
 
+import {
+  buildBarcodeMap,
+  diffBarcodes,
+  finalizeBarcodeRow,
+  normalizeBarcodeExtraction,
+  resolveBarcodeAmbiguity,
+} from "./estoque-barcode-diff.mjs";
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CHUNK_SIZE = 1000;
 const READ_PAGE_SIZE = 1000;
@@ -479,6 +487,32 @@ async function extractPricesFromLinx(sql) {
 // ---------------------------------------------------------------------------
 // Supabase RPC / table helpers
 // ---------------------------------------------------------------------------
+async function extractBarcodesFromLinx(sql) {
+  const linx = getLinxConfig();
+  const query = readFileSync(join(HERE, "linx-barcode-query.sql"), "utf8");
+  log(
+    `connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} for barcodes ...`,
+  );
+  const pool = await sql.connect({
+    server: linx.server,
+    port: linx.port,
+    database: linx.database,
+    user: linx.user,
+    password: linx.password,
+    options: {
+      encrypt: linx.encrypt,
+      trustServerCertificate: true,
+      enableArithAbort: true,
+    },
+    requestTimeout: 180_000,
+    pool: { max: 1 },
+  });
+
+  const result = await pool.request().input("filial", sql.VarChar, linx.filial).query(query);
+  await pool.close();
+  return result.recordset ?? [];
+}
+
 async function claimSync(supabase) {
   const { data, error } = await supabase.rpc("estoque_claim_sync");
   if (error) throw new Error(`estoque_claim_sync failed: ${error.message}`);
@@ -535,6 +569,124 @@ async function fetchCurrentPrices(supabase) {
     from += READ_PAGE_SIZE;
   }
   return map;
+}
+
+async function fetchCurrentBarcodes(supabase) {
+  const map = new Map();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("estoque_barcodes")
+      .select(
+        "codigo_barra,produto,cor_codigo,tamanho_key,tamanho_venda,desc_produto,cor_descricao_linx",
+      )
+      .order("codigo_barra", { ascending: true })
+      .range(from, from + READ_PAGE_SIZE - 1);
+    if (error) throw new Error(`could not read estoque_barcodes: ${error.message}`);
+    for (const row of data) map.set(row.codigo_barra, row);
+    if (data.length < READ_PAGE_SIZE) break;
+    from += READ_PAGE_SIZE;
+  }
+  return map;
+}
+
+/**
+ * Barcode extraction + finalize + ambiguity + validation + diff, shared by the
+ * dry run and the real run. Never throws and never aborts the sync: a barcode
+ * problem must not hold the hourly inventory refresh hostage. On any failure it
+ * returns { skipped: true, reason } and the caller stages nothing (a no-op for
+ * estoque_barcodes — the previous mapping stays untouched) and records the
+ * reason as a sync warning.
+ */
+async function prepareBarcodes(supabase, sql) {
+  try {
+    const rawRows = await extractBarcodesFromLinx(sql);
+    const finalized = rawRows.map(finalizeBarcodeRow);
+    const norm = normalizeBarcodeExtraction(finalized);
+    const resolved = resolveBarcodeAmbiguity(norm.rows);
+
+    const warnings = [...norm.warnings];
+    for (const a of resolved.ambiguous) {
+      warnings.push(
+        `Ambiguous barcode EXCLUDED (maps to ${a.skus.length} different SKUs): ` +
+          `codigo_barra=${a.codigo_barra} skus=${JSON.stringify(a.skus)}`,
+      );
+    }
+
+    if (resolved.rows.length === 0) {
+      return {
+        skipped: true,
+        reason: `barcode extraction produced 0 publishable rows (raw=${rawRows.length})`,
+      };
+    }
+
+    const incoming = buildBarcodeMap(resolved.rows);
+    const current = await fetchCurrentBarcodes(supabase);
+    const diff = diffBarcodes(incoming, current);
+    return {
+      skipped: false,
+      rawCount: rawRows.length,
+      incoming,
+      currentCount: current.size,
+      diff,
+      ambiguous: resolved.ambiguous,
+      duplicateRows: resolved.duplicateRows,
+      warnings,
+    };
+  } catch (err) {
+    return { skipped: true, reason: `barcode sync skipped: ${err?.message ?? String(err)}` };
+  }
+}
+
+function printBarcodeSummary(bc) {
+  log("--- barcode diff summary ---");
+  log(`barcode raw rows:           ${bc.rawCount}`);
+  log(`barcode duplicate rows:     ${bc.duplicateRows} (same barcode + same SKU, collapsed)`);
+  log(`barcode ambiguous excluded: ${bc.ambiguous.length}`);
+  log(`current barcodes:           ${bc.currentCount}`);
+  log(`incoming barcodes:          ${bc.incoming.size}`);
+  log(`new barcodes:               ${bc.diff.novo.length}`);
+  log(`changed barcodes:           ${bc.diff.alterado.length}`);
+  log(`removed barcodes:           ${bc.diff.removido.length}`);
+  log(`unchanged barcodes:         ${bc.diff.inalterado}`);
+  log(`barcode warnings:           ${bc.warnings.length}`);
+  log("----------------------------");
+}
+
+async function stageBarcodes(supabase, syncId, diff) {
+  const rows = [];
+  for (const [acao, list] of [
+    ["novo", diff.novo],
+    ["alterado", diff.alterado],
+  ]) {
+    for (const r of list) {
+      rows.push({
+        sync_id: syncId,
+        codigo_barra: r.codigo_barra,
+        acao,
+        produto: r.produto,
+        cor_codigo: r.cor_codigo,
+        tamanho_key: r.tamanho_key,
+        tamanho_venda: r.tamanho_venda,
+        desc_produto: r.desc_produto,
+        cor_descricao_linx: r.cor_descricao_linx,
+      });
+    }
+  }
+  for (const r of diff.removido) {
+    rows.push({ sync_id: syncId, codigo_barra: r.codigo_barra, acao: "removido" });
+  }
+
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase.from("estoque_staging_barcodes").insert(chunk);
+    if (error) throw new Error(`barcode staging insert failed at offset ${i}: ${error.message}`);
+  }
+
+  log(
+    `staged ${rows.length} barcode row(s) ` +
+      `(${diff.novo.length} novo, ${diff.alterado.length} alterado, ${diff.removido.length} removido)`,
+  );
 }
 
 function toStagingLine(syncId, r) {
@@ -663,6 +815,8 @@ async function applySync(supabase, params) {
     p_preco_rows_lidos: params.precoRowsLidos,
     p_preco_produto_cor_count: params.precoProdutoCorCount,
     p_preco_sem_correspondencia: params.precoSemCorrespondencia,
+    p_barcode_rows_lidos: params.barcodeRowsLidos,
+    p_barcode_ambiguos: params.barcodeAmbiguos,
   });
   if (error) throw new Error(`estoque_aplicar_sync failed: ${error.message}`);
   return Array.isArray(data) ? data[0] : data;
@@ -862,6 +1016,14 @@ async function runDryRun(supabase, sql) {
     warningsCount: normPrice.warnings.length,
   });
 
+  const bc = await prepareBarcodes(supabase, sql);
+  if (bc.skipped) {
+    log(`WARNING: barcode sync would be SKIPPED this run: ${bc.reason}`);
+  } else {
+    for (const w of bc.warnings) log(`WARNING: ${w}`);
+    printBarcodeSummary(bc);
+  }
+
   log("dry run complete — nothing staged, claimed, or applied.");
 }
 
@@ -1014,8 +1176,23 @@ async function runReal(supabase, sql) {
       );
     }
 
+    // Barcodes: isolated from the inventory/price abort path (see
+    // prepareBarcodes). A skipped barcode pass stages nothing, so the existing
+    // estoque_barcodes mapping is left exactly as it was.
+    const bc = await prepareBarcodes(supabase, sql);
+    const avisos = [...norm.warnings];
+    if (bc.skipped) {
+      log(`WARNING: ${bc.reason}`);
+      avisos.push(`BARCODE_SYNC_SKIPPED: ${bc.reason}`);
+    } else {
+      for (const w of bc.warnings) log(`WARNING: ${w}`);
+      avisos.push(...bc.warnings);
+      printBarcodeSummary(bc);
+    }
+
     await stageChanges(supabase, syncId, diff);
     await stagePrices(supabase, syncId, priceDiff);
+    if (!bc.skipped) await stageBarcodes(supabase, syncId, bc.diff);
 
     const produtoCount = new Set(canonicalRows.map((r) => r.produto)).size;
     const produtoCorCount = incomingGroups.size;
@@ -1026,12 +1203,14 @@ async function runReal(supabase, sql) {
       canonicalRows: canonicalRows.length,
       produtoCount,
       produtoCorCount,
-      avisos: norm.warnings,
+      avisos,
       allowLargeRemoval: ALLOW_LARGE_REMOVAL,
       overrideReason: ALLOW_LARGE_REMOVAL ? OVERRIDE_REASON : null,
       precoRowsLidos: rawPriceRows.length,
       precoProdutoCorCount: incomingPrices.size,
       precoSemCorrespondencia: semCorrespondencia,
+      barcodeRowsLidos: bc.skipped ? null : bc.rawCount,
+      barcodeAmbiguos: bc.skipped ? null : bc.ambiguous.length,
     });
 
     if (result.status === "sucesso") {
@@ -1042,8 +1221,11 @@ async function runReal(supabase, sql) {
           `preco_novo=${result.preco_novos} preco_alterado=${result.preco_alterados} ` +
           `preco_removido=${result.preco_removidos} preco_inalterado=${result.preco_inalterados} ` +
           `preco_linhas_escritas=${result.preco_linhas_escritas} ` +
+          `barcode_novo=${result.barcode_novos} barcode_alterado=${result.barcode_alterados} ` +
+          `barcode_removido=${result.barcode_removidos} barcode_inalterado=${result.barcode_inalterados} ` +
+          `barcode_linhas_escritas=${result.barcode_linhas_escritas} ` +
           `freshness=${result.concluido_em}` +
-          (norm.warnings.length ? ` — ${norm.warnings.length} warning(s)` : ""),
+          (avisos.length ? ` — ${avisos.length} warning(s)` : ""),
       );
     } else {
       console.error(
