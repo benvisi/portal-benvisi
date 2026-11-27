@@ -20,6 +20,12 @@ interface EstoqueMatrixProps {
   imagens?: ReadonlyMap<string, ImagensDaCor>;
   /** Opens the image viewer; the icon only renders for colours in `imagens`. */
   onVerImagens?: (corCodigo: string) => void;
+  /**
+   * Barcode Slice 2: the scanned SKU cell, outlined so the employee sees which
+   * size the code belongs to. Quantity presentation is unchanged (a zero stays
+   * a blank cell). Absent for ordinary searches.
+   */
+  destaque?: { corCodigo: string; tamanhoKey: number };
 }
 
 /**
@@ -73,7 +79,7 @@ interface EstoqueMatrixProps {
  *   rather than hiding the column or inventing a conversion. Non-footwear
  *   matrices (segmentoCalcado null) render exactly as before.
  */
-export function EstoqueMatrix({ matriz, imagens, onVerImagens }: EstoqueMatrixProps) {
+export function EstoqueMatrix({ matriz, imagens, onVerImagens, destaque }: EstoqueMatrixProps) {
   const segmento = matriz.segmentoCalcado;
   const isCalcado = segmento !== null;
   const headerRowSpan = isCalcado ? 2 : 1;
@@ -188,12 +194,18 @@ export function EstoqueMatrix({ matriz, imagens, onVerImagens }: EstoqueMatrixPr
                 )}
                 {matriz.tamanhos.map((tamanho) => {
                   const quantidade = cor.quantidades.get(tamanho.key) ?? 0;
+                  const destacada =
+                    destaque !== undefined &&
+                    destaque.corCodigo === cor.codigo &&
+                    destaque.tamanhoKey === tamanho.key;
                   return (
                     <td
                       key={tamanho.key}
+                      data-destaque={destacada ? "true" : undefined}
                       className={cn(
                         "border-b border-r border-border px-2 py-2 text-center tabular-nums text-foreground",
                         stripe,
+                        destacada && "font-semibold ring-2 ring-inset ring-brand",
                       )}
                     >
                       {quantidade > 0 ? quantidade : ""}

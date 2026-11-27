@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { EstoqueMatrix } from "@/components/estoque/EstoqueMatrix";
 import { ProdutoImagemViewer } from "@/components/estoque/ProdutoImagemViewer";
@@ -12,12 +12,46 @@ import {
 } from "@/config/constants";
 import { useProdutoEstoqueDetalhe } from "@/hooks/useProdutoEstoqueDetalhe";
 import { useProdutoImagensPublicadas } from "@/hooks/useProdutoImagensPublicadas";
+import { filtrarMatrizPorCor } from "@/lib/codigoBarras";
 import { buildEstoqueMatriz } from "@/lib/estoque";
 import type { ImagensDaCor } from "@/lib/produtoImagensPublicadas";
 
 interface ProdutoEstoqueViewProps {
   sessionToken: string;
   produto: string;
+  /**
+   * Barcode Slice 2 ("Esta cor"): restrict the matrix to one colour while
+   * keeping every applicable size column. Falls back to the full matrix if
+   * that colour is not in the current snapshot.
+   */
+  filtroCor?: string | null;
+  /** Barcode Slice 2: the scanned SKU cell to outline. */
+  destaque?: { corCodigo: string; tamanhoKey: number };
+  /** Barcode Slice 2: status feedback + colour toggle, shown above the matrix. */
+  aviso?: ReactNode;
+}
+
+/** The produto header shared by the detail view and the barcode result states. */
+export function ProdutoEstoqueCabecalho({
+  produto,
+  descProduto,
+  linha,
+}: {
+  produto: string;
+  descProduto: string | null;
+  linha?: string | null;
+}) {
+  return (
+    <header className="flex flex-col gap-1">
+      <h2 className="text-2xl font-bold tracking-tight text-foreground">{produto}</h2>
+      {descProduto && <p className="text-sm text-muted-foreground">{descProduto}</p>}
+      {linha && (
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {linha}
+        </p>
+      )}
+    </header>
+  );
 }
 
 /**
@@ -27,10 +61,23 @@ interface ProdutoEstoqueViewProps {
  * are handled inside the hook (redirect to login); a transient failure shows
  * a retry here.
  */
-export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueViewProps) {
+export function ProdutoEstoqueView({
+  sessionToken,
+  produto,
+  filtroCor = null,
+  destaque,
+  aviso,
+}: ProdutoEstoqueViewProps) {
   const query = useProdutoEstoqueDetalhe(sessionToken, produto);
   const linhas = useMemo(() => query.data ?? [], [query.data]);
-  const matriz = useMemo(() => buildEstoqueMatriz(linhas), [linhas]);
+  const matrizCompleta = useMemo(() => buildEstoqueMatriz(linhas), [linhas]);
+  const matriz = useMemo(
+    () =>
+      matrizCompleta && filtroCor
+        ? (filtrarMatrizPorCor(matrizCompleta, filtroCor) ?? matrizCompleta)
+        : matrizCompleta,
+    [matrizCompleta, filtroCor],
+  );
   const imagens = useProdutoImagensPublicadas(sessionToken, produto);
   const [corAberta, setCorAberta] = useState<string | null>(null);
 
@@ -66,19 +113,20 @@ export function ProdutoEstoqueView({ sessionToken, produto }: ProdutoEstoqueView
   // stacking context so they can never paint over the search suggestions (z-40 in EstoqueBuscaField).
   return (
     <section className="relative z-0 flex flex-col gap-4">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">{matriz.produto}</h2>
-        {matriz.descProduto && (
-          <p className="text-sm text-muted-foreground">{matriz.descProduto}</p>
-        )}
-        {matriz.linha && (
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {matriz.linha}
-          </p>
-        )}
-      </header>
+      <ProdutoEstoqueCabecalho
+        produto={matriz.produto}
+        descProduto={matriz.descProduto}
+        linha={matriz.linha}
+      />
 
-      <EstoqueMatrix matriz={matriz} imagens={imagens} onVerImagens={setCorAberta} />
+      {aviso}
+
+      <EstoqueMatrix
+        matriz={matriz}
+        imagens={imagens}
+        onVerImagens={setCorAberta}
+        destaque={destaque}
+      />
 
       {corAberta !== null && imagens.has(corAberta) && (
         <ProdutoImagemViewer

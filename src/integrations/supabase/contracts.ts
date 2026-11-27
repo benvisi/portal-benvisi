@@ -611,6 +611,75 @@ export function isEstoqueProdutoDetalheLinha(value: unknown): value is EstoquePr
   );
 }
 
+// get_estoque_por_codigo_barra (20261125_001, Barcode Slice 1): exactly one
+// row for a non-blank code. `codigo_barra` is always text (leading zeros
+// preserved). Every SKU field is null for NAO_ENCONTRADO.
+export const ESTOQUE_CODIGO_BARRA_RESULTADOS = [
+  "DISPONIVEL",
+  "TAMANHO_ESGOTADO",
+  "COR_ESGOTADA",
+  "REFERENCIA_ESGOTADA",
+  "NAO_ENCONTRADO",
+] as const;
+
+export type EstoqueCodigoBarraResultadoTipo = (typeof ESTOQUE_CODIGO_BARRA_RESULTADOS)[number];
+
+export interface EstoqueCodigoBarraResultado {
+  resultado: EstoqueCodigoBarraResultadoTipo;
+  codigo_barra: string;
+  produto: string | null;
+  desc_produto: string | null;
+  cor_codigo: string | null;
+  cor_nome_portal: string | null;
+  cor_familia: string | null;
+  tamanho_key: number | null;
+  tamanho_venda: string | null;
+  quantidade_estoque: number | null;
+  outras_cores_disponiveis: number | null;
+  sync_concluido_em: string | null;
+}
+
+function isStringOrNull(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isNumberOrNull(value: unknown): value is number | null {
+  return value === null || typeof value === "number";
+}
+
+export function isEstoqueCodigoBarraResultado(
+  value: unknown,
+): value is EstoqueCodigoBarraResultado {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  const base =
+    typeof c.resultado === "string" &&
+    (ESTOQUE_CODIGO_BARRA_RESULTADOS as readonly string[]).includes(c.resultado) &&
+    typeof c.codigo_barra === "string" &&
+    isStringOrNull(c.produto) &&
+    isStringOrNull(c.desc_produto) &&
+    isStringOrNull(c.cor_codigo) &&
+    isStringOrNull(c.cor_nome_portal) &&
+    isStringOrNull(c.cor_familia) &&
+    isNumberOrNull(c.tamanho_key) &&
+    isStringOrNull(c.tamanho_venda) &&
+    isNumberOrNull(c.quantidade_estoque) &&
+    isNumberOrNull(c.outras_cores_disponiveis) &&
+    isStringOrNull(c.sync_concluido_em);
+  if (!base) return false;
+  // A recognized barcode always carries its SKU identity.
+  if (c.resultado !== "NAO_ENCONTRADO") {
+    return (
+      typeof c.produto === "string" &&
+      c.produto.length > 0 &&
+      typeof c.cor_codigo === "string" &&
+      c.cor_codigo.length > 0 &&
+      typeof c.tamanho_key === "number"
+    );
+  }
+  return true;
+}
+
 // =============================================================================
 // Escala Admin upload (V1.1). Matches escala_processar_importacao and
 // get_escala_publicacoes_historico in
