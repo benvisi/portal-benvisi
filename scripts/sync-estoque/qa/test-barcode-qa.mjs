@@ -179,7 +179,7 @@ async function sync(name, opts = {}) {
     res = await runner(client, sources, {
       dryRun: !!opts.dryRun,
       allowLargeRemoval: false,
-      overrideReason: null,
+      overrideReason: opts.overrideReason ?? null,
       forceBarcodeCheck: !!opts.force,
       allowLargeBarcodeRemoval: !!opts.allowLargeBarcodeRemoval,
       stagingChunkSize: opts.chunkSize,
@@ -216,6 +216,46 @@ const invQty = (produto, cor, key) =>
   q(
     `select to_json(quantidade_estoque) from public.estoque_atual where produto='${produto}' and cor_codigo='${cor}' and tamanho_key=${key};`,
   );
+
+// QA-only fault injection: triggers that raise while a flag row exists.
+// Created by the harness and always dropped again (finally block).
+const FAULT_TEARDOWN = `
+  drop trigger if exists qa_fault on public.estoque_barcode_sync_estado;
+  drop trigger if exists qa_fault on public.estoque_staging_barcodes;
+  drop schema if exists qa_test cascade;
+  select to_json(true);`;
+const FAULT_SETUP = `
+  create schema qa_test;
+  revoke all on schema qa_test from public;
+  create table qa_test.faults (nome text primary key);
+  create function qa_test.fault() returns trigger language plpgsql as $f$
+  begin
+    if tg_table_name = 'estoque_barcode_sync_estado' then
+      if exists (select 1 from qa_test.faults where nome = 'estado_any') then
+        raise exception 'QA_FAULT: % update', tg_table_name;
+      end if;
+      if exists (select 1 from qa_test.faults where nome = 'estado_success') and not new.check_pendente then
+        raise exception 'QA_FAULT: % update', tg_table_name;
+      end if;
+      return new;
+    end if;
+    if exists (select 1 from qa_test.faults where nome = 'staging_cleanup') then
+      raise exception 'QA_FAULT: % delete', tg_table_name;
+    end if;
+    return old;
+  end $f$;
+  create trigger qa_fault before update on public.estoque_barcode_sync_estado
+    for each row execute function qa_test.fault();
+  create trigger qa_fault before delete on public.estoque_staging_barcodes
+    for each row execute function qa_test.fault();
+  select to_json(true);`;
+const setFault = (nome) =>
+  q(
+    nome
+      ? `delete from qa_test.faults; insert into qa_test.faults values ('${nome}'); select to_json(true);`
+      : "delete from qa_test.faults; select to_json(true);",
+  );
+const stagingRows = () => q("select to_json(count(*)) from public.estoque_staging_barcodes;");
 
 // -----------------------------------------------------------------------------
 async function main() {
@@ -883,6 +923,173 @@ async function main() {
       res,
     );
   }
+
+  // --- 19. database-side barcode isolation (fault injection) -----------------
+  console.log("\n[19] barcode DB failure isolation");
+  await q(FAULT_TEARDOWN);
+  await q(FAULT_SETUP);
+  try {
+    // a) state update fails AFTER the mapping writes -> whole barcode step rolled back
+    {
+      const before = await mapping();
+      const hashBefore = (await estado()).hash_publicado;
+      fixture.barras.push(B("0007890000700", "QA-TESTE-004", "001", 2));
+      fixture.estoque.set("QA-TESTE-002|001", [4, 0, 0]);
+      await setFault("estado_success");
+      const r = await sync("state-fail-after-publish", { force: true });
+      await setFault(null);
+      const raw = await estado();
+      check(
+        "state failure after mapping writes -> falha, run committed",
+        r.result.status === "sucesso" &&
+          r.result.barcode_check_status === "falha" &&
+          r.result.barcode_erro.includes("BARCODE_DB_FAILURE") &&
+          r.result.barcode_erro.includes("QA_FAULT"),
+        r.result,
+      );
+      check(
+        "mapping writes rolled back, previous mapping kept",
+        JSON.stringify(await mapping()) === JSON.stringify(before),
+      );
+      check("published hash not advanced", raw.hash_publicado === hashBefore);
+      check(
+        "inventory/price committed despite barcode rollback",
+        (await invQty("QA-TESTE-002", "001", 1)) === 4,
+      );
+      check(
+        "failure recorded in state (fallback update)",
+        raw.check_pendente === true && raw.ultima_falha_erro.includes("BARCODE_DB_FAILURE"),
+      );
+      check("no staging left behind", (await stagingRows()) === 0);
+      const r2 = await sync("state-fail-retry");
+      check(
+        "retry publishes the delta",
+        r2.barcodePlan.motivos.join() === "retry" &&
+          r2.result.barcode_check_status === "publicado" &&
+          r2.result.barcode_novos === 1 &&
+          "0007890000700" in (await mapping()),
+        r2.result,
+      );
+    }
+
+    // b) state row cannot be updated at all -> retry derived from the sync audit
+    {
+      fixture.estoque.set("QA-TESTE-002|001", [5, 0, 0]);
+      await setFault("estado_any");
+      const r = await sync("state-unwritable", { force: true });
+      await setFault(null);
+      const raw = await estado();
+      const viaRpc = (await client.rpc("estoque_barcode_estado")).data[0];
+      const ex = await exec(r.syncId);
+      check(
+        "unwritable state -> falha, run committed",
+        r.result.status === "sucesso" &&
+          r.result.barcode_check_status === "falha" &&
+          r.result.barcode_erro.includes("retry derived from sync audit"),
+        r.result,
+      );
+      check("inventory committed", (await invQty("QA-TESTE-002", "001", 1)) === 5);
+      check("state row itself unchanged (not pending)", raw.check_pendente === false);
+      check(
+        "estoque_barcode_estado() reports pending from the audit",
+        viaRpc.check_pendente === true && ex.barcode_check_status === "falha",
+      );
+      const r2 = await sync("audit-retry");
+      const viaRpc2 = (await client.rpc("estoque_barcode_estado")).data[0];
+      check(
+        "derived pending triggers retry, which clears it",
+        r2.barcodePlan.motivos.join() === "retry" &&
+          r2.result.barcode_check_status === "inalterado" &&
+          viaRpc2.check_pendente === false,
+        r2.result,
+      );
+    }
+
+    // c) staging cleanup fails -> publication stands, leftovers never applied, purged at next claim
+    {
+      fixture.barras.push(B("0007890000701", "QA-TESTE-004", "001", 3));
+      await setFault("staging_cleanup");
+      const r = await sync("cleanup-fail", { force: true });
+      const left = await stagingRows();
+      const ex = await exec(r.syncId);
+      check(
+        "cleanup failure does not undo a successful publication",
+        r.result.status === "sucesso" &&
+          r.result.barcode_check_status === "publicado" &&
+          "0007890000701" in (await mapping()),
+        r.result,
+      );
+      check(
+        "cleanup failure recorded as a warning",
+        ex.avisos.some((a) => a.includes("BARCODE_STAGING_CLEANUP_FAILED")) && left > 0,
+      );
+      // estoque_marcar_erro must also survive a cleanup failure
+      const claim = (await client.rpc("estoque_claim_sync")).data[0];
+      await client
+        .from("estoque_staging_barcodes")
+        .insert([{ sync_id: claim.sync_id, codigo_barra: "QA-ERR-1", acao: "removido" }]);
+      const me = await client.rpc("estoque_marcar_erro", {
+        p_sync_id: claim.sync_id,
+        p_mensagem: "qa",
+        p_error_code: "QA",
+      });
+      check(
+        "estoque_marcar_erro still marks erro despite cleanup failure",
+        me.data?.[0]?.marcado === true,
+        me.error ?? me.data,
+      );
+      // a claim while cleanup still fails must still succeed
+      const r1 = await sync("cleanup-still-failing");
+      check(
+        "claim/apply still work while cleanup fails",
+        r1.result?.status === "sucesso",
+        r1.result ?? r1.status,
+      );
+      await setFault(null);
+      const stamp = await mappingStamp();
+      const r2 = await sync("cleanup-recovered");
+      check(
+        "next claim purges leftovers; nothing applied from them",
+        r2.result.status === "sucesso" &&
+          (await stagingRows()) === 0 &&
+          JSON.stringify(await mappingStamp()) === JSON.stringify(stamp),
+        r2.result,
+      );
+    }
+
+    // d) barcode-only removal override keeps its audit reason
+    {
+      const removed = ["0007890001004", "0007890001005", "0007890001006"];
+      fixture.barras = fixture.barras.filter((b) => !removed.includes(b.codigo));
+      const r = await sync("barcode-override", {
+        force: true,
+        allowLargeBarcodeRemoval: true,
+        overrideReason: "QA: reviewed barcode removal",
+      });
+      const ex = await exec(r.syncId);
+      check(
+        "barcode-only override publishes the >10% removal",
+        r.result.barcode_check_status === "publicado" &&
+          r.result.barcode_removidos === 3 &&
+          r.barcodePlan.removalPct > 10,
+        r.result,
+      );
+      check(
+        "override reason audited with barcode-only override",
+        ex.large_removal_override_used === true &&
+          ex.override_reason === "QA: reviewed barcode removal",
+        { used: ex.large_removal_override_used, reason: ex.override_reason },
+      );
+    }
+  } finally {
+    await q(FAULT_TEARDOWN);
+  }
+  check(
+    "fault-injection objects removed",
+    (await q(
+      "select to_json(to_regnamespace('qa_test') is null and not exists (select 1 from pg_trigger where tgname = 'qa_fault'));",
+    )) === true,
+  );
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);

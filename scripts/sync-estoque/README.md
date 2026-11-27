@@ -158,7 +158,17 @@ barcode publication: inventory and price still apply, the previous mapping is
 kept, a `BARCODE_CHECK_*` warning is recorded and the check is retried on the
 next hourly run. The barcode removal guard has its own override,
 `--allow-large-barcode-removal` (separate from `--allow-large-removal`).
+`--override-reason` is audited whenever either override is used.
 `--dry-run` reports what the barcode check would do and never advances state.
+
+In the database, all barcode writes of a run (mapping + published hash/state)
+are one subtransaction inside `estoque_aplicar_sync`: a recoverable barcode
+failure rolls back only those, keeps the previous mapping and marks the check
+pending. If the state row itself cannot be updated, the run's audit row
+(`barcode_check_status = 'falha'`) still makes `estoque_barcode_estado()`
+report the retry as pending. Staging cleanup failures never abort the run;
+leftover staging is never applied and is purged at the next claim.
+Connection loss or transaction termination still fails the whole run.
 
 New barcode files must be copied onto the scheduled-task server together with
 `sync-estoque.mjs`. [`validate-barcode-scope.sql`](./validate-barcode-scope.sql)

@@ -135,9 +135,46 @@ alter table public.estoque_sync_execucoes
   add column barcode_ambiguos integer,
   add column barcode_linhas_escritas integer;
 
+-- Latest attempted barcode check (durable retry fallback, see estoque_barcode_estado).
+create index estoque_sync_execucoes_barcode_check_idx
+  on public.estoque_sync_execucoes (concluido_em desc)
+  where status = 'sucesso'
+    and barcode_check_status in ('inalterado', 'publicado', 'falha', 'bloqueado');
+
 -- Explicit, least-privilege table grants (no anon/authenticated access).
 grant select on public.estoque_barcodes to service_role;
 grant select, insert, delete on public.estoque_staging_barcodes to service_role;
+
+-- -----------------------------------------------------------------------------
+-- estoque_purgar_staging_barcodes — barcode staging cleanup that can never
+-- abort its caller. p_sync_id NULL purges rows of every execution that is no
+-- longer running. Returns false (instead of raising) on a recoverable failure;
+-- leftover rows are harmless (apply only ever reads its own, still-running
+-- sync_id) and are purged again at the next claim. Internal: no grants.
+-- -----------------------------------------------------------------------------
+create function public.estoque_purgar_staging_barcodes(p_sync_id uuid default null)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_sync_id is null then
+    delete from public.estoque_staging_barcodes b
+    where not exists (
+      select 1 from public.estoque_sync_execucoes e
+      where e.id = b.sync_id and e.status = 'executando'
+    );
+  else
+    delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+  end if;
+  return true;
+exception when others then
+  return false;
+end;
+$$;
+
+revoke all on function public.estoque_purgar_staging_barcodes(uuid) from public, anon, authenticated, service_role;
 
 -- -----------------------------------------------------------------------------
 -- estoque_claim_sync / estoque_marcar_erro — unchanged, purge extended.
@@ -183,16 +220,12 @@ begin
     delete from public.estoque_staging_linhas l where l.sync_id = v_stale.id;
     delete from public.estoque_staging_grupos g where g.sync_id = v_stale.id;
     delete from public.estoque_staging_precos p where p.sync_id = v_stale.id;
-    delete from public.estoque_staging_barcodes b where b.sync_id = v_stale.id;
+    perform public.estoque_purgar_staging_barcodes(v_stale.id);
 
     v_recovered := v_stale.id;
   end if;
 
-  delete from public.estoque_staging_barcodes b
-  where not exists (
-    select 1 from public.estoque_sync_execucoes e
-    where e.id = b.sync_id and e.status = 'executando'
-  );
+  perform public.estoque_purgar_staging_barcodes(null);
 
   begin
     insert into public.estoque_sync_execucoes (status)
@@ -236,7 +269,7 @@ begin
   delete from public.estoque_staging_linhas where sync_id = p_sync_id;
   delete from public.estoque_staging_grupos where sync_id = p_sync_id;
   delete from public.estoque_staging_precos where sync_id = p_sync_id;
-  delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+  perform public.estoque_purgar_staging_barcodes(p_sync_id);
 
   return query select (v_rows > 0);
 end;
@@ -266,8 +299,19 @@ stable
 security definer
 set search_path = public
 as $$
+  -- check_pendente is also derived from the sync audit: if the most recent
+  -- committed barcode check failed or was blocked, a retry is pending even if
+  -- the state row itself could not be updated in that run.
   select s.hash_publicado, s.publicado_em, s.barcodes_publicados, s.ultimo_check_ok_em,
-         s.check_pendente, s.check_pendente_motivos, s.check_pendente_desde,
+         (s.check_pendente or coalesce((
+            select e.barcode_check_status in ('falha', 'bloqueado')
+            from public.estoque_sync_execucoes e
+            where e.status = 'sucesso'
+              and e.barcode_check_status in ('inalterado', 'publicado', 'falha', 'bloqueado')
+            order by e.concluido_em desc
+            limit 1
+          ), false)) as check_pendente,
+         s.check_pendente_motivos, s.check_pendente_desde,
          s.ultima_falha_em, s.ultima_falha_erro, s.falhas_consecutivas
   from public.estoque_barcode_sync_estado s
   where s.id;
@@ -435,7 +479,7 @@ begin
     delete from public.estoque_staging_linhas where sync_id = p_sync_id;
     delete from public.estoque_staging_grupos where sync_id = p_sync_id;
     delete from public.estoque_staging_precos where sync_id = p_sync_id;
-    delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+    perform public.estoque_purgar_staging_barcodes(p_sync_id);
 
     return query select 'erro'::text, 'MANIFEST_ROW_COUNT_MISMATCH'::text,
       format('produto=%s cor_codigo=%s expected=%s actual=%s',
@@ -464,7 +508,7 @@ begin
     delete from public.estoque_staging_linhas where sync_id = p_sync_id;
     delete from public.estoque_staging_grupos where sync_id = p_sync_id;
     delete from public.estoque_staging_precos where sync_id = p_sync_id;
-    delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+    perform public.estoque_purgar_staging_barcodes(p_sync_id);
 
     return query select 'erro'::text, 'REMOVED_GROUP_HAS_STAGED_ROWS'::text,
       'A group marked removido has staged inventory rows.'::text,
@@ -496,7 +540,7 @@ begin
     delete from public.estoque_staging_linhas where sync_id = p_sync_id;
     delete from public.estoque_staging_grupos where sync_id = p_sync_id;
     delete from public.estoque_staging_precos where sync_id = p_sync_id;
-    delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+    perform public.estoque_purgar_staging_barcodes(p_sync_id);
 
     return query select 'erro'::text, 'STAGED_ROWS_WITHOUT_MANIFEST'::text,
       'Staged inventory rows exist with no matching novo/alterado manifest entry.'::text,
@@ -536,7 +580,7 @@ begin
     delete from public.estoque_staging_linhas where sync_id = p_sync_id;
     delete from public.estoque_staging_grupos where sync_id = p_sync_id;
     delete from public.estoque_staging_precos where sync_id = p_sync_id;
-    delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+    perform public.estoque_purgar_staging_barcodes(p_sync_id);
 
     return query select 'erro'::text, 'LARGE_REMOVAL_GUARD'::text,
       format('Removal %s%% (%s of %s groups) exceeds the 10%% guard without --allow-large-removal',
@@ -620,131 +664,164 @@ begin
   if p_barcode_resultado is null then
     v_bc_status := 'nao_devido';
   else
-    select * into v_estado from public.estoque_barcode_sync_estado where id for update;
+    -- One subtransaction for every barcode write: state lock, mapping
+    -- publication and state advancement. A recoverable failure anywhere in it
+    -- (including the state update after a successful publication) rolls back
+    -- ALL barcode changes — previous mapping and hash kept — while the
+    -- inventory/price changes above stay intact.
+    begin
+      select * into v_estado from public.estoque_barcode_sync_estado where id for update;
 
-    if p_barcode_resultado = 'inalterado' then
-      select count(*) into v_bc_current_count from public.estoque_barcodes;
-      if p_barcode_hash is null or v_estado.hash_publicado is distinct from p_barcode_hash then
-        v_bc_status := 'falha';
-        v_bc_erro := 'BARCODE_HASH_MISMATCH: reported hash does not match the published hash';
-      elsif p_barcode_total is distinct from v_bc_current_count then
-        -- Mapping table drifted from what was published: clear the published
-        -- hash so the retry performs a full reconciliation.
-        v_bc_status := 'falha';
-        v_bc_erro := format('BARCODE_STATE_DRIFT: estoque_barcodes has %s rows, expected %s',
-                            v_bc_current_count, p_barcode_total);
-        update public.estoque_barcode_sync_estado set hash_publicado = null where id;
-      else
-        v_bc_status := 'inalterado';
-        v_bc_inalterados := v_bc_current_count;
-      end if;
-
-    elsif p_barcode_resultado = 'publicar' then
-      begin
-        select count(*) filter (where acao = 'novo'),
-               count(*) filter (where acao = 'alterado'),
-               count(*) filter (where acao = 'removido')
-          into v_bc_novos, v_bc_alterados, v_bc_removidos
-        from public.estoque_staging_barcodes where sync_id = p_sync_id;
-
-        if p_barcode_hash is null or p_barcode_total is null
-           or v_bc_novos is distinct from p_barcode_novos_esperados
-           or v_bc_alterados is distinct from p_barcode_alterados_esperados
-           or v_bc_removidos is distinct from p_barcode_removidos_esperados then
-          raise exception using errcode = 'P0001', message = format(
-            'BARCODE_STAGING_INCOMPLETE: staged novo=%s alterado=%s removido=%s, expected novo=%s alterado=%s removido=%s',
-            v_bc_novos, v_bc_alterados, v_bc_removidos,
-            p_barcode_novos_esperados, p_barcode_alterados_esperados, p_barcode_removidos_esperados);
+      if p_barcode_resultado = 'inalterado' then
+        select count(*) into v_bc_current_count from public.estoque_barcodes;
+        if p_barcode_hash is null or v_estado.hash_publicado is distinct from p_barcode_hash then
+          v_bc_status := 'falha';
+          v_bc_erro := 'BARCODE_HASH_MISMATCH: reported hash does not match the published hash';
+        elsif p_barcode_total is distinct from v_bc_current_count then
+          -- Mapping table drifted from what was published: clear the published
+          -- hash so the retry performs a full reconciliation.
+          v_bc_status := 'falha';
+          v_bc_erro := format('BARCODE_STATE_DRIFT: estoque_barcodes has %s rows, expected %s',
+                              v_bc_current_count, p_barcode_total);
+          update public.estoque_barcode_sync_estado set hash_publicado = null where id;
+        else
+          v_bc_status := 'inalterado';
+          v_bc_inalterados := v_bc_current_count;
         end if;
 
-        select count(*) into v_bc_current_count from public.estoque_barcodes;
-        v_bc_removal_pct := case when v_bc_current_count > 0
-          then round(100.0 * v_bc_removidos / v_bc_current_count, 3) else 0 end;
+      elsif p_barcode_resultado = 'publicar' then
+        begin
+          select count(*) filter (where acao = 'novo'),
+                 count(*) filter (where acao = 'alterado'),
+                 count(*) filter (where acao = 'removido')
+            into v_bc_novos, v_bc_alterados, v_bc_removidos
+          from public.estoque_staging_barcodes where sync_id = p_sync_id;
 
-        if v_bc_removal_pct > 10 and not p_barcode_allow_large_removal then
-          v_bc_status := 'bloqueado';
-          v_bc_erro := format(
-            'BARCODE_LARGE_REMOVAL_GUARD: removal %s%% (%s of %s) exceeds 10%% without --allow-large-barcode-removal; previous mapping kept',
-            v_bc_removal_pct, v_bc_removidos, v_bc_current_count);
-        else
-          v_bc_override_applied := (p_barcode_allow_large_removal and v_bc_removal_pct > 10);
-
-          delete from public.estoque_barcodes b
-          using public.estoque_staging_barcodes sb
-          where sb.sync_id = p_sync_id
-            and sb.acao in ('alterado', 'removido')
-            and b.codigo_barra = sb.codigo_barra;
-
-          insert into public.estoque_barcodes (
-            codigo_barra, produto, cor_codigo, tamanho_key, tamanho_venda,
-            desc_produto, cor_descricao_linx, atualizado_em, ultimo_sync_id
-          )
-          select
-            sb.codigo_barra, sb.produto, sb.cor_codigo, sb.tamanho_key, sb.tamanho_venda,
-            sb.desc_produto, sb.cor_descricao_linx, now(), p_sync_id
-          from public.estoque_staging_barcodes sb
-          where sb.sync_id = p_sync_id and sb.acao in ('novo', 'alterado');
-
-          get diagnostics v_bc_escritos = row_count;
-
-          select count(*) into v_bc_final_count from public.estoque_barcodes;
-          if v_bc_final_count <> p_barcode_total then
+          if p_barcode_hash is null or p_barcode_total is null
+             or v_bc_novos is distinct from p_barcode_novos_esperados
+             or v_bc_alterados is distinct from p_barcode_alterados_esperados
+             or v_bc_removidos is distinct from p_barcode_removidos_esperados then
             raise exception using errcode = 'P0001', message = format(
-              'BARCODE_TOTAL_MISMATCH: mapping would have %s rows, expected %s',
-              v_bc_final_count, p_barcode_total);
+              'BARCODE_STAGING_INCOMPLETE: staged novo=%s alterado=%s removido=%s, expected novo=%s alterado=%s removido=%s',
+              v_bc_novos, v_bc_alterados, v_bc_removidos,
+              p_barcode_novos_esperados, p_barcode_alterados_esperados, p_barcode_removidos_esperados);
           end if;
 
-          v_bc_status := 'publicado';
-          v_bc_inalterados := greatest(v_bc_current_count - v_bc_alterados - v_bc_removidos, 0);
-        end if;
-      exception when others then
+          select count(*) into v_bc_current_count from public.estoque_barcodes;
+          v_bc_removal_pct := case when v_bc_current_count > 0
+            then round(100.0 * v_bc_removidos / v_bc_current_count, 3) else 0 end;
+
+          if v_bc_removal_pct > 10 and not p_barcode_allow_large_removal then
+            v_bc_status := 'bloqueado';
+            v_bc_erro := format(
+              'BARCODE_LARGE_REMOVAL_GUARD: removal %s%% (%s of %s) exceeds 10%% without --allow-large-barcode-removal; previous mapping kept',
+              v_bc_removal_pct, v_bc_removidos, v_bc_current_count);
+          else
+            v_bc_override_applied := (p_barcode_allow_large_removal and v_bc_removal_pct > 10);
+
+            delete from public.estoque_barcodes b
+            using public.estoque_staging_barcodes sb
+            where sb.sync_id = p_sync_id
+              and sb.acao in ('alterado', 'removido')
+              and b.codigo_barra = sb.codigo_barra;
+
+            insert into public.estoque_barcodes (
+              codigo_barra, produto, cor_codigo, tamanho_key, tamanho_venda,
+              desc_produto, cor_descricao_linx, atualizado_em, ultimo_sync_id
+            )
+            select
+              sb.codigo_barra, sb.produto, sb.cor_codigo, sb.tamanho_key, sb.tamanho_venda,
+              sb.desc_produto, sb.cor_descricao_linx, now(), p_sync_id
+            from public.estoque_staging_barcodes sb
+            where sb.sync_id = p_sync_id and sb.acao in ('novo', 'alterado');
+
+            get diagnostics v_bc_escritos = row_count;
+
+            select count(*) into v_bc_final_count from public.estoque_barcodes;
+            if v_bc_final_count <> p_barcode_total then
+              raise exception using errcode = 'P0001', message = format(
+                'BARCODE_TOTAL_MISMATCH: mapping would have %s rows, expected %s',
+                v_bc_final_count, p_barcode_total);
+            end if;
+
+            v_bc_status := 'publicado';
+            v_bc_inalterados := greatest(v_bc_current_count - v_bc_alterados - v_bc_removidos, 0);
+          end if;
+        exception when others then
+          v_bc_status := 'falha';
+          v_bc_erro := left(sqlerrm, 2000);
+          v_bc_escritos := null;
+          v_bc_override_applied := false;
+        end;
+
+      elsif p_barcode_resultado = 'bloqueado' then
+        v_bc_status := 'bloqueado';
+        v_bc_erro := coalesce(p_barcode_erro, 'BARCODE_LARGE_REMOVAL_GUARD');
+      else
         v_bc_status := 'falha';
-        v_bc_erro := left(sqlerrm, 2000);
-        v_bc_escritos := null;
-        v_bc_override_applied := false;
-      end;
+        v_bc_erro := coalesce(p_barcode_erro,
+          format('BARCODE_RESULTADO_INVALIDO: %s', p_barcode_resultado));
+      end if;
 
-    elsif p_barcode_resultado = 'bloqueado' then
-      v_bc_status := 'bloqueado';
-      v_bc_erro := coalesce(p_barcode_erro, 'BARCODE_LARGE_REMOVAL_GUARD');
-    else
+      if v_bc_status in ('inalterado', 'publicado') then
+        update public.estoque_barcode_sync_estado set
+          hash_publicado = case when v_bc_status = 'publicado' then p_barcode_hash else hash_publicado end,
+          publicado_em = case when v_bc_status = 'publicado' then now() else publicado_em end,
+          publicado_sync_id = case when v_bc_status = 'publicado' then p_sync_id else publicado_sync_id end,
+          barcodes_publicados = case when v_bc_status = 'publicado' then p_barcode_total else barcodes_publicados end,
+          ultimo_check_ok_em = now(),
+          ultimo_check_ok_sync_id = p_sync_id,
+          ultimo_check_ok_motivos = p_barcode_motivos,
+          check_pendente = false,
+          check_pendente_motivos = null,
+          check_pendente_desde = null,
+          falhas_consecutivas = 0,
+          atualizado_em = now()
+        where id;
+      else
+        update public.estoque_barcode_sync_estado set
+          check_pendente = true,
+          check_pendente_motivos = p_barcode_motivos,
+          check_pendente_desde = coalesce(check_pendente_desde, now()),
+          ultima_falha_em = now(),
+          ultima_falha_erro = v_bc_erro,
+          falhas_consecutivas = falhas_consecutivas + 1,
+          atualizado_em = now()
+        where id;
+      end if;
+    exception when others then
       v_bc_status := 'falha';
-      v_bc_erro := coalesce(p_barcode_erro,
-        format('BARCODE_RESULTADO_INVALIDO: %s', p_barcode_resultado));
-    end if;
+      v_bc_erro := left(format(
+        'BARCODE_DB_FAILURE: %s (barcode changes rolled back; previous mapping kept)', sqlerrm), 2000);
+      v_bc_novos := null; v_bc_alterados := null; v_bc_removidos := null;
+      v_bc_inalterados := null; v_bc_escritos := null; v_bc_override_applied := false;
+      begin
+        update public.estoque_barcode_sync_estado set
+          check_pendente = true,
+          check_pendente_motivos = p_barcode_motivos,
+          check_pendente_desde = coalesce(check_pendente_desde, now()),
+          ultima_falha_em = now(),
+          ultima_falha_erro = v_bc_erro,
+          falhas_consecutivas = falhas_consecutivas + 1,
+          atualizado_em = now()
+        where id;
+      exception when others then
+        -- Durable fallback: this run's audit row (barcode_check_status =
+        -- 'falha') makes estoque_barcode_estado() report the check pending.
+        v_bc_erro := left(v_bc_erro || format('; state row not updated (%s) — retry derived from sync audit', sqlerrm), 2000);
+      end;
+    end;
 
-    if v_bc_status in ('inalterado', 'publicado') then
-      update public.estoque_barcode_sync_estado set
-        hash_publicado = case when v_bc_status = 'publicado' then p_barcode_hash else hash_publicado end,
-        publicado_em = case when v_bc_status = 'publicado' then now() else publicado_em end,
-        publicado_sync_id = case when v_bc_status = 'publicado' then p_sync_id else publicado_sync_id end,
-        barcodes_publicados = case when v_bc_status = 'publicado' then p_barcode_total else barcodes_publicados end,
-        ultimo_check_ok_em = now(),
-        ultimo_check_ok_sync_id = p_sync_id,
-        ultimo_check_ok_motivos = p_barcode_motivos,
-        check_pendente = false,
-        check_pendente_motivos = null,
-        check_pendente_desde = null,
-        falhas_consecutivas = 0,
-        atualizado_em = now()
-      where id;
-    else
-      update public.estoque_barcode_sync_estado set
-        check_pendente = true,
-        check_pendente_motivos = p_barcode_motivos,
-        check_pendente_desde = coalesce(check_pendente_desde, now()),
-        ultima_falha_em = now(),
-        ultima_falha_erro = v_bc_erro,
-        falhas_consecutivas = falhas_consecutivas + 1,
-        atualizado_em = now()
-      where id;
-
+    if v_bc_status in ('falha', 'bloqueado') then
       v_avisos := v_avisos || jsonb_build_array(
         format('BARCODE_CHECK_%s: %s (previous mapping kept; retried next run)', upper(v_bc_status), v_bc_erro));
     end if;
   end if;
 
-  delete from public.estoque_staging_barcodes where sync_id = p_sync_id;
+  if not public.estoque_purgar_staging_barcodes(p_sync_id) then
+    v_avisos := v_avisos || jsonb_build_array(
+      'BARCODE_STAGING_CLEANUP_FAILED: staged barcode rows of this run were not deleted; they are never applied and are purged at the next claim');
+  end if;
 
   update public.estoque_sync_execucoes set
     status = 'sucesso',

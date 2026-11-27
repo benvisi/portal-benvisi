@@ -90,7 +90,7 @@ export function createPsqlSupabaseClient({ psqlPath, role = "service_role" }) {
       .map(([k, v]) => `${ident(k)} => ${literal(v)}`);
     return jsonQuery(
       psqlPath,
-      `select coalesce(jsonb_agg(r), '[]'::jsonb) from public.${ident(name)}(${parts.join(", ")}) r;`,
+      `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) from (select * from public.${ident(name)}(${parts.join(", ")})) x;`,
       role,
     );
   }

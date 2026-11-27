@@ -924,7 +924,12 @@ function printBanner(opts) {
   if (opts.forceBarcodeCheck)
     modes.push("FORCE-BARCODE-CHECK — barcode check runs regardless of cadence");
   if (opts.allowLargeBarcodeRemoval)
-    modes.push("ALLOW-LARGE-BARCODE-REMOVAL — the >10% barcode removal guard may be overridden");
+    modes.push(
+      "ALLOW-LARGE-BARCODE-REMOVAL — the >10% barcode removal guard may be overridden" +
+        (opts.overrideReason
+          ? ` (reason: "${opts.overrideReason}")`
+          : " (NO --override-reason GIVEN)"),
+    );
   if (modes.length === 0) return;
   log("=".repeat(78));
   log("NONSTANDARD MODE(S) ACTIVE FOR THIS RUN:");
@@ -1281,7 +1286,9 @@ export async function runReal(supabase, sources, opts) {
       produtoCorCount,
       avisos,
       allowLargeRemoval: opts.allowLargeRemoval,
-      overrideReason: opts.allowLargeRemoval ? opts.overrideReason : null,
+      // Independent overrides; the reason is audited when EITHER is used.
+      overrideReason:
+        opts.allowLargeRemoval || opts.allowLargeBarcodeRemoval ? opts.overrideReason : null,
       precoRowsLidos: rawPriceRows.length,
       precoProdutoCorCount: incomingPrices.size,
       precoSemCorrespondencia: semCorrespondencia,
