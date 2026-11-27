@@ -274,3 +274,61 @@ select p.id, p.produto, p.cor_codigo, p.tentativas, p.ultimo_erro, p.ultimo_erro
 -- after fixing the cause (service_role / SQL editor only):
 select reenfileirar_publicacao_imagem('<publicacao id>');
 ```
+
+## Stock-prioritized batch (`npm run lote`)
+
+Fills the review queue with candidates for colours that are **in stock**,
+highest stock first, without anyone typing `--produtos`.
+
+```sh
+npm run lote                        # dry-run: prints the selection only
+npm run lote -- --persist           # acquire + score (paid Anthropic calls)
+npm run lote -- --persist --limit=10
+```
+
+- **Selection:** `listar_cores_estoque_sem_imagem` (service_role-only, read-only;
+  migration `20261106_001`). Stock = sum of `quantidade_estoque` over all sizes in
+  `estoque_atual`. Excluded: any colour that already has a candidate in any
+  status (pending review, approved or rejected) and any colour with a pending or
+  active publication. Default 25, max 100 (`--limit`).
+- **Freshness:** the stock sync's completion time is checked; older than
+  `LOTE_MAX_IDADE_ESTOQUE_HORAS` (default 36) stops the run with a clear error.
+- **Execution:** reuses `acquire.mjs` then `score.mjs --persist`, 5 colours at a
+  time. Nothing is approved, rejected or published. Colours Lacoste cannot match
+  exactly are remembered locally for 3 days
+  (`%LOCALAPPDATA%\PortalBenvisi\lote-imagens-ignorados.json`) so they are not
+  retried on every run.
+- **Resume:** re-run the same command. Colours that already have a candidate are
+  excluded, and candidates acquired but not yet scored are scored first (an
+  already-scored candidate is never re-scored, so nothing is paid twice).
+- **Overlap:** a lock file (`LOTE_LOCK_FILE`, default `%TEMP%\portal-benvisi-lote.lock`)
+  makes a second run exit immediately.
+- **Windows background run:** double-click or run `iniciar-lote.cmd [limit]`. It
+  starts `run-lote.ps1 -Persist` minimised and returns at once; you can close the
+  window and keep working. Log: `%LOCALAPPDATA%\PortalBenvisi\logs\lote-YYYYMMDD.log`.
+  Requirements: you must stay logged in (headed Chromium needs the desktop
+  session), and the PC must not sleep, log off or shut down. Whole-run limit
+  150 min (`-MaxMinutes`); to stop early, end the `node` process or the
+  `powershell` window (the lock clears itself).
+
+### Target mode (`--limit`, `--round`)
+
+`--limit=N` is the **target of successfully scored, reviewable candidates** (default 25, max 500), not the
+number of attempts. The batch selects `--round` combinations at a time (default 25), re-reading stock each
+round, until the target is reached or no eligible combination remains. Acquisition misses and unscored
+candidates do not count. Diversity rule: highest stock first, but at most 2 colours of one product per pass,
+so a few products cannot fill a round. A combination is never selected twice in one run (it either becomes a
+candidate, which the RPC then excludes, or goes to the 3-day skip list / in-run exclusion). Three consecutive
+chunks with nothing acquired abort the run (likely a site block). The Windows launcher scales its time limit
+(5 min per target candidate, 150 min–24 h). Observed on a 10-candidate sample: ~8 min total, ~7.2k input and
+~1k output tokens per candidate.
+
+    iniciar-lote.cmd 250        # background, returns at once; log in %LOCALAPPDATA%\PortalBenvisi\logs
+
+### Scoring-only recovery (`--score-only`)
+
+`node src/lote.mjs --score-only [--limit=N] [--persist]` scores pending candidates that have no
+`scoring_notes` (for example after Anthropic credits ran out). It never acquires, reads stock or publishes.
+Dry-run by default (lists identifiers); `--persist` makes the paid calls. Each candidate is attempted once per
+run; credit/authentication errors stop the run (exit code 2); two chunks in a row with no success also stop it.
+The final `RESUMO` line reports attempted, scored, failed and remaining.

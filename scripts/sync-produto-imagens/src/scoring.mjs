@@ -214,3 +214,13 @@ export function buildPersistParams(candidateId, scored, { model, usage, imageCou
     p_limitacoes: result.limitations,
   };
 }
+
+/**
+ * True for Anthropic errors that will fail every following request too
+ * (authentication/permission, exhausted credits), so a run must stop at once.
+ */
+export function isFatalApiError(e) {
+  const status = e?.status;
+  if (status === 401 || status === 402 || status === 403) return true;
+  return /credit balance|billing|authentication|invalid x-api-key/i.test(String(e?.message ?? ""));
+}

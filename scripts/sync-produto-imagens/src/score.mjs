@@ -19,6 +19,7 @@ import {
   SCORE_TOOL,
   SYSTEM_PROMPT,
   buildPromptText,
+  isFatalApiError,
 } from "./scoring.mjs";
 
 const MODEL = process.env.ANTHROPIC_SCORING_MODEL || "claude-sonnet-5-5";
@@ -119,6 +120,12 @@ async function main() {
         }
       } catch (e) {
         console.log(JSON.stringify({ produto, cor, error: String(e.message).slice(0, 300) }));
+        if (isFatalApiError(e)) {
+          // Credits/auth: every remaining item would fail (and the caller must know).
+          console.log(JSON.stringify({ fatal: "anthropic-credits-or-auth" }));
+          process.exitCode = 2;
+          break;
+        }
       }
     }
   } finally {
