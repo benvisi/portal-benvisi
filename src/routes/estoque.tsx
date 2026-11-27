@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, Settings2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 
+import { CodigoBarraResultadoView } from "@/components/estoque/CodigoBarraResultadoView";
 import { EstoqueBuscaField } from "@/components/estoque/EstoqueBuscaField";
 import { ProdutoEstoqueView } from "@/components/estoque/ProdutoEstoqueView";
 import { AuthUtilityBar } from "@/components/layout/AuthUtilityBar";
@@ -26,7 +27,17 @@ import { useEstoqueFreshness } from "@/hooks/useEstoqueFreshness";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import { useTermosBuscaPermissao } from "@/hooks/useTermosBuscaPermissao";
+import { usePonteiroToque } from "@/hooks/usePonteiroToque";
+import { isCodigoBarraSomenteDigitos } from "@/lib/codigoBarras";
 import { formatEstoqueFreshness } from "@/lib/estoque";
+
+const EscanerCodigoBarrasDialog = lazy(
+  () => import("@/components/estoque/EscanerCodigoBarrasDialog"),
+);
+
+type Selecao =
+  | { tipo: "produto"; produto: string }
+  | { tipo: "codigo"; codigo: string; produtoFallback: string | null; id: number };
 
 export const Route = createFileRoute("/estoque")({
   head: () => ({
@@ -49,7 +60,38 @@ function ConsultaEstoquePage() {
   const sessionToken = session?.session_token ?? null;
 
   const [termo, setTermo] = useState("");
-  const [produtoSelecionado, setProdutoSelecionado] = useState<string | null>(null);
+  const [selecao, setSelecao] = useState<Selecao | null>(null);
+  const [escaneando, setEscaneando] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const touch = usePonteiroToque();
+
+  const selecionarProduto = useCallback((produto: string) => {
+    setSelecao({ tipo: "produto", produto });
+  }, []);
+
+  // Barcode Slice 2: an identical code already on screen is not re-submitted
+  // (scanner double-Enter, repeated camera read); a new code replaces it.
+  const selecionarCodigo = useCallback((codigo: string, produtoFallback: string | null) => {
+    setSelecao((atual) =>
+      atual?.tipo === "codigo" && atual.codigo === codigo
+        ? atual
+        : {
+            tipo: "codigo",
+            codigo,
+            produtoFallback,
+            id: (atual?.tipo === "codigo" ? atual.id : 0) + 1,
+          },
+    );
+  }, []);
+
+  const aoDetectarCamera = useCallback(
+    (codigo: string) => {
+      setEscaneando(false);
+      setTermo(codigo);
+      selecionarCodigo(codigo, isCodigoBarraSomenteDigitos(codigo) ? null : codigo);
+    },
+    [selecionarCodigo],
+  );
 
   const termoDebounced = useDebouncedValue(termo, ESTOQUE_BUSCA_DEBOUNCE_MS);
   const freshness = useEstoqueFreshness(sessionToken);
@@ -101,7 +143,10 @@ function ConsultaEstoquePage() {
         <EstoqueBuscaField
           value={termo}
           onChange={setTermo}
-          onSelect={setProdutoSelecionado}
+          onSelect={selecionarProduto}
+          onCodigoBarra={selecionarCodigo}
+          onEscanear={touch ? () => setEscaneando(true) : undefined}
+          inputRef={inputRef}
           suggestions={sugestoes}
           isLoading={busca.isFetching || aguardandoDebounce}
           isError={busca.isError}
@@ -113,8 +158,30 @@ function ConsultaEstoquePage() {
           editable, so the employee just types another produto to replace the
           detail; the header back arrow already exits Consulta de Estoque.
         */}
-        {produtoSelecionado && (
-          <ProdutoEstoqueView sessionToken={sessionToken} produto={produtoSelecionado} />
+        {selecao?.tipo === "produto" && (
+          <ProdutoEstoqueView sessionToken={sessionToken} produto={selecao.produto} />
+        )}
+        {selecao?.tipo === "codigo" && (
+          <CodigoBarraResultadoView
+            key={selecao.id}
+            sessionToken={sessionToken}
+            codigo={selecao.codigo}
+            produtoFallback={selecao.produtoFallback}
+          />
+        )}
+
+        {/* Lazy: the scanner and its decoder load only when the camera opens. */}
+        {escaneando && (
+          <Suspense fallback={null}>
+            <EscanerCodigoBarrasDialog
+              onDetectado={aoDetectarCamera}
+              onFechar={() => setEscaneando(false)}
+              onDigitar={() => {
+                setEscaneando(false);
+                window.setTimeout(() => inputRef.current?.focus(), 0);
+              }}
+            />
+          </Suspense>
         )}
 
         <footer className="flex flex-col gap-1 border-t border-border pt-4 text-xs text-muted-foreground">

@@ -670,6 +670,50 @@ export function getEstoqueAtualizadoLabel(dataHora: string): string {
 export const ESTOQUE_LEMBRETE_OPERACIONAL_MESSAGE =
   "Para quantidades baixas, confirme a disponibilidade física.";
 
+// Barcode Slice 2 — exact barcode entry (keyboard / USB scanner / camera).
+export const ESTOQUE_CODIGO_BARRA_CARREGANDO_MESSAGE = "Consultando código de barras...";
+export const ESTOQUE_CODIGO_BARRA_ERRO_MESSAGE =
+  "Não foi possível consultar o código de barras. Tente novamente.";
+export const ESTOQUE_CODIGO_BARRA_NAO_ENCONTRADO_MESSAGE = "Código de barras não encontrado";
+export const ESTOQUE_CODIGO_BARRA_NAO_ENCONTRADO_DICA =
+  "Confira o código ou busque pela referência do produto.";
+export const ESTOQUE_PRODUTO_SEM_ESTOQUE_MESSAGE = "Produto sem estoque";
+export const ESTOQUE_VER_OUTRAS_CORES_LABEL = "Ver outras cores disponíveis";
+export const ESTOQUE_ESCOPO_COR_ARIA_LABEL = "Cores exibidas";
+export const ESTOQUE_ESCOPO_ESTA_COR_LABEL = "Esta cor";
+export const ESTOQUE_ESCOPO_TODAS_CORES_LABEL = "Todas as cores";
+export const ESTOQUE_CODIGO_LIDO_LABEL = "Código lido";
+
+export function getEstoqueTamanhoDisponivelLabel(tamanho: string, quantidade: number): string {
+  return `Tamanho ${tamanho}: ${quantidade === 1 ? "1 peça" : `${quantidade} peças`} em estoque`;
+}
+export function getEstoqueTamanhoEsgotadoLabel(tamanho: string): string {
+  return `Tamanho ${tamanho} esgotado nesta cor`;
+}
+export const ESTOQUE_COR_ESGOTADA_MESSAGE = "Esta cor está esgotada";
+export function getEstoqueOutrasCoresLabel(total: number): string {
+  return total === 1 ? "1 outra cor disponível" : `${total} outras cores disponíveis`;
+}
+
+// Camera scanner (mobile/tablet only).
+export const ESTOQUE_ESCANEAR_LABEL = "Escanear código de barras";
+export const ESTOQUE_ESCANEAR_TITULO = "Escanear código de barras";
+export const ESTOQUE_ESCANEAR_INSTRUCAO = "Aponte a câmera para o código de barras da etiqueta.";
+export const ESTOQUE_ESCANEAR_INICIANDO_MESSAGE = "Abrindo a câmera...";
+export const ESTOQUE_ESCANEAR_CANCELAR_LABEL = "Cancelar";
+export const ESTOQUE_ESCANEAR_DIGITAR_LABEL = "Digitar código";
+export const ESTOQUE_ESCANEAR_TENTAR_NOVAMENTE_LABEL = "Tentar novamente";
+export const ESTOQUE_ESCANEAR_PERMISSAO_NEGADA_MESSAGE =
+  "Permissão da câmera negada. Libere o acesso à câmera nas configurações do navegador ou digite o código.";
+export const ESTOQUE_ESCANEAR_SEM_CAMERA_MESSAGE =
+  "Nenhuma câmera encontrada neste aparelho. Digite o código de barras.";
+export const ESTOQUE_ESCANEAR_NAO_SUPORTADO_MESSAGE =
+  "Este navegador não permite ler códigos pela câmera. Digite o código de barras.";
+export const ESTOQUE_ESCANEAR_FALHA_MESSAGE =
+  "Não foi possível usar a câmera agora. Tente novamente ou digite o código.";
+export const ESTOQUE_ESCANEAR_LEITURA_FALHOU_MESSAGE =
+  "Não foi possível ler o código. Aproxime a etiqueta, melhore a iluminação ou digite o código.";
+
 export const CHECKLIST_POLICY_SECTION_TITLE = "Política do Checklist";
 export const CHECKLIST_POLICY_SECTION_SUBTITLE =
   "Defina se o checklist de reposição é obrigatório ou se pode ser concluído depois.";
