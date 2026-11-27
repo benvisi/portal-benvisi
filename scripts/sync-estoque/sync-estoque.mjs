@@ -36,6 +36,21 @@
 // a failure anywhere in the price read/validate/stage path aborts the whole
 // run (via markErro) before either delta is ever applied — no partial state.
 //
+// Barcode Slice 1 adds a third pass with its OWN cadence and failure
+// isolation (scripts/sync-estoque/estoque-barcode-diff.mjs):
+//   * due only on: initial load, weekly (first run at/after Monday 00:00
+//     America/Manaus), a genuinely new produto+cor in inventory (no mapped
+//     barcode), --force-barcode-check, or a pending retry after a failed
+//     check. Quantity-only changes never trigger it.
+//   * when due: Linx barcode extraction -> SHA-256 of the full normalized
+//     mapping. Equal to the published hash -> record a successful check
+//     without reading estoque_barcodes or writing mapping rows. Different ->
+//     full diff, stage the delta, publish atomically with the run.
+//   * any barcode failure (extraction, state read, remote read, removal
+//     guard, staging, apply) skips ONLY the barcode publication: inventory
+//     and price still apply, the previous mapping stays, a warning is logged
+//     and the check is marked pending for the next hourly run.
+//
 // Secrets come only from scripts/sync-estoque/.env (gitignored). Nothing is
 // ever logged that could expose a credential.
 // =============================================================================
@@ -54,9 +69,12 @@ import {
 } from "./estoque-price-diff.mjs";
 
 import {
+  ambiguityWarnings,
+  barcodeCheckDue,
   buildBarcodeMap,
   diffBarcodes,
   finalizeBarcodeRow,
+  hashBarcodeMapping,
   normalizeBarcodeExtraction,
   resolveBarcodeAmbiguity,
 } from "./estoque-barcode-diff.mjs";
@@ -84,16 +102,23 @@ const LINX_PRECO_TABELA = "R3";
 // -----------------------------------------------------------------------------
 // CLI
 // -----------------------------------------------------------------------------
-const ARGV = process.argv.slice(2);
-const DRY_RUN = ARGV.includes("--dry-run");
-const ALLOW_LARGE_REMOVAL = ARGV.includes("--allow-large-removal");
-
-function flagValue(name) {
-  const idx = ARGV.indexOf(name);
-  if (idx === -1 || idx === ARGV.length - 1) return null;
-  return ARGV[idx + 1];
+export function parseCliOptions(argv) {
+  const flagValue = (name) => {
+    const idx = argv.indexOf(name);
+    if (idx === -1 || idx === argv.length - 1) return null;
+    return argv[idx + 1];
+  };
+  return {
+    dryRun: argv.includes("--dry-run"),
+    allowLargeRemoval: argv.includes("--allow-large-removal"),
+    overrideReason: flagValue("--override-reason"),
+    // Bypasses the barcode cadence only — never the barcode safety guards.
+    forceBarcodeCheck: argv.includes("--force-barcode-check"),
+    // Barcode-only counterpart of --allow-large-removal (deliberately separate,
+    // so overriding the inventory guard never silently overrides this one).
+    allowLargeBarcodeRemoval: argv.includes("--allow-large-barcode-removal"),
+  };
 }
-const OVERRIDE_REASON = flagValue("--override-reason");
 
 // -----------------------------------------------------------------------------
 // Minimal .env loader (no dependency). KEY=VALUE lines, # comments, optional
@@ -138,7 +163,7 @@ function getSupabaseConfig() {
   };
 }
 
-// Built lazily, read only when extractFromLinx actually needs it.
+// Built lazily, read only when a Linx extraction actually runs.
 function getLinxConfig() {
   return {
     server: requireEnv("LINX_SQL_SERVER"),
@@ -428,12 +453,13 @@ export function validateExtraction(rows) {
 }
 
 // ---------------------------------------------------------------------------
-// Extraction sources
+// Extraction sources. Linx is the only production source; the factory exists
+// so the QA harness can drive the real orchestration with fixture rows.
 // ---------------------------------------------------------------------------
-async function extractFromLinx(sql) {
+async function runLinxQuery(sql, file, inputs, label) {
   const linx = getLinxConfig();
-  const query = readFileSync(join(HERE, "linx-query.sql"), "utf8");
-  log(`connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} ...`);
+  const query = readFileSync(join(HERE, file), "utf8");
+  log(`connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database}${label} ...`);
   const pool = await sql.connect({
     server: linx.server,
     port: linx.port,
@@ -448,71 +474,36 @@ async function extractFromLinx(sql) {
     requestTimeout: 180_000,
     pool: { max: 1 },
   });
-
-  const result = await pool.request().input("filial", sql.VarChar, linx.filial).query(query);
-  await pool.close();
-  return result.recordset ?? [];
+  try {
+    let request = pool.request();
+    for (const [name, value] of Object.entries(inputs(linx))) {
+      request = request.input(name, sql.VarChar, value);
+    }
+    const result = await request.query(query);
+    return result.recordset ?? [];
+  } finally {
+    await pool.close();
+  }
 }
 
-async function extractPricesFromLinx(sql) {
-  const linx = getLinxConfig();
-  const query = readFileSync(join(HERE, "linx-price-query.sql"), "utf8");
-  log(
-    `connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} for R3 prices ...`,
-  );
-  const pool = await sql.connect({
-    server: linx.server,
-    port: linx.port,
-    database: linx.database,
-    user: linx.user,
-    password: linx.password,
-    options: {
-      encrypt: linx.encrypt,
-      trustServerCertificate: true,
-      enableArithAbort: true,
-    },
-    requestTimeout: 180_000,
-    pool: { max: 1 },
-  });
-
-  const result = await pool
-    .request()
-    .input("tabela_preco", sql.VarChar, LINX_PRECO_TABELA)
-    .input("filial", sql.VarChar, linx.filial)
-    .query(query);
-  await pool.close();
-  return result.recordset ?? [];
+export function createLinxSources(sql) {
+  return {
+    extractInventory: () => runLinxQuery(sql, "linx-query.sql", (l) => ({ filial: l.filial }), ""),
+    extractPrices: () =>
+      runLinxQuery(
+        sql,
+        "linx-price-query.sql",
+        (l) => ({ tabela_preco: LINX_PRECO_TABELA, filial: l.filial }),
+        " for R3 prices",
+      ),
+    extractBarcodes: () =>
+      runLinxQuery(sql, "linx-barcode-query.sql", (l) => ({ filial: l.filial }), " for barcodes"),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Supabase RPC / table helpers
 // ---------------------------------------------------------------------------
-async function extractBarcodesFromLinx(sql) {
-  const linx = getLinxConfig();
-  const query = readFileSync(join(HERE, "linx-barcode-query.sql"), "utf8");
-  log(
-    `connecting to Linx SQL Server ${linx.server}:${linx.port} / ${linx.database} for barcodes ...`,
-  );
-  const pool = await sql.connect({
-    server: linx.server,
-    port: linx.port,
-    database: linx.database,
-    user: linx.user,
-    password: linx.password,
-    options: {
-      encrypt: linx.encrypt,
-      trustServerCertificate: true,
-      enableArithAbort: true,
-    },
-    requestTimeout: 180_000,
-    pool: { max: 1 },
-  });
-
-  const result = await pool.request().input("filial", sql.VarChar, linx.filial).query(query);
-  await pool.close();
-  return result.recordset ?? [];
-}
-
 async function claimSync(supabase) {
   const { data, error } = await supabase.rpc("estoque_claim_sync");
   if (error) throw new Error(`estoque_claim_sync failed: ${error.message}`);
@@ -590,70 +581,147 @@ async function fetchCurrentBarcodes(supabase) {
   return map;
 }
 
+async function fetchBarcodeEstado(supabase) {
+  const { data, error } = await supabase.rpc("estoque_barcode_estado");
+  if (error) throw new Error(`estoque_barcode_estado failed: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? null;
+}
+
+async function fetchUnmappedNewPairs(supabase, novoGroups) {
+  if (novoGroups.length === 0) return [];
+  const pares = novoGroups.map((g) => ({ produto: g.produto, cor_codigo: g.cor_codigo }));
+  const { data, error } = await supabase.rpc("estoque_barcode_produto_cores_sem_mapeamento", {
+    p_pares: pares,
+  });
+  if (error)
+    throw new Error(`estoque_barcode_produto_cores_sem_mapeamento failed: ${error.message}`);
+  return data ?? [];
+}
+
 /**
- * Barcode extraction + finalize + ambiguity + validation + diff, shared by the
- * dry run and the real run. Never throws and never aborts the sync: a barcode
- * problem must not hold the hourly inventory refresh hostage. On any failure it
- * returns { skipped: true, reason } and the caller stages nothing (a no-op for
- * estoque_barcodes — the previous mapping stays untouched) and records the
- * reason as a sync warning.
+ * Barcode check plan — shared by the dry run and the real run, never throws.
+ * Decides whether a check is due and, if so, what the run should do:
+ *   resultado null         not due (no Linx barcode read at all)
+ *   resultado 'inalterado' mapping hash equals the published hash — no full
+ *                          estoque_barcodes read, nothing to stage
+ *   resultado 'publicar'   delta computed against the full current mapping
+ *   resultado 'bloqueado'  delta would remove >10% of the mapping (no override)
+ *   resultado 'falha'      any error — previous mapping kept, retried next run
+ * The apply RPC records the outcome; only it advances persistent state.
  */
-async function prepareBarcodes(supabase, sql) {
+export async function planBarcodeCheck(
+  supabase,
+  sources,
+  { novoGroups = [], now = new Date(), force = false, allowLargeRemoval = false } = {},
+) {
+  const plan = {
+    resultado: null,
+    motivos: [],
+    erro: null,
+    warnings: [],
+    hash: null,
+    total: null,
+    rawCount: null,
+    ambiguos: null,
+    duplicateRows: null,
+    currentCount: null,
+    diff: null,
+    removalPct: null,
+    unmappedNewPairs: null,
+    fullMappingRead: false,
+  };
+
+  let estado;
   try {
-    const rawRows = await extractBarcodesFromLinx(sql);
-    const finalized = rawRows.map(finalizeBarcodeRow);
+    estado = await fetchBarcodeEstado(supabase);
+    const unmapped = await fetchUnmappedNewPairs(supabase, novoGroups);
+    plan.unmappedNewPairs = unmapped.length;
+    const due = barcodeCheckDue({ estado, now, force, unmappedNewPairs: unmapped.length });
+    plan.motivos = due.motivos;
+    if (!due.due) return plan;
+  } catch (err) {
+    plan.motivos = force ? ["manual"] : ["estado_indisponivel"];
+    plan.resultado = "falha";
+    plan.erro = `BARCODE_STATE_UNAVAILABLE: ${err?.message ?? String(err)}`;
+    return plan;
+  }
+
+  try {
+    const rawRows = await sources.extractBarcodes();
+    plan.rawCount = rawRows.length;
+    const finalized = rawRows.map((r) => finalizeBarcodeRow(r, repairDoubleEncodedText));
     const norm = normalizeBarcodeExtraction(finalized);
     const resolved = resolveBarcodeAmbiguity(norm.rows);
-
-    const warnings = [...norm.warnings];
-    for (const a of resolved.ambiguous) {
-      warnings.push(
-        `Ambiguous barcode EXCLUDED (maps to ${a.skus.length} different SKUs): ` +
-          `codigo_barra=${a.codigo_barra} skus=${JSON.stringify(a.skus)}`,
-      );
-    }
+    plan.warnings.push(...norm.warnings, ...ambiguityWarnings(resolved.ambiguous));
+    plan.ambiguos = resolved.ambiguous.length;
+    plan.duplicateRows = resolved.duplicateRows;
 
     if (resolved.rows.length === 0) {
-      return {
-        skipped: true,
-        reason: `barcode extraction produced 0 publishable rows (raw=${rawRows.length})`,
-      };
+      throw new Error(`barcode extraction produced 0 publishable rows (raw=${rawRows.length})`);
     }
 
     const incoming = buildBarcodeMap(resolved.rows);
+    plan.total = incoming.size;
+    plan.hash = hashBarcodeMapping(incoming);
+
+    if (estado?.hash_publicado && plan.hash === estado.hash_publicado) {
+      plan.resultado = "inalterado";
+      return plan;
+    }
+
     const current = await fetchCurrentBarcodes(supabase);
-    const diff = diffBarcodes(incoming, current);
-    return {
-      skipped: false,
-      rawCount: rawRows.length,
-      incoming,
-      currentCount: current.size,
-      diff,
-      ambiguous: resolved.ambiguous,
-      duplicateRows: resolved.duplicateRows,
-      warnings,
-    };
+    plan.fullMappingRead = true;
+    plan.currentCount = current.size;
+    plan.diff = diffBarcodes(incoming, current);
+    plan.removalPct = current.size > 0 ? (plan.diff.removido.length / current.size) * 100 : 0;
+
+    if (plan.removalPct > 10 && !allowLargeRemoval) {
+      plan.resultado = "bloqueado";
+      plan.erro =
+        `BARCODE_LARGE_REMOVAL_GUARD: removal ${plan.removalPct.toFixed(3)}% ` +
+        `(${plan.diff.removido.length} of ${current.size}) exceeds 10% without ` +
+        `--allow-large-barcode-removal; previous mapping kept`;
+      return plan;
+    }
+
+    plan.resultado = "publicar";
+    return plan;
   } catch (err) {
-    return { skipped: true, reason: `barcode sync skipped: ${err?.message ?? String(err)}` };
+    plan.resultado = "falha";
+    plan.erro = `BARCODE_CHECK_FAILED: ${err?.message ?? String(err)}`;
+    return plan;
   }
 }
 
-function printBarcodeSummary(bc) {
-  log("--- barcode diff summary ---");
-  log(`barcode raw rows:           ${bc.rawCount}`);
-  log(`barcode duplicate rows:     ${bc.duplicateRows} (same barcode + same SKU, collapsed)`);
-  log(`barcode ambiguous excluded: ${bc.ambiguous.length}`);
-  log(`current barcodes:           ${bc.currentCount}`);
-  log(`incoming barcodes:          ${bc.incoming.size}`);
-  log(`new barcodes:               ${bc.diff.novo.length}`);
-  log(`changed barcodes:           ${bc.diff.alterado.length}`);
-  log(`removed barcodes:           ${bc.diff.removido.length}`);
-  log(`unchanged barcodes:         ${bc.diff.inalterado}`);
-  log(`barcode warnings:           ${bc.warnings.length}`);
-  log("----------------------------");
+function printBarcodePlan(plan) {
+  log("--- barcode check ---");
+  log(`due:                        ${plan.motivos.length ? plan.motivos.join(",") : "no"}`);
+  if (plan.unmappedNewPairs != null) {
+    log(`new produto+cor w/o barcode: ${plan.unmappedNewPairs}`);
+  }
+  if (plan.resultado == null) {
+    log("result:                     not due — no barcode read this run");
+    log("---------------------");
+    return;
+  }
+  if (plan.rawCount != null) log(`barcode raw rows:           ${plan.rawCount}`);
+  if (plan.duplicateRows != null) log(`barcode duplicate rows:     ${plan.duplicateRows}`);
+  if (plan.ambiguos != null) log(`barcode ambiguous excluded: ${plan.ambiguos}`);
+  if (plan.total != null) log(`incoming barcodes:          ${plan.total}`);
+  if (plan.hash) log(`mapping hash:               ${plan.hash}`);
+  if (plan.diff) {
+    log(`current barcodes:           ${plan.currentCount}`);
+    log(`new barcodes:               ${plan.diff.novo.length}`);
+    log(`changed barcodes:           ${plan.diff.alterado.length}`);
+    log(`removed barcodes:           ${plan.diff.removido.length}`);
+    log(`unchanged barcodes:         ${plan.diff.inalterado}`);
+  }
+  log(`result:                     ${plan.resultado}${plan.erro ? ` — ${plan.erro}` : ""}`);
+  log("---------------------");
 }
 
-async function stageBarcodes(supabase, syncId, diff) {
+async function stageBarcodes(supabase, syncId, diff, chunkSize = CHUNK_SIZE) {
   const rows = [];
   for (const [acao, list] of [
     ["novo", diff.novo],
@@ -677,8 +745,8 @@ async function stageBarcodes(supabase, syncId, diff) {
     rows.push({ sync_id: syncId, codigo_barra: r.codigo_barra, acao: "removido" });
   }
 
-  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-    const chunk = rows.slice(i, i + CHUNK_SIZE);
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
     const { error } = await supabase.from("estoque_staging_barcodes").insert(chunk);
     if (error) throw new Error(`barcode staging insert failed at offset ${i}: ${error.message}`);
   }
@@ -815,24 +883,48 @@ async function applySync(supabase, params) {
     p_preco_rows_lidos: params.precoRowsLidos,
     p_preco_produto_cor_count: params.precoProdutoCorCount,
     p_preco_sem_correspondencia: params.precoSemCorrespondencia,
-    p_barcode_rows_lidos: params.barcodeRowsLidos,
-    p_barcode_ambiguos: params.barcodeAmbiguos,
+    ...barcodeApplyParams(params.barcodePlan, params.allowLargeBarcodeRemoval),
   });
   if (error) throw new Error(`estoque_aplicar_sync failed: ${error.message}`);
   return Array.isArray(data) ? data[0] : data;
 }
 
+/** Maps a barcode plan onto the estoque_aplicar_sync barcode parameters. */
+export function barcodeApplyParams(plan, allowLargeBarcodeRemoval = false) {
+  if (!plan || plan.resultado == null) return { p_barcode_resultado: null };
+  const publishing = plan.resultado === "publicar";
+  return {
+    p_barcode_resultado: plan.resultado,
+    p_barcode_motivos: plan.motivos.join(","),
+    p_barcode_hash: plan.hash,
+    p_barcode_total: plan.total,
+    p_barcode_novos_esperados: publishing ? plan.diff.novo.length : null,
+    p_barcode_alterados_esperados: publishing ? plan.diff.alterado.length : null,
+    p_barcode_removidos_esperados: publishing ? plan.diff.removido.length : null,
+    p_barcode_rows_lidos: plan.rawCount,
+    p_barcode_ambiguos: plan.ambiguos,
+    p_barcode_erro: plan.erro,
+    p_barcode_allow_large_removal: allowLargeBarcodeRemoval,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Reporting
 // ---------------------------------------------------------------------------
-function printBanner() {
+function printBanner(opts) {
   const modes = [];
-  if (DRY_RUN) modes.push("DRY-RUN — preview only, no claim/stage/apply, no durable writes");
-  if (ALLOW_LARGE_REMOVAL)
+  if (opts.dryRun) modes.push("DRY-RUN — preview only, no claim/stage/apply, no durable writes");
+  if (opts.allowLargeRemoval)
     modes.push(
       `ALLOW-LARGE-REMOVAL — the >10% removal guardrail may be overridden this run` +
-        (OVERRIDE_REASON ? ` (reason: "${OVERRIDE_REASON}")` : " (NO --override-reason GIVEN)"),
+        (opts.overrideReason
+          ? ` (reason: "${opts.overrideReason}")`
+          : " (NO --override-reason GIVEN)"),
     );
+  if (opts.forceBarcodeCheck)
+    modes.push("FORCE-BARCODE-CHECK — barcode check runs regardless of cadence");
+  if (opts.allowLargeBarcodeRemoval)
+    modes.push("ALLOW-LARGE-BARCODE-REMOVAL — the >10% barcode removal guard may be overridden");
   if (modes.length === 0) return;
   log("=".repeat(78));
   log("NONSTANDARD MODE(S) ACTIVE FOR THIS RUN:");
@@ -840,15 +932,10 @@ function printBanner() {
   log("=".repeat(78));
 }
 
-function printDiffSummary({
-  rawRows,
-  canonicalRows,
-  currentGroups,
-  incomingGroups,
-  diff,
-  removalPct,
-  warningsCount,
-}) {
+function printDiffSummary(
+  { rawRows, canonicalRows, currentGroups, incomingGroups, diff, removalPct, warningsCount },
+  opts,
+) {
   const changedRows = [...diff.novo, ...diff.alterado].reduce((sum, g) => sum + g.row_count, 0);
   log("--- diff summary ---");
   log(`raw rows:                  ${rawRows}`);
@@ -864,8 +951,8 @@ function printDiffSummary({
   log(`warnings:                  ${warningsCount}`);
   log(
     `override requested:        ${
-      ALLOW_LARGE_REMOVAL
-        ? `yes${OVERRIDE_REASON ? ` ("${OVERRIDE_REASON}")` : " (no reason given)"}`
+      opts.allowLargeRemoval
+        ? `yes${opts.overrideReason ? ` ("${opts.overrideReason}")` : " (no reason given)"}`
         : "no"
     }`,
   );
@@ -898,21 +985,19 @@ function printPriceDiffSummary({
 
 /**
  * Shared price extraction/normalize/validate pass — identical for dry-run and
- * real runs. Returns the raw count, normalized rows/warnings and validation
- * result; the caller decides how to report/abort, matching the inline style
- * already used for the inventory extraction in runDryRun/runReal.
+ * real runs.
  */
-async function extractAndValidatePrices(sql) {
-  const rawPriceRows = await extractPricesFromLinx(sql);
+async function extractAndValidatePrices(sources) {
+  const rawPriceRows = await sources.extractPrices();
   const finalizedPriceRows = rawPriceRows.map(finalizePriceRow);
   const normPrice = normalizePriceExtraction(finalizedPriceRows);
   const priceValidation = validatePriceExtraction(normPrice.rows);
   return { rawPriceRows, normPrice, priceValidation };
 }
 
-// ---------------------------------------------------------------------------
-async function runDryRun(supabase, sql) {
-  const rawRows = await extractFromLinx(sql);
+/** Inventory extraction -> normalize -> finalize -> negatives -> validate. */
+async function extractAndValidateInventory(sources) {
+  const rawRows = await sources.extractInventory();
   log(`extraction: ${rawRows.length} raw rows`);
 
   const norm = normalizeExtraction(rawRows);
@@ -944,40 +1029,10 @@ async function runDryRun(supabase, sql) {
         `verify it reflects real movement, not a query/connection fault.`,
     );
   }
-  if (!v.ok) {
-    console.error(`\nDRY RUN — local validation FAILED:\n  - ${v.problems.join("\n  - ")}\n`);
-    process.exitCode = 1;
-    return;
-  }
-  log("local validation: PASS");
+  return { rawRows, norm, canonicalRows, validation: v };
+}
 
-  const incomingGroups = hashAllGroups(canonicalRows);
-  const currentHashes = await fetchCurrentHashes(supabase);
-  const diff = diffGroups(incomingGroups, currentHashes);
-  const removalPct = currentHashes.size > 0 ? (diff.removido.length / currentHashes.size) * 100 : 0;
-
-  printDiffSummary({
-    rawRows: rawRows.length,
-    canonicalRows: canonicalRows.length,
-    currentGroups: currentHashes.size,
-    incomingGroups: incomingGroups.size,
-    diff,
-    removalPct,
-    warningsCount: norm.warnings.length,
-  });
-
-  if (removalPct > 10 && !ALLOW_LARGE_REMOVAL) {
-    log(
-      `NOTE: a REAL run right now would be BLOCKED by the >10% removal guardrail ` +
-        `(would need --allow-large-removal).`,
-    );
-  } else if (removalPct >= 5) {
-    log(
-      `NOTE: a REAL run right now would succeed but emit a high-visibility removal warning (5-10% band).`,
-    );
-  }
-
-  const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sql);
+function logPriceExtraction(rawPriceRows, normPrice, priceValidation) {
   log(`price extraction: ${rawPriceRows.length} raw R3 row(s)`);
   if (normPrice.excludedBlankKey > 0) {
     log(`excluded ${normPrice.excludedBlankKey} R3 row(s) with a blank produto/cor_codigo`);
@@ -989,12 +1044,58 @@ async function runDryRun(supabase, sql) {
   }
   for (const w of normPrice.warnings) log(`WARNING: ${w}`);
   log("price extraction stats:", JSON.stringify(priceValidation.stats));
+}
+
+// ---------------------------------------------------------------------------
+export async function runDryRun(supabase, sources, opts) {
+  const now = opts.now ? opts.now() : new Date();
+  const inv = await extractAndValidateInventory(sources);
+  if (!inv.validation.ok) {
+    console.error(
+      `\nDRY RUN — local validation FAILED:\n  - ${inv.validation.problems.join("\n  - ")}\n`,
+    );
+    process.exitCode = 1;
+    return { status: "validation_failed" };
+  }
+  log("local validation: PASS");
+
+  const incomingGroups = hashAllGroups(inv.canonicalRows);
+  const currentHashes = await fetchCurrentHashes(supabase);
+  const diff = diffGroups(incomingGroups, currentHashes);
+  const removalPct = currentHashes.size > 0 ? (diff.removido.length / currentHashes.size) * 100 : 0;
+
+  printDiffSummary(
+    {
+      rawRows: inv.rawRows.length,
+      canonicalRows: inv.canonicalRows.length,
+      currentGroups: currentHashes.size,
+      incomingGroups: incomingGroups.size,
+      diff,
+      removalPct,
+      warningsCount: inv.norm.warnings.length,
+    },
+    opts,
+  );
+
+  if (removalPct > 10 && !opts.allowLargeRemoval) {
+    log(
+      `NOTE: a REAL run right now would be BLOCKED by the >10% removal guardrail ` +
+        `(would need --allow-large-removal).`,
+    );
+  } else if (removalPct >= 5) {
+    log(
+      `NOTE: a REAL run right now would succeed but emit a high-visibility removal warning (5-10% band).`,
+    );
+  }
+
+  const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sources);
+  logPriceExtraction(rawPriceRows, normPrice, priceValidation);
   if (!priceValidation.ok) {
     console.error(
       `\nDRY RUN — price local validation FAILED:\n  - ${priceValidation.problems.join("\n  - ")}\n`,
     );
     process.exitCode = 1;
-    return;
+    return { status: "price_validation_failed" };
   }
   log("price local validation: PASS");
 
@@ -1016,18 +1117,23 @@ async function runDryRun(supabase, sql) {
     warningsCount: normPrice.warnings.length,
   });
 
-  const bc = await prepareBarcodes(supabase, sql);
-  if (bc.skipped) {
-    log(`WARNING: barcode sync would be SKIPPED this run: ${bc.reason}`);
-  } else {
-    for (const w of bc.warnings) log(`WARNING: ${w}`);
-    printBarcodeSummary(bc);
-  }
+  // Same decision a real run would make; nothing is staged and no state
+  // (check timestamps, pending flag, published hash) is advanced.
+  const plan = await planBarcodeCheck(supabase, sources, {
+    novoGroups: diff.novo,
+    now,
+    force: opts.forceBarcodeCheck,
+    allowLargeRemoval: opts.allowLargeBarcodeRemoval,
+  });
+  for (const w of plan.warnings) log(`WARNING: ${w}`);
+  printBarcodePlan(plan);
 
   log("dry run complete — nothing staged, claimed, or applied.");
+  return { status: "dry_run", diff, priceDiff, barcodePlan: plan };
 }
 
-async function runReal(supabase, sql) {
+export async function runReal(supabase, sources, opts) {
+  const now = opts.now ? opts.now() : new Date();
   const claim = await claimSync(supabase);
   if (!claim.claimed) {
     log(`SKIPPED — sync already in progress (motivo=${claim.motivo}). No mutation performed.`);
@@ -1037,7 +1143,7 @@ async function runReal(supabase, sql) {
           `during this claim attempt)`,
       );
     }
-    return;
+    return { status: "busy" };
   }
 
   const syncId = claim.sync_id;
@@ -1049,62 +1155,35 @@ async function runReal(supabase, sql) {
   );
 
   try {
-    const rawRows = await extractFromLinx(sql);
-    log(`extraction: ${rawRows.length} raw rows`);
-
-    const norm = normalizeExtraction(rawRows);
-    if (norm.excludedDashZero > 0) {
-      log(`excluded ${norm.excludedDashZero} dash-only zero-stock placeholder row(s)`);
-    }
-    for (const w of norm.warnings) log(`WARNING: ${w}`);
-
-    let canonicalRows = norm.rows.map(finalizeCanonicalRow);
-
-    const negNorm = normalizeNegativeQuantities(canonicalRows);
-    canonicalRows = negNorm.rows; // downstream (hashing/staging) must see the normalized (>=0) quantities
-    if (negNorm.negativeNormalizedCount > 0) {
-      log(
-        `normalized ${negNorm.negativeNormalizedCount} negative size-level quantidade_estoque row(s) to 0`,
-      );
-    }
-    for (const w of negNorm.warnings) log(`WARNING: ${w}`);
-
-    const v = validateExtraction(canonicalRows);
-    log(
-      "extraction stats:",
-      JSON.stringify({ ...v.stats, negativos_normalizados: negNorm.negativeNormalizedCount }),
-    );
-    if (Math.abs(v.stats.linhas - RECONCILE_BASELINE) > RECONCILE_BASELINE * 0.15) {
-      log(
-        `WARNING: canonical rows (${v.stats.linhas}) differ from the reconciliation baseline ` +
-          `(${RECONCILE_BASELINE}) by more than 15%. Expected with assortment/grade changes — ` +
-          `verify it reflects real movement, not a query/connection fault.`,
-      );
-    }
-    if (!v.ok) {
-      const msg = `local validation failed:\n  - ${v.problems.join("\n  - ")}`;
+    const inv = await extractAndValidateInventory(sources);
+    if (!inv.validation.ok) {
+      const msg = `local validation failed:\n  - ${inv.validation.problems.join("\n  - ")}`;
       await markErro(supabase, syncId, msg, "EXTRACTION_FATAL");
       console.error(`\nSYNC FAILED:\n${msg}\n`);
       process.exitCode = 1;
-      return;
+      return { status: "erro", syncId, errorCode: "EXTRACTION_FATAL" };
     }
     log("local validation: PASS");
 
+    const { canonicalRows, rawRows, norm } = inv;
     const incomingGroups = hashAllGroups(canonicalRows);
     const currentHashes = await fetchCurrentHashes(supabase);
     const diff = diffGroups(incomingGroups, currentHashes);
     const removalPct =
       currentHashes.size > 0 ? (diff.removido.length / currentHashes.size) * 100 : 0;
 
-    printDiffSummary({
-      rawRows: rawRows.length,
-      canonicalRows: canonicalRows.length,
-      currentGroups: currentHashes.size,
-      incomingGroups: incomingGroups.size,
-      diff,
-      removalPct,
-      warningsCount: norm.warnings.length,
-    });
+    printDiffSummary(
+      {
+        rawRows: rawRows.length,
+        canonicalRows: canonicalRows.length,
+        currentGroups: currentHashes.size,
+        incomingGroups: incomingGroups.size,
+        diff,
+        removalPct,
+        warningsCount: norm.warnings.length,
+      },
+      opts,
+    );
 
     if (removalPct >= 5 && removalPct <= 10) {
       log(
@@ -1112,43 +1191,33 @@ async function runReal(supabase, sql) {
           `${currentHashes.size} groups) is in the 5-10% warning band. The sync may still apply.`,
       );
     }
-    if (removalPct > 10 && !ALLOW_LARGE_REMOVAL) {
+    if (removalPct > 10 && !opts.allowLargeRemoval) {
       log(
         `GUARDRAIL: removal ${removalPct.toFixed(3)}% exceeds 10% — this run WILL BE BLOCKED by ` +
           `estoque_aplicar_sync unless re-run with --allow-large-removal.`,
       );
     }
-    if (ALLOW_LARGE_REMOVAL) {
+    if (opts.allowLargeRemoval) {
       log(
         `NOTICE: --allow-large-removal is set for this run` +
-          (OVERRIDE_REASON ? ` (reason: "${OVERRIDE_REASON}")` : " (NO --override-reason GIVEN)") +
+          (opts.overrideReason
+            ? ` (reason: "${opts.overrideReason}")`
+            : " (NO --override-reason GIVEN)") +
           `. This does not bypass any other validation.`,
       );
     }
 
     // Price extraction/validation happens BEFORE any staging — a failed price
     // read/validate aborts the whole run (markErro below) so neither the
-    // inventory delta nor the price delta is ever staged/applied. This is
-    // what keeps "a failed price read/apply must not silently publish an
-    // inconsistent partial state" true without needing a separate guardrail.
-    const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sql);
-    log(`price extraction: ${rawPriceRows.length} raw R3 row(s)`);
-    if (normPrice.excludedBlankKey > 0) {
-      log(`excluded ${normPrice.excludedBlankKey} R3 row(s) with a blank produto/cor_codigo`);
-    }
-    if (normPrice.excludedNonPositive > 0) {
-      log(
-        `excluded ${normPrice.excludedNonPositive} non-positive R3 price row(s) (treated as missing)`,
-      );
-    }
-    for (const w of normPrice.warnings) log(`WARNING: ${w}`);
-    log("price extraction stats:", JSON.stringify(priceValidation.stats));
+    // inventory delta nor the price delta is ever staged/applied.
+    const { rawPriceRows, normPrice, priceValidation } = await extractAndValidatePrices(sources);
+    logPriceExtraction(rawPriceRows, normPrice, priceValidation);
     if (!priceValidation.ok) {
       const msg = `price local validation failed:\n  - ${priceValidation.problems.join("\n  - ")}`;
       await markErro(supabase, syncId, msg, "PRICE_EXTRACTION_FATAL");
       console.error(`\nSYNC FAILED:\n${msg}\n`);
       process.exitCode = 1;
-      return;
+      return { status: "erro", syncId, errorCode: "PRICE_EXTRACTION_FATAL" };
     }
     log("price local validation: PASS");
 
@@ -1176,26 +1245,33 @@ async function runReal(supabase, sql) {
       );
     }
 
-    // Barcodes: isolated from the inventory/price abort path (see
-    // prepareBarcodes). A skipped barcode pass stages nothing, so the existing
-    // estoque_barcodes mapping is left exactly as it was.
-    const bc = await prepareBarcodes(supabase, sql);
-    const avisos = [...norm.warnings];
-    if (bc.skipped) {
-      log(`WARNING: ${bc.reason}`);
-      avisos.push(`BARCODE_SYNC_SKIPPED: ${bc.reason}`);
-    } else {
-      for (const w of bc.warnings) log(`WARNING: ${w}`);
-      avisos.push(...bc.warnings);
-      printBarcodeSummary(bc);
-    }
+    // Barcodes: cadence-gated and isolated (planBarcodeCheck never throws).
+    const plan = await planBarcodeCheck(supabase, sources, {
+      novoGroups: diff.novo,
+      now,
+      force: opts.forceBarcodeCheck,
+      allowLargeRemoval: opts.allowLargeBarcodeRemoval,
+    });
+    for (const w of plan.warnings) log(`WARNING: ${w}`);
+    printBarcodePlan(plan);
 
     await stageChanges(supabase, syncId, diff);
     await stagePrices(supabase, syncId, priceDiff);
-    if (!bc.skipped) await stageBarcodes(supabase, syncId, bc.diff);
+    if (plan.resultado === "publicar") {
+      try {
+        await stageBarcodes(supabase, syncId, plan.diff, opts.stagingChunkSize);
+      } catch (err) {
+        // Any rows already staged are discarded by estoque_aplicar_sync
+        // (resultado != 'publicar'), so a partial staging can never publish.
+        plan.resultado = "falha";
+        plan.erro = `BARCODE_STAGING_FAILED: ${err?.message ?? String(err)}`;
+        log(`WARNING: ${plan.erro} — inventory/price continue, barcode check retried next run`);
+      }
+    }
 
     const produtoCount = new Set(canonicalRows.map((r) => r.produto)).size;
     const produtoCorCount = incomingGroups.size;
+    const avisos = [...norm.warnings, ...plan.warnings];
 
     const result = await applySync(supabase, {
       syncId,
@@ -1204,13 +1280,13 @@ async function runReal(supabase, sql) {
       produtoCount,
       produtoCorCount,
       avisos,
-      allowLargeRemoval: ALLOW_LARGE_REMOVAL,
-      overrideReason: ALLOW_LARGE_REMOVAL ? OVERRIDE_REASON : null,
+      allowLargeRemoval: opts.allowLargeRemoval,
+      overrideReason: opts.allowLargeRemoval ? opts.overrideReason : null,
       precoRowsLidos: rawPriceRows.length,
       precoProdutoCorCount: incomingPrices.size,
       precoSemCorrespondencia: semCorrespondencia,
-      barcodeRowsLidos: bc.skipped ? null : bc.rawCount,
-      barcodeAmbiguos: bc.skipped ? null : bc.ambiguous.length,
+      barcodePlan: plan,
+      allowLargeBarcodeRemoval: opts.allowLargeBarcodeRemoval,
     });
 
     if (result.status === "sucesso") {
@@ -1221,12 +1297,19 @@ async function runReal(supabase, sql) {
           `preco_novo=${result.preco_novos} preco_alterado=${result.preco_alterados} ` +
           `preco_removido=${result.preco_removidos} preco_inalterado=${result.preco_inalterados} ` +
           `preco_linhas_escritas=${result.preco_linhas_escritas} ` +
+          `barcode=${result.barcode_check_status} ` +
           `barcode_novo=${result.barcode_novos} barcode_alterado=${result.barcode_alterados} ` +
           `barcode_removido=${result.barcode_removidos} barcode_inalterado=${result.barcode_inalterados} ` +
           `barcode_linhas_escritas=${result.barcode_linhas_escritas} ` +
           `freshness=${result.concluido_em}` +
           (avisos.length ? ` — ${avisos.length} warning(s)` : ""),
       );
+      if (result.barcode_check_status === "falha" || result.barcode_check_status === "bloqueado") {
+        log(
+          `WARNING: barcode check ${result.barcode_check_status}: ${result.barcode_erro} — ` +
+            `previous mapping kept; the check is pending and will be retried next run.`,
+        );
+      }
     } else {
       console.error(
         `\nSYNC BLOCKED/FAILED — status=${result.status} error_code=${result.error_code}\n` +
@@ -1234,6 +1317,7 @@ async function runReal(supabase, sql) {
       );
       process.exitCode = 1;
     }
+    return { status: result.status, syncId, result, barcodePlan: plan };
   } catch (err) {
     const message = err?.message ?? String(err);
     try {
@@ -1243,13 +1327,15 @@ async function runReal(supabase, sql) {
     }
     console.error(`\nSYNC FAILED:\n${message}\n`);
     process.exitCode = 1;
+    return { status: "erro", syncId, errorCode: "UNEXPECTED_ERROR", message };
   }
 }
 
 // ---------------------------------------------------------------------------
 async function main() {
   const startedAt = Date.now();
-  printBanner();
+  const opts = parseCliOptions(process.argv.slice(2));
+  printBanner(opts);
 
   const [{ default: sql }, { createClient }] = await Promise.all([
     import("mssql"),
@@ -1260,11 +1346,12 @@ async function main() {
   const supabase = createClient(supabaseConfig.url, supabaseConfig.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const sources = createLinxSources(sql);
 
-  if (DRY_RUN) {
-    await runDryRun(supabase, sql);
+  if (opts.dryRun) {
+    await runDryRun(supabase, sources, opts);
   } else {
-    await runReal(supabase, sql);
+    await runReal(supabase, sources, opts);
   }
 
   log(`done in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
@@ -1272,11 +1359,11 @@ async function main() {
 }
 
 // Entry-point guard: this file exports pure functions (normalizeExtraction,
-// finalizeCanonicalRow, validateExtraction, requireEnv, log) that other
-// scripts import for testing/diagnostics (test-diff-engine.mjs). Without
-// this guard, merely IMPORTING this module would unconditionally trigger a
-// real claim/extract/stage/apply run as a side effect — main() only runs
-// when this file is the actual process entry point.
+// finalizeCanonicalRow, validateExtraction, requireEnv, log, runReal, ...) that
+// other scripts import for testing (test-diff-engine.mjs, the QA harness).
+// Without this guard, merely IMPORTING this module would unconditionally
+// trigger a real claim/extract/stage/apply run as a side effect — main() only
+// runs when this file is the actual process entry point.
 const isDirectEntryPoint =
   process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 

@@ -17,6 +17,8 @@ import {
   finalizeCanonicalRow,
   normalizeNegativeQuantities,
   validateExtraction,
+  planBarcodeCheck,
+  barcodeApplyParams,
 } from "./sync-estoque.mjs";
 import {
   buildPriceMap,
@@ -26,11 +28,15 @@ import {
   validatePriceExtraction,
 } from "./estoque-price-diff.mjs";
 import {
+  ambiguityWarnings,
+  barcodeCheckDue,
   buildBarcodeMap,
   diffBarcodes,
   finalizeBarcodeRow,
+  hashBarcodeMapping,
   normalizeBarcodeExtraction,
   resolveBarcodeAmbiguity,
+  weeklyBarcodeBoundary,
 } from "./estoque-barcode-diff.mjs";
 
 let failures = 0;
@@ -481,7 +487,12 @@ console.log("\nestoque-price-diff.mjs (Price V1)");
     result.rows[0].quantidade_estoque === 0,
     `got ${result.rows[0].quantidade_estoque}`,
   );
-  check("only the negative field changes, other row fields untouched", result.rows[0].produto === "CH2932" && result.rows[0].cor_codigo === "2QB" && result.rows[0].tamanho_key === 1);
+  check(
+    "only the negative field changes, other row fields untouched",
+    result.rows[0].produto === "CH2932" &&
+      result.rows[0].cor_codigo === "2QB" &&
+      result.rows[0].tamanho_key === 1,
+  );
 }
 
 // 23. normalization is counted and emits one warning identifying the row
@@ -512,7 +523,10 @@ console.log("\nestoque-price-diff.mjs (Price V1)");
     { tamanho_key: 3, tamanho_venda: "G", quantidade_estoque: 5 },
   ]).map(finalizeCanonicalRow);
   const result = normalizeNegativeQuantities(rows);
-  check("negativeNormalizedCount = 2 (only the two negative rows)", result.negativeNormalizedCount === 2);
+  check(
+    "negativeNormalizedCount = 2 (only the two negative rows)",
+    result.negativeNormalizedCount === 2,
+  );
   check("one warning per negative row", result.warnings.length === 2);
   check(
     "both negative rows normalized to 0, positive row untouched",
@@ -529,7 +543,10 @@ console.log("\nestoque-price-diff.mjs (Price V1)");
     { tamanho_key: 2, tamanho_venda: "M", quantidade_estoque: 7 },
   ]).map(finalizeCanonicalRow);
   const result = normalizeNegativeQuantities(rows);
-  check("negativeNormalizedCount = 0 when nothing is negative", result.negativeNormalizedCount === 0);
+  check(
+    "negativeNormalizedCount = 0 when nothing is negative",
+    result.negativeNormalizedCount === 0,
+  );
   check("no warnings when nothing is negative", result.warnings.length === 0);
   check(
     "zero and positive quantities are byte-for-byte unchanged",
@@ -671,6 +688,254 @@ const bcRow = (o = {}) =>
   const inc = buildBarcodeMap([bcRow({ desc_produto: "" })]);
   const d = diffBarcodes(inc, cur);
   check("null vs blank description is unchanged", d.inalterado === 1 && d.alterado.length === 0);
+}
+
+// 36. mapping hash: deterministic, order-independent, sensitive to content
+{
+  const rows = [bcRow({ codigo_barra: "002" }), bcRow({ codigo_barra: "001" })];
+  const h1 = hashBarcodeMapping(buildBarcodeMap(rows));
+  const h2 = hashBarcodeMapping(buildBarcodeMap([...rows].reverse()));
+  const h3 = hashBarcodeMapping(
+    buildBarcodeMap([
+      bcRow({ codigo_barra: "002" }),
+      bcRow({ codigo_barra: "001", tamanho_key: 4 }),
+    ]),
+  );
+  check("mapping hash is order-independent", h1 === h2 && /^[0-9a-f]{64}$/.test(h1));
+  check("mapping hash changes when a SKU changes", h1 !== h3);
+}
+
+// 37. mapping hash keeps leading zeros distinct and treats blank desc as null
+{
+  const a = hashBarcodeMapping(buildBarcodeMap([bcRow({ codigo_barra: "0123" })]));
+  const b = hashBarcodeMapping(buildBarcodeMap([bcRow({ codigo_barra: "123" })]));
+  const c = hashBarcodeMapping(buildBarcodeMap([bcRow({ desc_produto: null })]));
+  const d = hashBarcodeMapping(buildBarcodeMap([{ ...bcRow(), desc_produto: "  " }]));
+  check("mapping hash distinguishes leading zeros", a !== b);
+  check("mapping hash: blank description equals null", c === d);
+}
+
+// 38. dash-only placeholder sizes are excluded with one aggregated warning
+{
+  const n = normalizeBarcodeExtraction([
+    bcRow({ codigo_barra: "P1", tamanho_venda: "-" }),
+    bcRow({ codigo_barra: "P2", tamanho_venda: "---" }),
+    bcRow({ codigo_barra: "OK" }),
+  ]);
+  check(
+    "placeholder-size barcodes excluded",
+    n.rows.length === 1 && n.excludedPlaceholder === 2 && n.warnings.length === 1,
+  );
+}
+
+// 39. ambiguity / invalid warnings are capped with a total line
+{
+  const amb = Array.from({ length: 60 }, (_, i) => ({ codigo_barra: String(i), skus: [{}, {}] }));
+  const w = ambiguityWarnings(amb);
+  check(
+    "ambiguity warnings capped at 50 + summary",
+    w.length === 51 && w[50].includes("60 in total"),
+  );
+  const n = normalizeBarcodeExtraction(
+    Array.from({ length: 55 }, () => bcRow({ codigo_barra: "" })),
+  );
+  check("invalid-row warnings capped", n.invalidCount === 55 && n.warnings.length === 51);
+}
+
+// 40. weekly boundary = Monday 00:00 America/Manaus (UTC-4)
+{
+  // Wednesday 2026-11-25 15:00Z -> Monday 2026-11-23 00:00 Manaus = 04:00Z
+  const b1 = weeklyBarcodeBoundary(new Date("2026-11-25T15:00:00Z"));
+  // Monday 2026-11-23 03:59Z is still Sunday 23:59 in Manaus -> previous Monday
+  const b2 = weeklyBarcodeBoundary(new Date("2026-11-23T03:59:00Z"));
+  // Monday 2026-11-23 04:00Z is Monday 00:00 in Manaus -> that Monday
+  const b3 = weeklyBarcodeBoundary(new Date("2026-11-23T04:00:00Z"));
+  check(
+    "weekly boundary mid-week",
+    b1.toISOString() === "2026-11-23T04:00:00.000Z",
+    b1.toISOString(),
+  );
+  check(
+    "weekly boundary Sunday night (Manaus)",
+    b2.toISOString() === "2026-11-16T04:00:00.000Z",
+    b2.toISOString(),
+  );
+  check(
+    "weekly boundary exactly Monday 00:00",
+    b3.toISOString() === "2026-11-23T04:00:00.000Z",
+    b3.toISOString(),
+  );
+}
+
+// 41. cadence decisions
+{
+  const now = new Date("2026-11-25T15:00:00Z"); // Wednesday
+  const okThisWeek = {
+    hash_publicado: "h",
+    ultimo_check_ok_em: "2026-11-23T10:00:00Z",
+    check_pendente: false,
+  };
+  const d0 = barcodeCheckDue({ estado: okThisWeek, now });
+  check("not due after this week's successful check", !d0.due && d0.motivos.length === 0);
+
+  const d1 = barcodeCheckDue({ estado: { hash_publicado: null, check_pendente: false }, now });
+  check("initial load due", d1.due && d1.motivos.includes("inicial"));
+
+  const d2 = barcodeCheckDue({ estado: null, now });
+  check("unknown state treated as initial", d2.due && d2.motivos.includes("inicial"));
+
+  const d3 = barcodeCheckDue({
+    estado: { ...okThisWeek, ultimo_check_ok_em: "2026-11-23T03:00:00Z" },
+    now,
+  });
+  check(
+    "weekly due when last ok predates Monday 00:00 Manaus",
+    d3.due && d3.motivos.includes("semanal"),
+  );
+
+  const d4 = barcodeCheckDue({ estado: { ...okThisWeek, check_pendente: true }, now });
+  check("pending failed check retried", d4.due && d4.motivos.includes("retry"));
+
+  const d5 = barcodeCheckDue({ estado: okThisWeek, now, unmappedNewPairs: 2 });
+  check("new unmapped produto+cor triggers", d5.due && d5.motivos.join() === "novo_produto_cor");
+
+  const d6 = barcodeCheckDue({ estado: okThisWeek, now, force: true });
+  check("manual force triggers", d6.due && d6.motivos.join() === "manual");
+}
+
+// 42. planBarcodeCheck orchestration with an in-memory client
+{
+  const linxRows = [
+    { codigo_barra: "001", produto: "P1", cor_codigo: "C1", tamanho_key: 1, tamanho_venda: "P" },
+    { codigo_barra: "002", produto: "P1", cor_codigo: "C1", tamanho_key: 2, tamanho_venda: "M" },
+  ];
+  const hash = hashBarcodeMapping(buildBarcodeMap(linxRows.map((r) => finalizeBarcodeRow(r))));
+  const fake = ({ estado, current = [], unmapped = [], estadoError = null }) => {
+    const calls = [];
+    return {
+      calls,
+      rpc: async (name) => {
+        calls.push(name);
+        if (name === "estoque_barcode_estado") {
+          return estadoError
+            ? { data: null, error: { message: estadoError } }
+            : { data: [estado], error: null };
+        }
+        return { data: unmapped, error: null };
+      },
+      from: (table) => ({
+        select: () => ({
+          order: () => ({
+            range: async () => {
+              calls.push(`select:${table}`);
+              return { data: current, error: null };
+            },
+          }),
+        }),
+      }),
+    };
+  };
+  let extractions = 0;
+  const sources = (rows = linxRows, fail = false) => ({
+    extractBarcodes: async () => {
+      extractions += 1;
+      if (fail) throw new Error("boom");
+      return rows;
+    },
+  });
+  const now = new Date("2026-11-25T15:00:00Z");
+  const okEstado = {
+    hash_publicado: hash,
+    ultimo_check_ok_em: "2026-11-24T10:00:00Z",
+    check_pendente: false,
+  };
+
+  extractions = 0;
+  const p0 = await planBarcodeCheck(fake({ estado: okEstado }), sources(), { now });
+  check("plan: not due -> no extraction", p0.resultado === null && extractions === 0);
+
+  const c1 = fake({ estado: okEstado });
+  const p1 = await planBarcodeCheck(c1, sources(), { now, force: true });
+  check(
+    "plan: unchanged hash -> inalterado without reading the mapping",
+    p1.resultado === "inalterado" && !c1.calls.some((c) => c.startsWith("select:")),
+  );
+
+  const c2 = fake({ estado: { ...okEstado, hash_publicado: null }, current: [] });
+  const p2 = await planBarcodeCheck(c2, sources(), { now });
+  check(
+    "plan: initial -> publicar with full delta",
+    p2.resultado === "publicar" && p2.diff.novo.length === 2 && p2.motivos.includes("inicial"),
+  );
+  const ap = barcodeApplyParams(p2);
+  check(
+    "apply params carry expected counts, hash and total",
+    ap.p_barcode_resultado === "publicar" &&
+      ap.p_barcode_novos_esperados === 2 &&
+      ap.p_barcode_removidos_esperados === 0 &&
+      ap.p_barcode_total === 2 &&
+      ap.p_barcode_hash === p2.hash,
+  );
+  check(
+    "apply params when not due are a no-op",
+    barcodeApplyParams(p0).p_barcode_resultado === null,
+  );
+
+  const current = Array.from({ length: 10 }, (_, i) => ({
+    codigo_barra: `X${i}`,
+    produto: "P1",
+    cor_codigo: "C1",
+    tamanho_key: 1,
+    tamanho_venda: "P",
+    desc_produto: null,
+    cor_descricao_linx: null,
+  }));
+  const p3 = await planBarcodeCheck(
+    fake({ estado: { ...okEstado, hash_publicado: "old" }, current }),
+    sources(),
+    { now, force: true },
+  );
+  check(
+    "plan: >10% removal -> bloqueado",
+    p3.resultado === "bloqueado" && p3.erro.includes("BARCODE_LARGE_REMOVAL_GUARD"),
+  );
+  const p3b = await planBarcodeCheck(
+    fake({ estado: { ...okEstado, hash_publicado: "old" }, current }),
+    sources(),
+    { now, force: true, allowLargeRemoval: true },
+  );
+  check("plan: explicit barcode override -> publicar", p3b.resultado === "publicar");
+
+  const p4 = await planBarcodeCheck(fake({ estado: okEstado }), sources(linxRows, true), {
+    now,
+    force: true,
+  });
+  check(
+    "plan: extraction error -> falha (never throws)",
+    p4.resultado === "falha" && p4.erro.includes("boom"),
+  );
+
+  const p5 = await planBarcodeCheck(fake({ estadoError: "down" }), sources(), { now });
+  check(
+    "plan: state unavailable -> falha",
+    p5.resultado === "falha" && p5.erro.includes("BARCODE_STATE_UNAVAILABLE"),
+  );
+
+  const p6 = await planBarcodeCheck(fake({ estado: okEstado }), sources([]), { now, force: true });
+  check(
+    "plan: zero publishable rows -> falha",
+    p6.resultado === "falha" && p6.erro.includes("0 publishable"),
+  );
+
+  const p7 = await planBarcodeCheck(
+    fake({ estado: okEstado, unmapped: [{ produto: "P9", cor_codigo: "C9" }] }),
+    sources(),
+    { now, novoGroups: [{ produto: "P9", cor_codigo: "C9" }] },
+  );
+  check(
+    "plan: unmapped new produto+cor -> due",
+    p7.motivos.join() === "novo_produto_cor" && p7.resultado === "inalterado",
+  );
 }
 
 console.log(`\n${passed} passed, ${failures} failed`);

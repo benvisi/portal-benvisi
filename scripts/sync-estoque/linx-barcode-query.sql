@@ -21,18 +21,21 @@
      * INATIVO = 0 and a non-blank CODIGO_BARRA only.
      * Several active barcodes per SKU are kept. CODIGO_BARRA_PADRAO is NOT used
        as a filter.
-     * "Previously carried" = an ESTOQUE_PRODUTOS row exists for @filial for
-       the produto+cor, REGARDLESS of quantity (no ESTOQUE > 0). Intent: a
+     * Scope (approved): an ESTOQUE_PRODUTOS row exists for @filial for the
+       produto+cor, REGARDLESS of quantity (zero and negative included). A
        sold-out colour/reference is recognized instead of looking unknown,
-       without importing the whole Linx catalog. The script's size sanity
-       check reports how large this set is every run.
-       >>> NOT verified against live Linx from the dev environment. Run
-       >>> scripts/sync-estoque/validate-barcode-scope.sql on aplserver and
-       >>> confirm the counts before enabling this in the scheduled task.
-     * Only labelled grade positions are emitted (same rule as linx-query.sql).
-     * A barcode that maps to different SKUs is NOT resolved here — it is
-       returned as-is and detected/excluded by the sync script
-       (estoque-barcode-diff.mjs: detectAmbiguousBarcodes).
+       without importing the whole Linx catalog. Validated on live Linx with
+       validate-barcode-scope.sql (2026-11): 5,825 produto+cor, 44,361 source
+       barcode records, positive-stock SKU coverage 3,506 / 3,506.
+     * Only labelled grade positions 1..48 are emitted (same rule as
+       linx-query.sql). Rows whose PRODUTOS / PRODUTO_CORES / grade label is
+       missing are dropped by the INNER JOINs (counted by the validation SQL).
+     * Normalization happens in estoque-barcode-diff.mjs, not here: trimming,
+       length <= 64, dash-only placeholder labels excluded, same-SKU
+       duplicates collapsed, and a barcode that maps to different SKUs
+       EXCLUDED with an audit warning (resolveBarcodeAmbiguity).
+     * This query runs only when a barcode check is due (initial, weekly,
+       new produto+cor, manual, retry) — not every hourly run.
 
    @filial is the same bind parameter as linx-query.sql (default
    'LACOSTE SHOPPING  MANAUS' — note the double space).

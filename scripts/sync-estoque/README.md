@@ -70,6 +70,12 @@ node scripts/sync-estoque/sync-estoque.mjs --dry-run
 
 # the real thing:
 node scripts/sync-estoque/sync-estoque.mjs
+
+# barcode check now, regardless of cadence (guards still apply):
+node scripts/sync-estoque/sync-estoque.mjs --force-barcode-check
+
+# accept a reviewed >10% barcode removal (barcode-only override):
+node scripts/sync-estoque/sync-estoque.mjs --force-barcode-check --allow-large-barcode-removal
 ```
 
 ## The Linx query — verified live
@@ -112,16 +118,81 @@ rejected; `max_tamanho_key` is reported per run and is data, not a cap.
 
 ## Barcode Slice 1
 
-Each run also maintains `estoque_barcodes` (barcode → produto/cor/tamanho_key)
+Each run may also maintain `estoque_barcodes` (barcode → produto/cor/tamanho_key)
 from `PRODUTOS_BARRA` via [`linx-barcode-query.sql`](./linx-barcode-query.sql)
 and [`estoque-barcode-diff.mjs`](./estoque-barcode-diff.mjs). Scope: active,
-non-blank barcodes of every produto+cor the store has ever carried
-(`ESTOQUE_PRODUTOS` row for the filial, any quantity), so sold-out items stay
-recognizable. Barcodes mapping to different SKUs are excluded with a warning.
-A barcode-pass failure never aborts the inventory/price sync (it is recorded as
-a `BARCODE_SYNC_SKIPPED` warning). New barcode files must be copied onto the
-scheduled-task server together with `sync-estoque.mjs`. Before first use run
-[`validate-barcode-scope.sql`](./validate-barcode-scope.sql) on Linx (read-only).
+non-blank barcodes of every produto+cor with any `ESTOQUE_PRODUTOS` row for the
+store (zero/negative stock included), so sold-out items stay recognizable.
+Aliases (several barcodes per SKU) are kept, leading zeros preserved; dash-only
+placeholder sizes and ambiguous barcodes (one code → several SKUs) are not
+published (ambiguous ones are logged as audit warnings).
+
+**Cadence** — no extra scheduled task; the hourly run performs a barcode check
+only when one is due:
+
+| reason             | when                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `inicial`          | nothing published yet (or the published hash was cleared after drift)               |
+| `semanal`          | no successful check since Monday 00:00 America/Manaus (first run of the week)       |
+| `novo_produto_cor` | a new inventory produto+cor has no mapped barcode (restocked colours don't count)   |
+| `manual`           | `--force-barcode-check` (bypasses cadence, never the guards)                        |
+| `retry`            | the previous check failed or was blocked (`check_pendente`, stored in the database) |
+
+Quantity-only changes never trigger a check. **Limitation:** a product/colour
+introduced with zero stock, or a new size barcode on an already-mapped colour,
+does not appear as a new inventory group and is picked up by the weekly check
+(or a manual force-check).
+
+When due, the full normalized mapping is hashed (SHA-256). If it equals the
+published hash the check is recorded as successful **without reading
+`estoque_barcodes` or writing mapping rows**; otherwise the delta is computed
+against the full current mapping, staged and published in the same
+`estoque_aplicar_sync` transaction, and only then is the published hash
+advanced. State lives in `estoque_barcode_sync_estado`; every execution records
+`barcode_check_status` / `barcode_check_motivos` / `barcode_hash` /
+`barcode_erro` in `estoque_sync_execucoes`.
+
+**Failure isolation** — any barcode failure (state read, Linx extraction,
+remote read, the >10 % removal guard, partial staging, apply) skips only the
+barcode publication: inventory and price still apply, the previous mapping is
+kept, a `BARCODE_CHECK_*` warning is recorded and the check is retried on the
+next hourly run. The barcode removal guard has its own override,
+`--allow-large-barcode-removal` (separate from `--allow-large-removal`).
+`--dry-run` reports what the barcode check would do and never advances state.
+
+New barcode files must be copied onto the scheduled-task server together with
+`sync-estoque.mjs`. [`validate-barcode-scope.sql`](./validate-barcode-scope.sql)
+(read-only, run on Linx) mirrors the extraction and normalization exactly and
+counts every drop reason, ambiguity and positive-stock coverage.
+
+## Barcode QA tests
+
+Offline (no database):
+
+```sh
+node scripts/sync-estoque/test-diff-engine.mjs
+```
+
+Integration — **QA project only** (`fupdeihsucacsprunljk`). The test resets the
+estoque current-state tables of its target and refuses to run unless the
+server's `system_identifier` matches QA's. Prerequisites:
+
+1. QA restored from `supabase/baseline/` + post-watermark migrations (see
+   `supabase/baseline/README.md`), with the synthetic employee
+   `QA Teste Vendedor` present.
+2. `supabase/migrations/20261125_001_add_estoque_barcodes.sql` applied to QA.
+3. A PostgreSQL 17 client directory with `bin\psql.exe`,
+   `conf\pgpass.conf` (QA session-pooler entry, user-only ACL) and
+   `conf\supabase-prod-ca-2021.crt` (TLS `verify-full`).
+
+```powershell
+.\scripts\sync-estoque\qa\run-barcode-qa.ps1 -PgRoot C:\Users\benvi\Tools\postgresql17
+```
+
+It drives the real `runReal` / `runDryRun` orchestration with fixture "Linx"
+rows through [`qa/psql-supabase-client.mjs`](./qa/psql-supabase-client.mjs)
+(psql as `service_role`, so the real grants and RPCs are exercised) and then
+checks lookup outcomes, sessions and access control with SQL.
 
 ## Price V1
 
