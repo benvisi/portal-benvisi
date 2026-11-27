@@ -14,8 +14,12 @@
    produto+cor with ANY ESTOQUE_PRODUTOS row for @filial (zero and negative
    stock included).
 
-   Observed 2026-11 (owner run): 5,825 produto+cor in scope, 44,361 source
-   barcode records; positive-stock SKU coverage 3,506 / 3,506.
+   Live run 2026-11-27 (owner, 1.71 s): 5,825 produto+cor in scope (1,354
+   positive, 4,469 zero, 2 negative); 44,361 source barcode records; 4
+   placeholder-size exclusions, no other drops; 44,357 publishable barcodes;
+   0 same-SKU duplicates; 0 ambiguous; 44,181 SKUs mapped, 176 with aliases;
+   5 leading-zero barcodes; positive-stock SKU coverage 3,476 / 3,476; 0
+   negative size quantities within positive-stock produto+cor.
 
    Set @filial exactly as the sync does (note the DOUBLE space).
    ============================================================================= */
@@ -171,15 +175,20 @@ WITH tam AS (
     SELECT * FROM ok
     WHERE codigo_barra NOT IN (SELECT codigo_barra FROM ok GROUP BY codigo_barra HAVING COUNT(*) > 1)
 )
+-- (SUM(CASE WHEN EXISTS(...)) is not allowed in SQL Server — error 130 —
+-- hence the LEFT JOIN form.)
 SELECT
-    COUNT(*)                                                         AS skus_estoque_positivo,
-    SUM(CASE WHEN EXISTS (SELECT 1 FROM pub b
-                          WHERE b.produto = s.produto AND b.cor_codigo = s.cor_codigo
-                            AND b.tamanho_key = s.tamanho_key) THEN 1 ELSE 0 END) AS com_barcode,
-    SUM(CASE WHEN NOT EXISTS (SELECT 1 FROM pub b
-                          WHERE b.produto = s.produto AND b.cor_codigo = s.cor_codigo
-                            AND b.tamanho_key = s.tamanho_key) THEN 1 ELSE 0 END) AS sem_barcode
-FROM sku s;
+    COUNT(*) AS skus_estoque_positivo,
+    COUNT(b.tamanho_key) AS com_barcode,
+    COUNT(*) - COUNT(b.tamanho_key) AS sem_barcode
+FROM sku s
+LEFT JOIN (
+    SELECT DISTINCT produto, cor_codigo, tamanho_key
+    FROM pub
+) b
+    ON b.produto = s.produto
+    AND b.cor_codigo = s.cor_codigo
+    AND b.tamanho_key = s.tamanho_key;
 
 -- 6. Negative size-level quantities among stocked produto+cor (the sync
 --    publishes these as 0, never as available).

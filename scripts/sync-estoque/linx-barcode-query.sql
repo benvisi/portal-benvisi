@@ -25,8 +25,9 @@
        produto+cor, REGARDLESS of quantity (zero and negative included). A
        sold-out colour/reference is recognized instead of looking unknown,
        without importing the whole Linx catalog. Validated on live Linx with
-       validate-barcode-scope.sql (2026-11): 5,825 produto+cor, 44,361 source
-       barcode records, positive-stock SKU coverage 3,506 / 3,506.
+       validate-barcode-scope.sql (2026-11-27): 5,825 produto+cor, 44,361
+       source records, 44,357 publishable (4 placeholder sizes), 0 ambiguous,
+       positive-stock SKU coverage 3,476 / 3,476.
      * Only labelled grade positions 1..48 are emitted (same rule as
        linx-query.sql). Rows whose PRODUTOS / PRODUTO_CORES / grade label is
        missing are dropped by the INNER JOINs (counted by the validation SQL).

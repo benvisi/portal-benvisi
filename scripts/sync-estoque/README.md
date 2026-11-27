@@ -165,6 +165,8 @@ New barcode files must be copied onto the scheduled-task server together with
 (read-only, run on Linx) mirrors the extraction and normalization exactly and
 counts every drop reason, ambiguity and positive-stock coverage.
 
+Live validation 2026-11-27 (1.71 s): 5,825 produto+cor (1,354 positive, 4,469 zero, 2 negative), 44,361 source barcode records, 4 placeholder-size exclusions and no other drops, 44,357 publishable barcodes, 0 duplicates, 0 ambiguous, 44,181 SKUs mapped (176 with aliases), 5 leading-zero barcodes, positive-stock SKU coverage 3,476 / 3,476, 0 negative size quantities in positive-stock produto+cor.
+
 ## Barcode QA tests
 
 Offline (no database):
